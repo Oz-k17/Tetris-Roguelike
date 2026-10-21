@@ -311,7 +311,7 @@ i[data-ico]{display:contents}
       <li>タイマーが0になるとボスが出現。列を消してボスのHPを削る</li>
       <li>HPは時間とともに削られる。地下3階からは冷気、ボス戦では強撃。盤面上の細いゲージが満ちると来る</li>
       <li>ボスを倒すとHPが15回復し、行商人が来る。ゴールドで遺物や薬、護符を買って次の階へ</li>
-      <li>天井に届くとHP-12で盤面リセット。シールドはHPより先にダメージを吸収する。HPが尽きたら終わり。地下8階のボスを倒せば踏破</li>
+      <li>天井に届くと最大HPの35%（最低12）を失って盤面リセット。このダメージはシールドや氷壁でも防げない。ほかのダメージはシールドがHPより先に吸収する。HPが尽きたら終わり。地下8階のボスを倒せば踏破</li>
     </ol>
     <div class="keys">キーボード：←→ 移動 / ↓ ソフト / Space ハード / Z・X(↑) 回転 / C ホールド / A スキル / P 一時停止</div>
     </details>
@@ -443,7 +443,7 @@ const SHAPES={
   B:[[1]], D:[[1]]
 };
 const CLASSES={
-  tank:{n:'守護者',role:'タンク',g:'盾',col:'#8fe3ff',hp:50,d:'最大HP50。仲間がいるとボスの強撃をすべて引き受け、仲間へのゴミ列も遅らせる。強撃を25%の確率で防ぐ。受けるゴミ列の穴が2つになる。',
+  tank:{n:'守護者',role:'タンク',g:'盾',col:'#8fe3ff',hp:36,hpAlly:6,d:'最大HP36、仲間1人につき+6。仲間がいるとボスの強撃をすべて引き受け、仲間へのゴミ列も遅らせる。強撃を25%の確率で防ぐ。受けるゴミ列の穴が2つになる。',
     sk:{n:'氷壁',need:16,d:'8秒間、受けるダメージとゴミ列をすべて無効にする。仲間全員にシールド+15。'}},
   heal:{n:'癒し手',role:'ヒーラー',g:'癒',col:'#7ee0a1',hp:30,d:'12列消すごとに自分と仲間全員のHPを8回復。',
     sk:{n:'雪解けの奇跡',need:18,d:'自分と仲間全員のHPを25回復し、倒れた仲間をHP15で蘇生する。'}},
@@ -521,7 +521,9 @@ const gravityMs=()=>Math.max(55,850*Math.pow(0.85,S.floor-1))*Math.pow(1.15,lv('
 const bossBaseHp=()=>200+120*(S.floor-1);
 const strikeDmg=()=>Math.round(8+1.5*(S.floor-1));
 const coldDmg=()=>6+Math.max(0,S.floor-3);
-const TOPOUT_DMG=12,BOSS_KILL_HEAL=15,HEAL_AMT=8,REVIVE_HP=15;
+// topping out costs 35% of max HP (at least 12) and cannot be blocked
+const topoutDmg=()=>Math.max(12,Math.round(S.maxHp*0.35));
+const BOSS_KILL_HEAL=15,HEAL_AMT=8,REVIVE_HP=15;
 const skNeed=()=>Math.max(6,Math.round(clsOf(S.cls).sk.need*Math.pow(0.85,lv('focus'))));
 const nowT=()=>performance.now();
 const until=k=>Math.max(0,(S[k]||0)-nowT());
@@ -633,7 +635,9 @@ function spawn(){
 }
 function newRun(coop,epoch,cls){
   const c=clsOf(cls);
-  S={board:emptyBoard(),floor:1,hp:c.hp,maxHp:c.hp,cls:CLASSES[cls]?cls:'atk',
+  const allyN=coop&&NET?Math.min(MAXP-1,NET.others.length):0;
+  const mhp=c.hp+(c.hpAlly||0)*allyN;
+  S={board:emptyBoard(),floor:1,hp:mhp,maxHp:mhp,cls:CLASSES[cls]?cls:'atk',
      score:0,gold:0,totalGold:0,level:1,xp:0,pendingLv:0,
      timeLeft:STAGE_MS,phase:'play',boss:null,weaken:false,bossKills:0,afterReward:null,readyFloor:0,
      coop:!!coop,epoch:epoch||0,watching:false,
@@ -855,7 +859,11 @@ function bossAtkMs(){
 function heal(n){if(n>0)S.hp=Math.min(S.maxHp,S.hp+n)}
 function addShield(n){if(n>0)S.shield=Math.min(S.maxHp,S.shield+n)}
 // all incoming damage goes through here: armor first, then shield, then HP. returns true if it killed.
-function applyDamage(n){
+function applyDamage(n,pierce){
+  if(pierce){
+    S.hp-=n;S.hitsTaken+=n;S.fx.push({k:'hurt',t:0});shake(Math.min(7,3+n/4),260);hud(true);
+    return{dead:S.hp<=0,taken:n,absorbed:0};
+  }
   if(immune()){S.fx.push({k:'block',t:0});return{dead:false,taken:0,absorbed:n}}
   n=Math.max(1,n-2*lv('armor'));
   const ab=Math.min(S.shield,n);S.shield-=ab;n-=ab;
@@ -866,7 +874,7 @@ function applyDamage(n){
   return{dead:S.hp<=0,taken:n,absorbed:ab};
 }
 function topOut(){
-  const r=applyDamage(TOPOUT_DMG);
+  const r=applyDamage(topoutDmg(),true);
   if(r.dead){S.cause='天井に届いた';gameOver();return}
   if(lv('bulwark')){
     const keep=S.board.slice(H-8).map(r=>r.slice());
