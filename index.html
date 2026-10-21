@@ -466,8 +466,12 @@ const BOSSES=['氷牙の狼','雪女','氷柱の大蜘蛛','霜の巨人','氷�
 // each boss has its own skill; the last boss cycles through the others
 const BOSS_SK=['bite','blind','web','quake','curse','gale','breath','king'];
 const BSK={bite:{n:'連続噛みつき',d:'強撃を2連続で放つ'},blind:{n:'吹雪の帳',d:'8秒間NEXTとHOLDが見えなくなる'},web:{n:'蜘蛛の糸',d:'7秒間ハードドロップできない'},
-  quake:{n:'地響き',d:'ゴミ列を一度に3段送り込む'},curse:{n:'呪いの氷晶',d:'次の3つのミノがS・Zになる'},gale:{n:'暴風',d:'8秒間ミノの落下が速くなる'},
+  quake:{n:'地響き',d:'ゴミ列を一度に2段送り込む（ほかのスキルより発動が遅い）'},curse:{n:'呪いの氷晶',d:'次の3つのミノがS・Zになる'},gale:{n:'暴風',d:'8秒間ミノの落下が速くなる'},
   breath:{n:'凍てつく息吹',d:'守護者でも引き受けられない全体攻撃'}};
+// per-skill interval multiplier: heavy skills come less often
+const BSK_SLOW={quake:1.3};
+const nextBossSk=b=>b.sk==='king'?KING_CYCLE[b.skN%KING_CYCLE.length]:b.sk;
+const curSkMs=b=>bossSkMs()*(BSK_SLOW[nextBossSk(b)]||1);
 const KING_CYCLE=['quake','blind','breath','web','curse','gale','bite'];
 // c: class it leans toward. For that class it is 4x as likely as a neutral relic is 1.5x; other classes' relics drop to 0.25x. only: exclusive to that class.
 const RELICS={
@@ -995,7 +999,7 @@ function castBossSkill(b){
     shake(7,400);
     if(immune()){S.fx.push({k:'block',t:0});toast('氷壁で地響きを防いだ');return}
     S.fx.push({k:'atk',t:0});
-    if(addGarbage(3))topOut();
+    if(addGarbage(2))topOut();
   }
   else if(k==='breath')takeHit(Math.round(strikeDmg()*1.2),BSK[k].n);
 }
@@ -1456,7 +1460,7 @@ function drawBoard(dt){
   if(S.freezeUntil&&frozen()){bctx.fillStyle='rgba(242,208,107,.06)';bctx.fillRect(0,0,W*s,H*s);bctx.strokeStyle='rgba(242,208,107,.6)';bctx.lineWidth=3;bctx.strokeRect(1.5,1.5,W*s-3,H*s-3)}
   if(S.immuneUntil&&immune()){bctx.strokeStyle='rgba(143,227,255,.85)';bctx.lineWidth=4;bctx.strokeRect(2,2,W*s-4,H*s-4)}
   // boss skill charge (thin purple line under the top gauge)
-  if(b&&!frozen()){const f=Math.min(1,b.skAcc/bossSkMs());bctx.fillStyle=f>.85?'rgba(185,163,255,.95)':'rgba(185,163,255,.45)';bctx.fillRect(0,5,W*s*f,3)}
+  if(b&&!frozen()){const f=Math.min(1,b.skAcc/curSkMs(b));bctx.fillStyle=f>.85?'rgba(185,163,255,.95)':'rgba(185,163,255,.45)';bctx.fillRect(0,5,W*s*f,3)}
   // active status effects, bottom-left
   if(S.mode!=='over'){
     const st=[['氷壁','immuneUntil','#8fe3ff'],['凍結','freezeUntil','#f2d06b'],['吹雪','blindUntil','#e4eff8'],['蜘蛛の糸','webUntil','#c7d6e3'],['暴風','galeUntil','#b9a3ff']]
@@ -1925,8 +1929,8 @@ function frame(now){
         else{S.fx.push({k:'atk',t:0});if(addGarbage(rows))topOut()}
       }
       b.skAcc+=dt;
-      if(!b.warned&&b.skAcc>=bossSkMs()-3000){b.warned=true;toast(`${b.name}が「${BSK[b.sk==='king'?KING_CYCLE[b.skN%KING_CYCLE.length]:b.sk].n}」の構え`)}
-      if(b.skAcc>=bossSkMs()&&S.mode==='play'){b.skAcc=0;b.warned=false;castBossSkill(b)}
+      if(!b.warned&&b.skAcc>=curSkMs(b)-3000){b.warned=true;toast(`${b.name}が「${BSK[nextBossSk(b)].n}」の構え`)}
+      if(b.skAcc>=curSkMs(b)&&S.mode==='play'){b.skAcc=0;b.warned=false;castBossSkill(b)}
     }
     if(S.mode==='play')hpTick(dt);
     bossHpTick();
