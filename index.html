@@ -86,6 +86,14 @@ aside{width:72px;display:flex;flex-direction:column;gap:7px;align-self:flex-star
   font-size:20px;font-family:var(--display);cursor:pointer;touch-action:none}
 .pad button:active,.pad button.down{background:var(--line)}
 .pad button.wide{grid-column:span 2;font-size:15px;letter-spacing:.1em}
+#holdBtn{font-size:15px;letter-spacing:.06em}
+.pad button.skill{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-family:var(--body);font-size:11px;font-weight:700}
+.pad button.skill::before{content:"";position:absolute;left:0;right:0;bottom:0;height:var(--chg,0%);background:var(--skc,var(--ice));opacity:.22;transition:height .2s}
+.pad button.skill>span{position:relative;line-height:1}
+.pad button.skill.ready{border-color:var(--skc,var(--ice));box-shadow:inset 0 0 0 1px var(--skc,var(--ice)),0 0 12px -2px var(--skc,var(--ice))}
+.pad button.skill.ready::before{opacity:.32}
+@media (prefers-reduced-motion:no-preference){.pad button.skill.ready{animation:skr 1.4s ease-in-out infinite}}
+@keyframes skr{50%{box-shadow:inset 0 0 0 1px var(--skc,var(--ice)),0 0 18px 0 var(--skc,var(--ice))}}
 .pad button.hard{color:var(--ice)}
 button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-offset:2px}
 .toast{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);font-family:var(--display);font-size:18px;
@@ -277,7 +285,8 @@ i[data-ico]{display:contents}
     <button data-a="cw" aria-label="右回転"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 9a8 8 0 1 0-1.5 9"/><path d="M20 4v5h-5"/></svg></button>
     <button data-a="soft" aria-label="ソフトドロップ"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 9l7 7 7-7"/></svg></button>
     <button data-a="hard" class="hard" aria-label="ハードドロップ"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 5l6 6 6-6"/><path d="M6 11l6 6 6-6"/><path d="M5 21h14"/></svg></button>
-    <button data-a="hold" class="wide" id="holdBtn">HOLD</button>
+    <button data-a="hold" id="holdBtn">HOLD</button>
+    <button data-a="skill" class="skill" id="skillBtn" aria-label="クラススキル"><span id="skIco"></span><span id="skTxt">SKILL</span></button>
   </div>
 </div>
 
@@ -296,14 +305,15 @@ i[data-ico]{display:contents}
     <div class="clsrow" id="titleCls"></div>
     <details class="howto"><summary>遊び方とルール</summary>
     <ol class="rules">
-      <li>守護者・癒し手・鼓手・剣士の4クラス。クラスで出やすい遺物が変わり、専用の遺物もある</li>
+      <li>守護者・癒し手・鼓手・剣士の4クラス。ラインを消してためるクラススキル（SKILLボタン）があり、遺物もクラスに合ったものが出やすい</li>
+      <li>ボスはそれぞれ固有のスキルを持つ。盤面上の紫の線が満ちると発動</li>
       <li>スコアで経験値がたまり、レベルアップごとに遺物をひとつ選べる</li>
       <li>タイマーが0になるとボスが出現。列を消してボスのHPを削る</li>
       <li>HPは時間とともに削られる。地下3階からは冷気、ボス戦では強撃。盤面上の細いゲージが満ちると来る</li>
       <li>ボスを倒すとHPが15回復し、行商人が来る。ゴールドで遺物や薬、護符を買って次の階へ</li>
       <li>天井に届くとHP-12で盤面リセット。シールドはHPより先にダメージを吸収する。HPが尽きたら終わり。地下8階のボスを倒せば踏破</li>
     </ol>
-    <div class="keys">キーボード：←→ 移動 / ↓ ソフト / Space ハード / Z・X(↑) 回転 / C ホールド / P 一時停止</div>
+    <div class="keys">キーボード：←→ 移動 / ↓ ソフト / Space ハード / Z・X(↑) 回転 / C ホールド / A スキル / P 一時停止</div>
     </details>
     <div class="btnrow stack">
       <button class="cta" id="startBtn">ひとりで潜る</button>
@@ -433,14 +443,24 @@ const SHAPES={
   B:[[1]], D:[[1]]
 };
 const CLASSES={
-  tank:{n:'守護者',role:'タンク',g:'盾',col:'#8fe3ff',hp:50,d:'最大HP50。仲間がいるとボスの強撃をすべて引き受け、仲間へのゴミ列も遅らせる。強撃を25%の確率で防ぐ。受けるゴミ列の穴が2つになる。'},
-  heal:{n:'癒し手',role:'ヒーラー',g:'癒',col:'#7ee0a1',hp:30,d:'12列消すごとに自分と仲間全員のHPを8回復。4列消しで、倒れた仲間をHP10で蘇生する。'},
-  buff:{n:'鼓手',role:'バッファー',g:'鼓',col:'#f2d06b',hp:30,d:'8列消すごとに鼓舞。15秒間、自分と仲間全員のボスへのダメージとスコア・経験値が1.5倍。'},
-  atk:{n:'剣士',role:'アタッカー',g:'剣',col:'#ff6f7f',hp:30,d:'ボスへのダメージが1.5倍。連続消し中はさらに+10。'}
+  tank:{n:'守護者',role:'タンク',g:'盾',col:'#8fe3ff',hp:50,d:'最大HP50。仲間がいるとボスの強撃をすべて引き受け、仲間へのゴミ列も遅らせる。強撃を25%の確率で防ぐ。受けるゴミ列の穴が2つになる。',
+    sk:{n:'氷壁',need:16,d:'8秒間、受けるダメージとゴミ列をすべて無効にする。仲間全員にシールド+15。'}},
+  heal:{n:'癒し手',role:'ヒーラー',g:'癒',col:'#7ee0a1',hp:30,d:'12列消すごとに自分と仲間全員のHPを8回復。',
+    sk:{n:'雪解けの奇跡',need:18,d:'自分と仲間全員のHPを25回復し、倒れた仲間をHP15で蘇生する。'}},
+  buff:{n:'鼓手',role:'バッファー',g:'鼓',col:'#f2d06b',hp:30,d:'8列消すごとに鼓舞。15秒間、自分と仲間全員のボスへのダメージとスコア・経験値が1.5倍。',
+    sk:{n:'凍てつく調べ',need:16,d:'10秒間ボスを凍らせる。強撃・ゴミ列・ボスのスキルが止まり、その間のボスへのダメージが1.3倍。仲間全員に効く。'}},
+  atk:{n:'剣士',role:'アタッカー',g:'剣',col:'#ff6f7f',hp:30,d:'ボスへのダメージが1.5倍。連続消し中はさらに+10。',
+    sk:{n:'氷刃乱舞',need:14,d:'盤面の下から3段を砕き、砕いたブロック1個につきボスに5ダメージ（剣士の1.5倍が乗る）。'}}
 };
 const CLS_KEYS=['tank','heal','buff','atk'];
 const BOSSES=['氷牙の狼','雪女','氷柱の大蜘蛛','霜の巨人','氷晶の魔女','吹雪の双頭鷲','氷竜','永久凍土の王'];
-// c: class it leans toward (appears 3x as often for that class). only: exclusive to that class.
+// each boss has its own skill; the last boss cycles through the others
+const BOSS_SK=['bite','blind','web','quake','curse','gale','breath','king'];
+const BSK={bite:{n:'連続噛みつき',d:'強撃を2連続で放つ'},blind:{n:'吹雪の帳',d:'8秒間NEXTとHOLDが見えなくなる'},web:{n:'蜘蛛の糸',d:'7秒間ハードドロップできない'},
+  quake:{n:'地響き',d:'ゴミ列を一度に3段送り込む'},curse:{n:'呪いの氷晶',d:'次の3つのミノがS・Zになる'},gale:{n:'暴風',d:'8秒間ミノの落下が速くなる'},
+  breath:{n:'凍てつく息吹',d:'守護者でも引き受けられない全体攻撃'}};
+const KING_CYCLE=['quake','blind','breath','web','curse','gale','bite'];
+// c: class it leans toward. For that class it is 4x as likely as a neutral relic is 1.5x; other classes' relics drop to 0.25x. only: exclusive to that class.
 const RELICS={
   ghost:{n:'ゴーストの灯',g:'灯',d:'ミノの落下位置が見えるようになる',max:1,p:45},
   hold:{n:'保管庫の鍵',g:'鍵',d:'ホールドが使えるようになる',max:1,p:55},
@@ -452,6 +472,7 @@ const RELICS={
   piggy:{n:'雪だるま貯金',g:'貯',d:'ボスを倒すたび、所持金の15%（最大20G）の利子がつく',max:1,p:40},
   cloak:{n:'毛皮のマント',g:'套',d:'冷気とボスの強撃が来る間隔が20%長くなる',max:2,p:45},
   vital:{n:'雪山の恵み',g:'恵',d:'最大HP+8、HPを8回復',max:3,p:40},
+  focus:{n:'瞑想の石',g:'瞑',d:'クラススキルのチャージに必要な列数が15%減る',max:2,p:45},
   regen:{n:'温泉の湯気',g:'湯',d:'10秒ごとにHPが1回復する（重ねると回復量アップ）',max:3,p:45},
   heart:{n:'凍れる心臓',g:'心',d:'最大HP+10、HPを10回復',max:5,p:55,c:'tank'},
   ward:{n:'霜の障壁',g:'障',d:'階の始まりとボス出現時に、ダメージを吸収するシールド+10',max:3,p:45,c:'tank'},
@@ -496,11 +517,16 @@ function renderTitleInfo(){
 const emptyBoard=()=>Array.from({length:H},()=>Array(W).fill(0));
 const lv=k=>(S.relics&&S.relics[k])||0;
 const buffOn=()=>!!(S.buffUntil&&performance.now()<S.buffUntil);
-const gravityMs=()=>Math.max(55,850*Math.pow(0.85,S.floor-1))*Math.pow(1.15,lv('slow'));
+const gravityMs=()=>Math.max(55,850*Math.pow(0.85,S.floor-1))*Math.pow(1.15,lv('slow'))*(S.galeUntil&&until('galeUntil')>0?0.4:1);
 const bossBaseHp=()=>200+120*(S.floor-1);
 const strikeDmg=()=>Math.round(8+1.5*(S.floor-1));
 const coldDmg=()=>6+Math.max(0,S.floor-3);
-const TOPOUT_DMG=12,BOSS_KILL_HEAL=15,HEAL_AMT=8,REVIVE_HP=10;
+const TOPOUT_DMG=12,BOSS_KILL_HEAL=15,HEAL_AMT=8,REVIVE_HP=15;
+const skNeed=()=>Math.max(6,Math.round(clsOf(S.cls).sk.need*Math.pow(0.85,lv('focus'))));
+const nowT=()=>performance.now();
+const until=k=>Math.max(0,(S[k]||0)-nowT());
+const frozen=()=>until('freezeUntil')>0, immune=()=>until('immuneUntil')>0;
+const bossSkMs=()=>Math.max(15000,26000-1200*(S.floor-1));
 const bossRows=()=>S.floor>=4?2:1;
 const xpNeed=l=>Math.round(350*Math.pow(1.28,l-1));
 // XP comes from what you cleared, not from score, so deep floors don't snowball levels
@@ -612,12 +638,13 @@ function newRun(coop,epoch,cls){
      timeLeft:STAGE_MS,phase:'play',boss:null,weaken:false,bossKills:0,afterReward:null,readyFloor:0,
      coop:!!coop,epoch:epoch||0,watching:false,
      skillLines:0,healCount:0,reviveCount:0,buffCount:0,buffUntil:0,hitAcc:0,lastLeech:-1e9,endless:false,
-     blocked:0,hitsTaken:0,shield:0,regenAcc:0,
+     blocked:0,hitsTaken:0,shield:0,regenAcc:0,skCharge:0,skUses:0,immuneUntil:0,freezeUntil:0,blindUntil:0,webUntil:0,galeUntil:0,
      totalLines:0,relics:{},bag:[],queue:[],cur:null,hold:null,canHold:true,combo:-1,
      bombC:0,sandC:0,dropAcc:0,lockAcc:0,lockResets:0,mode:'reward',fx:[]};
   refill();renderRelics();
   if(NET){NET.seen={};NET.dmg={};NET.rosterKey=''}
   $('partyBox').hidden=!S.coop;
+  $('skIco').innerHTML=clsBadge(S.cls,18,12);$('skillBtn').style.setProperty('--skc',c.col);hc.sk='';
   const chip=$('clsChip');chip.hidden=false;chip.innerHTML=ico(S.cls,'#0b1320',0,24);chip.style.background=c.col;chip.title=`${c.n}（${c.role}）`;
   const sk=S.cls==='heal'||S.cls==='buff';
   $('skillRow').hidden=!sk;
@@ -638,6 +665,7 @@ function rotate(dir){
 }
 function soft(){if(!grounded()){S.cur.y++;S.score+=1;S.dropAcc=0;S.lastRot=false}}
 function hard(){
+  if(until('webUntil')>0){if(!S.webMsg||nowT()-S.webMsg>1200){S.webMsg=nowT();toast('蜘蛛の糸でハードドロップできない')}return}
   const p=S.cur,y0=p.y;let d=0;
   while(!grounded()){S.cur.y++;d++}
   if(d>0){
@@ -658,7 +686,7 @@ function hold(){
 }
 function act(a){
   if(!S||S.mode!=='play')return;
-  ({left:()=>move(-1),right:()=>move(1),cw:()=>rotate(1),ccw:()=>rotate(-1),soft,hard,hold})[a]();
+  ({left:()=>move(-1),right:()=>move(1),cw:()=>rotate(1),ccw:()=>rotate(-1),soft,hard,hold,skill:useSkill})[a]();
 }
 
 /* ---------- rules ---------- */
@@ -673,6 +701,7 @@ function bossDmg(n,ts,b2b,pc){
   if(S.cls==='atk'){d*=1.5;if(S.combo>0)d+=10}
   if(lv('fang')&&S.hp<=S.maxHp*0.3)d*=2;
   if(buffOn())d*=1.5;
+  if(frozen())d*=1.3;
   return Math.round(d);
 }
 function settleColumns(cols){
@@ -698,6 +727,7 @@ function purify(rows){
   }
 }
 function classSkill(n){
+  if(n>0)S.skCharge=Math.min(skNeed(),(S.skCharge||0)+n);
   if(S.cls==='heal'){
     S.skillLines+=n;
     while(S.skillLines>=healNeed()){
@@ -706,10 +736,6 @@ function classSkill(n){
       if(lv('purify'))purify(lv('purify'));
       S.fx.push({k:'heal',t:0});
       toast(S.coop&&allies().length?`癒し：全員HP+${HEAL_AMT}`:`癒し：HP+${HEAL_AMT}`);
-    }
-    if(n===4&&S.coop){
-      S.reviveCount++;
-      if(allies().some(p=>!p.presence.a&&+p.presence.hp<=0))toast('蘇生の祈り');
     }
   }else if(S.cls==='buff'){
     S.skillLines+=n;
@@ -830,6 +856,7 @@ function heal(n){if(n>0)S.hp=Math.min(S.maxHp,S.hp+n)}
 function addShield(n){if(n>0)S.shield=Math.min(S.maxHp,S.shield+n)}
 // all incoming damage goes through here: armor first, then shield, then HP. returns true if it killed.
 function applyDamage(n){
+  if(immune()){S.fx.push({k:'block',t:0});return{dead:false,taken:0,absorbed:n}}
   n=Math.max(1,n-2*lv('armor'));
   const ab=Math.min(S.shield,n);S.shield-=ab;n-=ab;
   S.hp-=n;S.hitsTaken+=n;
@@ -861,20 +888,68 @@ function hpTick(dt){
   const b=S.boss&&!S.boss.dead?S.boss:null;
   if(b){
     if(taunted()){S.hitAcc=0;return}
+    if(frozen())return;
     S.hitAcc+=dt;
-    if(S.hitAcc>=strikeMs()){
-      S.hitAcc=0;
-      if(Math.random()<blockChance()){
-        S.blocked++;S.fx.push({k:'block',t:0});
-        addShield(15*lv('fortress'));
-        toast(lv('fortress')?`盾で防いだ　シールド+${15*lv('fortress')}`:'盾で強撃を防いだ');
-      }
-      else takeHit(strikeDmg(),`${b.name}の強撃`);
-    }
+    if(S.hitAcc>=strikeMs()){S.hitAcc=0;strikeHit(1,`${b.name}の強撃`)}
   }else if(!S.boss&&S.phase==='play'&&isFinite(coldMs())){
     S.hitAcc+=dt;
     if(S.hitAcc>=coldMs()){S.hitAcc=0;takeHit(coldDmg(),'冷気で凍えた')}
   }
+}
+function strikeHit(mul,why){
+  if(Math.random()<blockChance()){
+    S.blocked++;S.fx.push({k:'block',t:0});
+    addShield(15*lv('fortress'));
+    toast(lv('fortress')?`盾で防いだ　シールド+${15*lv('fortress')}`:'盾で防いだ');
+  }else takeHit(Math.round(strikeDmg()*mul),why);
+}
+/* ---------- class skills (active) ---------- */
+function useSkill(){
+  const c=clsOf(S.cls),need=skNeed();
+  if((S.skCharge||0)<need){if(!S.skMsg||nowT()-S.skMsg>900){S.skMsg=nowT();toast(`${c.sk.n}：あと${need-S.skCharge}列`)}return}
+  S.skCharge=0;S.skUses++;
+  pop([c.sk.n],c.col,1.25);shake(4,200);
+  if(S.cls==='tank'){S.immuneUntil=nowT()+8000;addShield(15);S.fx.push({k:'block',t:0})}
+  else if(S.cls==='heal'){heal(25);S.fx.push({k:'heal',t:0})}
+  else if(S.cls==='buff'){S.freezeUntil=nowT()+10000}
+  else{
+    let blocks=0;
+    for(let i=0;i<3;i++){
+      const row=S.board[H-1];blocks+=row.filter(v=>v).length;
+      burst(H-1-i,row,2);S.fx.push({k:'row',y:H-1-i,t:0});
+      S.board.pop();S.board.unshift(Array(W).fill(0));
+    }
+    S.score+=Math.round(blocks*20*S.floor*mult());
+    if(S.boss&&!S.boss.dead&&blocks){
+      let d=blocks*5*1.5;if(buffOn())d*=1.5;if(frozen())d*=1.3;if(lv('fang')&&S.hp<=S.maxHp*0.3)d*=2;
+      d=Math.round(d);S.boss.myDmg+=d;S.fx.push({k:'hit',t:0});dmgNum(d,true);
+    }
+    shake(6,280);
+  }
+  hud(true);
+}
+/* ---------- boss skills ---------- */
+function castBossSkill(b){
+  let k=b.sk;
+  if(k==='king')k=KING_CYCLE[(b.skN++)%KING_CYCLE.length];
+  pop([b.name,BSK[k].n],'#b9a3ff',1.1);
+  const t=nowT();
+  if(k==='bite'){
+    if(taunted()){toast('守護者が噛みつきを受け止めた');return}
+    strikeHit(0.7,BSK[k].n);
+    setTimeout(()=>{if(S&&S.mode==='play'&&S.boss===b&&!b.dead)strikeHit(0.7,BSK[k].n)},650);
+  }
+  else if(k==='blind')S.blindUntil=t+8000;
+  else if(k==='web')S.webUntil=t+7000;
+  else if(k==='gale')S.galeUntil=t+8000;
+  else if(k==='curse'){for(let i=0;i<3;i++)if(S.queue[i]&&S.queue[i]!=='B'&&S.queue[i]!=='D')S.queue[i]=i%2?'Z':'S'}
+  else if(k==='quake'){
+    shake(7,400);
+    if(immune()){S.fx.push({k:'block',t:0});toast('氷壁で地響きを防いだ');return}
+    S.fx.push({k:'atk',t:0});
+    if(addGarbage(3))topOut();
+  }
+  else if(k==='breath')takeHit(Math.round(strikeDmg()*1.2),BSK[k].n);
 }
 function hitInterval(){
   const b=S.boss&&!S.boss.dead?S.boss:null;
@@ -889,7 +964,7 @@ function revive(by){
   toast(`${by}が蘇生してくれた`);
 }
 function makeBoss(id,name,max){
-  const b={id,name,max,hp:max,atk:0,myDmg:0,dead:false};
+  const b={id,name,max,hp:max,atk:0,myDmg:0,dead:false,sk:BOSS_SK[(id-1)%BOSS_SK.length],skAcc:0,skN:0,warned:false};
   if(S.weaken){b.myDmg=Math.round(max*0.3);S.weaken=false}
   S.boss=b;S.hitAcc=0;addShield(10*lv('ward'));pop(['BOSS',name],'#ff6f7f',1.15);shake(5,300);hud(true);
 }
@@ -960,7 +1035,7 @@ function pickRelics(n,ok){
   });
   const out=[];
   while(out.length<n&&pool.length){
-    const ws=pool.map(k=>RELICS[k].c===S.cls?3:1);
+    const ws=pool.map(k=>{const c=RELICS[k].c;return c===S.cls?4:c?0.25:1.5});
     let t=ws.reduce((a,b)=>a+b,0),r=Math.random()*t,i=0;
     while(i<ws.length-1&&r>=ws[i]){r-=ws[i];i++}
     out.push(pool.splice(i,1)[0]);
@@ -1134,7 +1209,7 @@ function pause(){
   $('pauseNote').hidden=!coopOn();
   const keys=Object.keys(S.relics);
   const c=clsOf(S.cls);
-  $('rlist').innerHTML=`<div>${clsBadge(S.cls,18,12)}<span>${c.n}（${c.role}）：${c.d}</span></div>`+
+  $('rlist').innerHTML=`<div>${clsBadge(S.cls,18,12)}<span>${c.n}（${c.role}）：${c.d} スキル「${c.sk.n}」：${c.sk.d}</span></div>`+
     (keys.length?keys.map(k=>`<div><b style="color:${relicCol(RELICS[k])}">${RELICS[k].g}</b><span>${RELICS[k].n}${S.relics[k]>1?' ×'+S.relics[k]:''}：${RELICS[k].d}</span></div>`).join(''):'<div><b>-</b><span>まだ遺物はない</span></div>');
   show('ovPause');
 }
@@ -1177,7 +1252,7 @@ function openClassPick(){
   for(const k of CLS_KEYS){
     const c=CLASSES[k],b=document.createElement('button');
     b.type='button';b.className='card clscard';b.style.color=c.col;
-    b.innerHTML=`<span class="g" style="background:${c.col}">${ico(k,'#0b1320',0,36)}</span><span class="n" style="color:var(--fg)">${c.n}<span class="ct" style="color:${c.col}">${c.role}</span></span><span class="d">${c.d}</span>`;
+    b.innerHTML=`<span class="g" style="background:${c.col}">${ico(k,'#0b1320',0,36)}</span><span class="n" style="color:var(--fg)">${c.n}<span class="ct" style="color:${c.col}">${c.role}</span></span><span class="d">${c.d}<br><b style="color:${c.col}">スキル「${c.sk.n}」</b> ${c.sk.d}</span>`;
     b.onclick=()=>{hide('ovClass');newRun(false,0,k)};
     box.appendChild(b);
   }
@@ -1231,6 +1306,11 @@ function hud(force){
     $('hpShield').style.left=(hp/tot*100)+'%';$('hpShield').style.width=(sh/tot*100)+'%';
     $('hpText').textContent=`${hp}/${mx}${sh?' +'+sh:''}`;
     $('hpBox').classList.toggle('low',hp<=mx*0.3);
+  }
+  {
+    const need=skNeed(),ch=Math.min(need,S.skCharge||0),rd=ch>=need,sb=$('skillBtn');
+    const k=rd+'/'+ch+'/'+need+'/'+S.cls;
+    if(hc.sk!==k){hc.sk=k;sb.style.setProperty('--chg',(ch/need*100).toFixed(0)+'%');sb.classList.toggle('ready',rd);$('skTxt').textContent=rd?clsOf(S.cls).sk.n:`${ch}/${need}`}
   }
   holdC.classList.toggle('off',!lv('hold'));
   $('holdBtn').disabled=!lv('hold');
@@ -1308,7 +1388,7 @@ function drawBoard(dt){
   for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(S.board[y][x])cell(bctx,x,y,s,S.board[y][x]);
   const p=S.cur;
   if(p&&S.mode!=='over'){
-    if(lv('ghost')){
+    if(lv('ghost')&&!(S.blindUntil&&until('blindUntil')>0)){
       let gy=p.y;while(!collide(p.m,p.x,gy+1))gy++;
       bctx.strokeStyle=COL[p.t];bctx.globalAlpha=.55;bctx.lineWidth=1.5;
       for(let r=0;r<p.m.length;r++)for(let c=0;c<p.m[r].length;c++)
@@ -1322,6 +1402,22 @@ function drawBoard(dt){
     const f=b.atk/bossAtkMs();
     bctx.fillStyle=f>.8?'rgba(255,111,127,.95)':'rgba(255,111,127,.55)';
     bctx.fillRect(0,H*s-4,W*s*f,4);
+  }
+  // frozen boss / ice wall tint
+  if(S.freezeUntil&&frozen()){bctx.fillStyle='rgba(242,208,107,.06)';bctx.fillRect(0,0,W*s,H*s);bctx.strokeStyle='rgba(242,208,107,.6)';bctx.lineWidth=3;bctx.strokeRect(1.5,1.5,W*s-3,H*s-3)}
+  if(S.immuneUntil&&immune()){bctx.strokeStyle='rgba(143,227,255,.85)';bctx.lineWidth=4;bctx.strokeRect(2,2,W*s-4,H*s-4)}
+  // boss skill charge (thin purple line under the top gauge)
+  if(b&&!frozen()){const f=Math.min(1,b.skAcc/bossSkMs());bctx.fillStyle=f>.85?'rgba(185,163,255,.95)':'rgba(185,163,255,.45)';bctx.fillRect(0,5,W*s*f,3)}
+  // active status effects, bottom-left
+  if(S.mode!=='over'){
+    const st=[['氷壁','immuneUntil','#8fe3ff'],['凍結','freezeUntil','#f2d06b'],['吹雪','blindUntil','#e4eff8'],['蜘蛛の糸','webUntil','#c7d6e3'],['暴風','galeUntil','#b9a3ff']]
+      .filter(([,k])=>S[k]&&until(k)>0);
+    if(st.length){
+      bctx.font=`${Math.floor(s*0.5)}px DotGothic16, monospace`;bctx.textAlign='left';bctx.textBaseline='bottom';
+      let x=4;
+      for(const[t,k,c]of st){const txt=`${t} ${Math.ceil(until(k)/1000)}`;const w=bctx.measureText(txt).width+8;
+        bctx.fillStyle='rgba(11,19,32,.8)';bctx.fillRect(x,H*s-8-s*0.7,w,s*0.66);bctx.fillStyle=c;bctx.fillText(txt,x+4,H*s-10);x+=w+4}
+    }
   }
   // top gauge: next HP damage (boss strike or cold)
   const iv=hitInterval();
@@ -1419,10 +1515,19 @@ function mini(ctx,t,cx,cy,s,alpha){
 function drawSide(){
   const w=ASIDE,ms=Math.floor(w/5.2);
   hctx.setTransform(DPR,0,0,DPR,0,0);hctx.clearRect(0,0,w,56);
-  if(S.hold)mini(hctx,S.hold,w/2,28,ms,S.canHold?1:.4);
   const n=1+lv('next'),slot=46;
   nctx.setTransform(DPR,0,0,DPR,0,0);nctx.clearRect(0,0,w,n*slot);
-  for(let i=0;i<n;i++){if(S.queue&&S.queue[i])mini(nctx,S.queue[i],w/2,slot*i+slot/2,i===0?ms:Math.floor(ms*.8))}
+  if(S.blindUntil&&until('blindUntil')>0){
+    // snow curtain hides HOLD and NEXT
+    for(const[ctx,h]of[[hctx,56],[nctx,n*slot]]){
+      ctx.fillStyle='rgba(228,239,248,.18)';ctx.fillRect(0,0,w,h);
+      for(let i=0;i<14;i++){ctx.fillStyle='rgba(228,239,248,.6)';ctx.fillRect((i*37+nowT()/20)%w,(i*23+nowT()/12)%h,2,2)}
+      ctx.fillStyle='#e4eff8';ctx.font='12px DotGothic16, monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('吹雪',w/2,Math.min(h,56)/2);
+    }
+  }else{
+    if(S.hold)mini(hctx,S.hold,w/2,28,ms,S.canHold?1:.4);
+    for(let i=0;i<n;i++){if(S.queue&&S.queue[i])mini(nctx,S.queue[i],w/2,slot*i+slot/2,i===0?ms:Math.floor(ms*.8))}
+  }
   if(coopOn()){
     allies().slice(0,MAXP-1).forEach((p,i)=>{
       const cv=$('mc'+i);if(!cv)return;
@@ -1605,9 +1710,18 @@ function absorbAllies(){
       const cur=NET.dmg[p.peer],v=Math.max(0,+q.d.v||0);
       if(!cur||cur.i!==q.d.i)NET.dmg[p.peer]={i:q.d.i,v};else if(v>cur.v)cur.v=v;
     }
-    const hcN=+q.hc||0,hrN=+q.hr||0,bcN=+q.bc||0;
+    const hcN=+q.hc||0,hrN=+q.hr||0,bcN=+q.bc||0,skN=+q.sk||0;
     let sn=NET.seen[p.peer];
-    if(!sn){NET.seen[p.peer]={hc:hcN,hr:hrN,bc:bcN};continue}
+    if(!sn){NET.seen[p.peer]={hc:hcN,hr:hrN,bc:bcN,sk:skN};continue}
+    if(skN>sn.sk){
+      sn.sk=skN;const who=nameOf(p),cs=q.cls;
+      if(cs==='heal'){if(S.mode==='over'&&S.hp<=0)revive(who);else if(S.mode!=='over'){heal(25);S.fx.push({k:'heal',t:0});toast(`${who}の雪解けの奇跡 HP+25`)}}
+      else if(S.mode!=='over'){
+        if(cs==='tank'){addShield(15);S.fx.push({k:'block',t:0});toast(`${who}の氷壁 シールド+15`)}
+        else if(cs==='buff'){S.freezeUntil=nowT()+10000;toast(`${who}の凍てつく調べ ボスが凍った`)}
+      }
+      hud(true);
+    }
     if(hcN>sn.hc){
       const k=Math.min(5,hcN-sn.hc);sn.hc=hcN;
       if(S.mode!=='over'){
@@ -1663,7 +1777,7 @@ function netTick(now){
   if(coopOn()){
     pres={r:NET.isHost?'host':'guest',e:S.epoch,cls:S.cls,a:S.mode!=='over'?1:0,hp:S.hp,mh:S.maxHp,lv:S.level,
       b:boardStr(),d:S.boss?{i:S.boss.id,v:S.boss.myDmg}:null,rd:S.readyFloor,
-      hc:S.healCount,hr:S.reviveCount,cl:lv('purify'),ha:HEAL_AMT,hs:6*lv('aegis'),sh:S.shield,bc:S.buffCount,bd:buffDur(),l:null};
+      hc:S.healCount,hr:S.reviveCount,sk:S.skUses,cl:lv('purify'),ha:HEAL_AMT,hs:6*lv('aegis'),sh:S.shield,bc:S.buffCount,bd:buffDur(),l:null};
     pres.g=NET.isHost?{ph:S.phase,f:S.floor,t:Math.round(S.timeLeft/100)*100,
       boss:S.boss?{id:S.boss.id,n:S.boss.name,m:S.boss.max}:null}:null;
   }else pres={r:NET.isHost?'host':'guest',l:1,cls:myCls,e:null,g:null};
@@ -1680,13 +1794,13 @@ function hostStart(){
 }
 
 /* ---------- input ---------- */
-const keymap={ArrowLeft:'left',ArrowRight:'right',ArrowDown:'soft',ArrowUp:'cw',x:'cw',X:'cw',z:'ccw',Z:'ccw',' ':'hard',c:'hold',C:'hold',Shift:'hold'};
+const keymap={ArrowLeft:'left',ArrowRight:'right',ArrowDown:'soft',ArrowUp:'cw',x:'cw',X:'cw',z:'ccw',Z:'ccw',' ':'hard',c:'hold',C:'hold',Shift:'hold',a:'skill',A:'skill',v:'skill',V:'skill'};
 addEventListener('keydown',e=>{
   if(e.target&&e.target.tagName==='INPUT')return;
   if(e.key==='p'||e.key==='P'||e.key==='Escape'){S&&S.mode==='pause'?resume():pause();e.preventDefault();return}
   const a=keymap[e.key];if(!a||!S||S.mode!=='play')return;
   e.preventDefault();
-  if((a==='hard'||a==='hold'||a==='cw'||a==='ccw')&&e.repeat)return;
+  if((a==='hard'||a==='hold'||a==='cw'||a==='ccw'||a==='skill')&&e.repeat)return;
   act(a);
 });
 const REPEAT={left:1,right:1,soft:1};
@@ -1749,14 +1863,19 @@ function frame(now){
     // solo: the clock stops behind menus. party: the leader's clock keeps running for everyone.
     const timerRuns=S.phase==='play'&&isAuthority()&&(S.coop?(S.mode!=='over'||anyAllyAlive()):S.mode==='play');
     if(timerRuns&&!S.boss){S.timeLeft-=dt;if(S.timeLeft<=0){S.timeLeft=0;spawnBoss()}}
-    if(S.mode==='play'&&S.boss&&!S.boss.dead){
-      S.boss.atk+=dt;
-      if(S.boss.atk>=bossAtkMs()){
-        S.boss.atk=0;S.fx.push({k:'atk',t:0});
+    if(S.mode==='play'&&S.boss&&!S.boss.dead&&!frozen()){
+      const b=S.boss;
+      b.atk+=dt;
+      if(b.atk>=bossAtkMs()){
+        b.atk=0;
         const rows=bossRows();
-        if(lv('thorns')){S.boss.myDmg+=20*lv('thorns')*rows;S.fx.push({k:'hit',t:0})}
-        if(addGarbage(rows))topOut();
+        if(lv('thorns')){b.myDmg+=20*lv('thorns')*rows;S.fx.push({k:'hit',t:0})}
+        if(immune())S.fx.push({k:'block',t:0});
+        else{S.fx.push({k:'atk',t:0});if(addGarbage(rows))topOut()}
       }
+      b.skAcc+=dt;
+      if(!b.warned&&b.skAcc>=bossSkMs()-3000){b.warned=true;toast(`${b.name}が「${BSK[b.sk==='king'?KING_CYCLE[b.skN%KING_CYCLE.length]:b.sk].n}」の構え`)}
+      if(b.skAcc>=bossSkMs()&&S.mode==='play'){b.skAcc=0;b.warned=false;castBossSkill(b)}
     }
     if(S.mode==='play')hpTick(dt);
     bossHpTick();
