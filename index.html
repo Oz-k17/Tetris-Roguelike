@@ -232,7 +232,7 @@ i[data-ico]{display:contents}
       <li>スコアで経験値がたまり、レベルアップごとに遺物をひとつ選べる</li>
       <li>タイマーが0になるとボスが出現。列を消してボスのHPを削る</li>
       <li>HPは時間とともに削られる。地下3階からは冷気、ボス戦では強撃。盤面上の細いゲージが満ちると来る</li>
-      <li>ボスを倒すとHPが10回復し、行商人が来る。ゴールドで遺物や薬、護符を買って次の階へ</li>
+      <li>ボスを倒すとHPが15回復し、行商人が来る。ゴールドで遺物や薬、護符を買って次の階へ</li>
       <li>天井に届くとHP-12で盤面リセット。シールドはHPより先にダメージを吸収する。HPが尽きたら終わり。地下8階のボスを倒せば踏破</li>
     </ol>
     <div class="keys">キーボード：←→ 移動 / ↓ ソフト / Space ハード / Z・X(↑) 回転 / C ホールド / P 一時停止</div>
@@ -417,12 +417,14 @@ const emptyBoard=()=>Array.from({length:H},()=>Array(W).fill(0));
 const lv=k=>(S.relics&&S.relics[k])||0;
 const buffOn=()=>!!(S.buffUntil&&performance.now()<S.buffUntil);
 const gravityMs=()=>Math.max(55,850*Math.pow(0.85,S.floor-1))*Math.pow(1.15,lv('slow'));
-const bossBaseHp=()=>80+50*(S.floor-1);
+const bossBaseHp=()=>200+120*(S.floor-1);
 const strikeDmg=()=>Math.round(8+1.5*(S.floor-1));
 const coldDmg=()=>6+Math.max(0,S.floor-3);
-const TOPOUT_DMG=12,BOSS_KILL_HEAL=10,HEAL_AMT=8,REVIVE_HP=10;
+const TOPOUT_DMG=12,BOSS_KILL_HEAL=15,HEAL_AMT=8,REVIVE_HP=10;
 const bossRows=()=>S.floor>=4?2:1;
-const xpNeed=l=>Math.round(250*Math.pow(1.35,l-1));
+const xpNeed=l=>Math.round(350*Math.pow(1.28,l-1));
+// XP comes from what you cleared, not from score, so deep floors don't snowball levels
+const floorXp=()=>1+0.15*(S.floor-1);
 const bombInterval=()=>14-3*(lv('bomb')-1);
 const sandInterval=()=>10-2*(lv('sand')-1);
 const healNeed=()=>Math.max(4,12-2*lv('spring'));
@@ -436,7 +438,7 @@ const bossName=f=>BOSSES[(f-1)%BOSSES.length]+(f>BOSSES.length?'・改':'');
 // time-based HP damage: cold while exploring (from floor 3), boss strikes during boss fights
 const cloakMul=()=>1+0.2*lv('cloak');
 const coldMs=()=>S.floor>=3?60000*cloakMul():Infinity;
-const strikeMs=()=>Math.max(12000,22000-1400*(S.floor-1))*cloakMul();
+const strikeMs=()=>Math.max(20000,40000-3000*(S.floor-1))*cloakMul();
 const blockChance=()=>S.cls==='tank'?0.25:0;
 const rot=(m,dir)=>dir>0?m[0].map((_,i)=>m.map(r=>r[i]).reverse()):m[0].map((_,i)=>m.map(r=>r[r.length-1-i]));
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
@@ -662,7 +664,7 @@ function lockPiece(){
     for(let y=p.y-1;y<=p.y+1;y++)for(let x=p.x-1;x<=p.x+1;x++){
       if(y>=0&&y<H&&x>=0&&x<W&&S.board[y][x]){S.board[y][x]=0;n++}
     }
-    S.score+=Math.round(n*20*S.floor*mult());gainXp(n*15*S.floor);
+    S.score+=Math.round(n*20*S.floor*mult());gainXp(n*2*floorXp());
     S.fx.push({k:'boom',x:p.x,y:p.y,t:0});
     settleColumns([p.x-1,p.x,p.x+1]);
   }
@@ -672,7 +674,7 @@ function lockPiece(){
   const n=full.length;
   if(ts&&!n){
     // T-spin with no lines still scores and shows
-    S.score+=Math.round((ts==='full'?400:100)*S.floor*mult());gainXp((ts==='full'?400:100)*S.floor);
+    S.score+=Math.round((ts==='full'?400:100)*S.floor*mult());gainXp((ts==='full'?40:15)*floorXp());
     pop([ts==='full'?'T-SPIN':'T-SPIN MINI'],'#b48cf0',1);
   }
   if(n){
@@ -690,7 +692,9 @@ function lockPiece(){
     if(S.combo>0)raw+=50*S.combo*S.floor*(1+lv('combo'));
     if(pc)raw+=3000*S.floor;
     S.score+=Math.round(raw*mult());
-    gainXp(raw);
+    let xp=(ts?(ts==='full'?[40,60,80,100]:[15,20,30,30]):[0,10,30,50,80])[n]+(S.combo>0?10*S.combo:0)+(pc?150:0);
+    if(b2b)xp*=1.5;
+    gainXp(xp*floorXp());
     earn([0,2,5,9,15][n]+(ts==='full'?4*n:0)+(pc?20:0)+(S.combo>0?S.combo*(1+lv('combo')):0));
     if(n===4&&lv('drill')){S.board.splice(H-2,2);S.board.unshift(Array(W).fill(0),Array(W).fill(0))}
     S.totalLines+=n;
