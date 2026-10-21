@@ -38,7 +38,9 @@ body{height:100%;background:var(--bg);color:var(--fg);font-family:var(--body);ov
 header{display:flex;flex-direction:column;gap:5px}
 .hud{display:flex;align-items:center;gap:8px}
 .cls{width:26px;height:26px;display:grid;place-items:center;font-family:var(--display);font-size:16px;border:1.5px solid currentColor;border-radius:5px;flex:none}
-.floor{font-family:var(--display);font-size:20px;letter-spacing:.04em;white-space:nowrap}
+.floor{font-family:var(--display);font-size:20px;letter-spacing:.04em;white-space:nowrap;display:flex;flex-direction:column;line-height:1.1}
+.floor small{font-family:var(--body);font-size:11px;font-weight:700;letter-spacing:.02em;color:var(--muted);font-variant-numeric:tabular-nums}
+.floor small b{color:var(--ice);font-weight:700}
 .tag{font-size:11px;font-weight:700;color:var(--bg);background:var(--danger);padding:2px 6px;border-radius:3px;letter-spacing:.06em;white-space:nowrap}
 .tag.buff{background:var(--gold)}
 .hp{display:flex;gap:3px;margin-left:auto}
@@ -203,6 +205,11 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .howto summary{cursor:pointer;color:var(--ice);font-size:13px;padding:12px 0;list-style-position:inside}
 .howto .rules{margin-bottom:10px}
 .btnrow.stack{grid-template-columns:1fr}
+.diff{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+.diffrow{display:flex;gap:6px}
+.dbtn{height:32px;padding:0 14px;border-radius:16px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-family:var(--body);font-size:13px;font-weight:700;cursor:pointer}
+.dbtn.on{color:var(--bg);background:var(--ice);border-color:var(--ice)}
+.dnote{font-size:12px;color:var(--muted);flex-basis:100%}
 .btnrow .ghostbtn small{font-size:12px;color:var(--muted);margin-left:10px}
 /* level-up, shop, room code */
 .lvhead{flex-direction:column;align-items:flex-start;gap:2px}
@@ -251,7 +258,7 @@ i[data-ico]{display:contents}
   <header>
     <div class="hud">
       <span class="cls" id="clsChip" hidden></span>
-      <div class="floor" id="floor">地下1階</div>
+      <div class="floor"><span id="floor">地下1階</span><small id="prog">クリアまで 1/8</small></div>
       <span class="tag buff" id="buffTag" hidden><i data-ico="rally" data-f="#0b1320"></i>鼓舞</span>
       <div class="hpbox" id="hpBox" aria-label="HP"><b id="hpFill"></b><b class="sh" id="hpShield"></b><span class="hpt"><i data-ico="hp" data-f="#ffffff"></i><i id="hpText">30/30</i></span></div>
       <button class="iconbtn" id="pauseBtn" aria-label="一時停止"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="2" y="1" width="3.5" height="12" fill="currentColor"/><rect x="8.5" y="1" width="3.5" height="12" fill="currentColor"/></svg></button>
@@ -307,6 +314,7 @@ i[data-ico]{display:contents}
     <ol class="rules">
       <li>守護者・癒し手・鼓手・剣士の4クラス。ラインを消してためるクラススキル（SKILLボタン）があり、遺物もクラスに合ったものが出やすい</li>
       <li>ボスはそれぞれ固有のスキルを持つ。盤面上の紫の線が満ちると発動</li>
+      <li>回転は標準のSRS。TSD・TST・DT砲などの定番の積み方がそのまま使える。T-SPINはボスに大ダメージ、DT砲（TSDのあとのTST）はさらに1.3倍</li>
       <li>スコアで経験値がたまり、レベルアップごとに遺物をひとつ選べる</li>
       <li>タイマーが0になるとボスが出現。列を消してボスのHPを削る</li>
       <li>HPは時間とともに削られる。地下3階からは冷気、ボス戦では強撃。盤面上の細いゲージが満ちると来る</li>
@@ -315,6 +323,7 @@ i[data-ico]{display:contents}
     </ol>
     <div class="keys">キーボード：←→ 移動 / ↓ ソフト / Space ハード / Z・X(↑) 回転 / C ホールド / A スキル / P 一時停止</div>
     </details>
+    <div class="diff"><span class="lbl">難易度</span><div class="diffrow" id="diffRow"></div><span class="dnote" id="diffNote"></span></div>
     <div class="btnrow stack">
       <button class="cta" id="startBtn">ひとりで潜る</button>
       <button class="ghostbtn" id="coopBtn">みんなで潜る<small>最大4人</small></button>
@@ -502,12 +511,30 @@ const board=$('board'),bctx=board.getContext('2d');
 const holdC=$('holdC'),hctx=holdC.getContext('2d');
 const nextC=$('nextC'),nctx=nextC.getContext('2d');
 let C=24,DPR=Math.min(2,window.devicePixelRatio||1);
-let S=null,best=0;
-try{best=+localStorage.getItem('hyokutsu-best')||0}catch(e){}
-let deep=0;
-try{deep=+localStorage.getItem('hyokutsu-deep')||0}catch(e){}
-function noteDeep(){if(S&&S.floor>deep){deep=S.floor;try{localStorage.setItem('hyokutsu-deep',deep)}catch(e){}}}
+let S=null;
+/* Difficulty presets. "easy" is the balance as of 2026-10-21; add harder presets here with the same keys.
+   bossHp:[base, per floor]  strike/bossSk/bossAtk:[start ms, minus per floor, minimum ms]  strikeDmg:[base, per floor]
+   cold:[interval ms, base dmg, first floor]  topout: share of max HP lost  xp:[first level, growth] */
+const DIFFS={
+  easy:{n:'簡単',d:'いまの標準バランス。初めての人やソロ向け',
+    bossHp:[200,120],strike:[40000,3000,20000],strikeDmg:[8,1.5],cold:[60000,6,3],topout:0.35,killHeal:15,
+    xp:[350,1.28],bossSk:[26000,1200,15000],bossAtk:[9000,700,3500],gravity:0.85}
+};
+const DIFF_KEYS=Object.keys(DIFFS);
+let myDiff='easy';
+try{const d=localStorage.getItem('hyokutsu-diff');if(DIFFS[d])myDiff=d}catch(e){}
+const D=()=>DIFFS[S&&S.diff]||DIFFS.easy;
+// records are kept per difficulty; "easy" keeps the original keys so earlier records carry over
+const recKey=(k,d)=>d==='easy'?`hyokutsu-${k}`:`hyokutsu-${k}-${d}`;
+const readRec=(k,d)=>{try{return+localStorage.getItem(recKey(k,d))||0}catch(e){return 0}};
+let best=readRec('best',myDiff),deep=readRec('deep',myDiff);
+function saveBest(){const d=S.diff||'easy';if(S.score>readRec('best',d)){try{localStorage.setItem(recKey('best',d),S.score)}catch(e){}}if(d===myDiff)best=Math.max(best,S.score)}
+function noteDeep(){if(!S)return;const d=S.diff||'easy';if(S.floor>readRec('deep',d)){try{localStorage.setItem(recKey('deep',d),S.floor)}catch(e){}}if(d===myDiff)deep=Math.max(deep,S.floor)}
 function renderTitleInfo(){
+  best=readRec('best',myDiff);deep=readRec('deep',myDiff);
+  $('diffRow').innerHTML=DIFF_KEYS.map(k=>`<button type="button" class="dbtn${k===myDiff?' on':''}" data-d="${k}" title="${DIFFS[k].d}">${DIFFS[k].n}</button>`).join('');
+  $('diffRow').querySelectorAll('button').forEach(b=>b.onclick=()=>{myDiff=b.dataset.d;try{localStorage.setItem('hyokutsu-diff',myDiff)}catch(e){}renderTitleInfo()});
+  $('diffNote').textContent=DIFFS[myDiff].d;
   $('bestTitle').textContent=best?`ベストスコア：${best.toLocaleString()}`:'';
   $('deepVal').textContent=deep?`地下${Math.min(deep,FINAL)}階`:'-';
   $('route').innerHTML=Array.from({length:FINAL},(_,i)=>i+1).map(n=>`<span class="${n<=deep?'on':''}${n===FINAL?' last':''}"><b></b>B${n}</span>`).join('');
@@ -517,20 +544,20 @@ function renderTitleInfo(){
 const emptyBoard=()=>Array.from({length:H},()=>Array(W).fill(0));
 const lv=k=>(S.relics&&S.relics[k])||0;
 const buffOn=()=>!!(S.buffUntil&&performance.now()<S.buffUntil);
-const gravityMs=()=>Math.max(55,850*Math.pow(0.85,S.floor-1))*Math.pow(1.15,lv('slow'))*(S.galeUntil&&until('galeUntil')>0?0.4:1);
-const bossBaseHp=()=>200+120*(S.floor-1);
-const strikeDmg=()=>Math.round(8+1.5*(S.floor-1));
-const coldDmg=()=>6+Math.max(0,S.floor-3);
-// topping out costs 35% of max HP (at least 12) and cannot be blocked
-const topoutDmg=()=>Math.max(12,Math.round(S.maxHp*0.35));
-const BOSS_KILL_HEAL=15,HEAL_AMT=8,REVIVE_HP=15;
+const gravityMs=()=>Math.max(55,850*Math.pow(D().gravity,S.floor-1))*Math.pow(1.15,lv('slow'))*(S.galeUntil&&until('galeUntil')>0?0.4:1);
+const bossBaseHp=()=>D().bossHp[0]+D().bossHp[1]*(S.floor-1);
+const strikeDmg=()=>Math.round(D().strikeDmg[0]+D().strikeDmg[1]*(S.floor-1));
+const coldDmg=()=>D().cold[1]+Math.max(0,S.floor-D().cold[2]);
+// topping out costs a share of max HP (at least 12) and cannot be blocked
+const topoutDmg=()=>Math.max(12,Math.round(S.maxHp*D().topout));
+const killHeal=()=>D().killHeal,HEAL_AMT=8,REVIVE_HP=15;
 const skNeed=()=>Math.max(6,Math.round(clsOf(S.cls).sk.need*Math.pow(0.85,lv('focus'))));
 const nowT=()=>performance.now();
 const until=k=>Math.max(0,(S[k]||0)-nowT());
 const frozen=()=>until('freezeUntil')>0, immune=()=>until('immuneUntil')>0;
-const bossSkMs=()=>Math.max(15000,26000-1200*(S.floor-1));
+const bossSkMs=()=>{const a=D().bossSk;return Math.max(a[2],a[0]-a[1]*(S.floor-1))};
 const bossRows=()=>S.floor>=4?2:1;
-const xpNeed=l=>Math.round(350*Math.pow(1.28,l-1));
+const xpNeed=l=>Math.round(D().xp[0]*Math.pow(D().xp[1],l-1));
 // XP comes from what you cleared, not from score, so deep floors don't snowball levels
 const floorXp=()=>1+0.15*(S.floor-1);
 const bombInterval=()=>14-3*(lv('bomb')-1);
@@ -545,8 +572,8 @@ const relicPrice=k=>RELICS[k].p+5*S.floor+15*lv(k);
 const bossName=f=>BOSSES[(f-1)%BOSSES.length]+(f>BOSSES.length?'・改':'');
 // time-based HP damage: cold while exploring (from floor 3), boss strikes during boss fights
 const cloakMul=()=>1+0.2*lv('cloak');
-const coldMs=()=>S.floor>=3?60000*cloakMul():Infinity;
-const strikeMs=()=>Math.max(20000,40000-3000*(S.floor-1))*cloakMul();
+const coldMs=()=>S.floor>=D().cold[2]?D().cold[0]*cloakMul():Infinity;
+const strikeMs=()=>{const a=D().strike;return Math.max(a[2],a[0]-a[1]*(S.floor-1))*cloakMul()};
 const blockChance=()=>S.cls==='tank'?0.25:0;
 const rot=(m,dir)=>dir>0?m[0].map((_,i)=>m.map(r=>r[i]).reverse()):m[0].map((_,i)=>m.map(r=>r[r.length-1-i]));
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
@@ -633,11 +660,11 @@ function spawn(){
   S.cur=makePiece(t);S.canHold=true;S.lockAcc=0;S.lockResets=0;S.dropAcc=0;S.lastRot=false;
   if(collide(S.cur.m,S.cur.x,S.cur.y))topOut();
 }
-function newRun(coop,epoch,cls){
+function newRun(coop,epoch,cls,diff){
   const c=clsOf(cls);
   const allyN=coop&&NET?Math.min(MAXP-1,NET.others.length):0;
   const mhp=c.hp+(c.hpAlly||0)*allyN;
-  S={board:emptyBoard(),floor:1,hp:mhp,maxHp:mhp,cls:CLASSES[cls]?cls:'atk',
+  S={board:emptyBoard(),floor:1,hp:mhp,maxHp:mhp,cls:CLASSES[cls]?cls:'atk',diff:DIFFS[diff]?diff:'easy',prevClear:'',
      score:0,gold:0,totalGold:0,level:1,xp:0,pendingLv:0,
      timeLeft:STAGE_MS,phase:'play',boss:null,weaken:false,bossKills:0,afterReward:null,readyFloor:0,
      coop:!!coop,epoch:epoch||0,watching:false,
@@ -661,11 +688,20 @@ function newRun(coop,epoch,cls){
 const grounded=()=>collide(S.cur.m,S.cur.x,S.cur.y+1);
 function moveReset(){if(grounded()&&S.lockResets<15){S.lockAcc=0;S.lockResets++}}
 function move(dx){if(!collide(S.cur.m,S.cur.x+dx,S.cur.y)){S.cur.x+=dx;S.lastRot=false;moveReset()}}
+// SRS kick tables (guideline). Written with y pointing down, so the usual tables' y signs are flipped.
+const SRS_JLSTZ={'01':[[0,0],[-1,0],[-1,-1],[0,2],[-1,2]],'10':[[0,0],[1,0],[1,1],[0,-2],[1,-2]],
+  '12':[[0,0],[1,0],[1,1],[0,-2],[1,-2]],'21':[[0,0],[-1,0],[-1,-1],[0,2],[-1,2]],
+  '23':[[0,0],[1,0],[1,-1],[0,2],[1,2]],'32':[[0,0],[-1,0],[-1,1],[0,-2],[-1,-2]],
+  '30':[[0,0],[-1,0],[-1,1],[0,-2],[-1,-2]],'03':[[0,0],[1,0],[1,-1],[0,2],[1,2]]};
+const SRS_I={'01':[[0,0],[-2,0],[1,0],[-2,1],[1,-2]],'10':[[0,0],[2,0],[-1,0],[2,-1],[-1,2]],
+  '12':[[0,0],[-1,0],[2,0],[-1,-2],[2,1]],'21':[[0,0],[1,0],[-2,0],[1,2],[-2,-1]],
+  '23':[[0,0],[2,0],[-1,0],[2,-1],[-1,2]],'32':[[0,0],[-2,0],[1,0],[-2,1],[1,-2]],
+  '30':[[0,0],[1,0],[-2,0],[1,2],[-2,-1]],'03':[[0,0],[-1,0],[2,0],[-1,-2],[2,1]]};
 function rotate(dir){
   const p=S.cur;if(p.t==='O'||p.m.length===1)return;
   const nm=rot(p.m,dir);
-  const kicks=[[0,0],[-1,0],[1,0],[-2,0],[2,0],[0,-1],[-1,-1],[1,-1],[0,1],[-1,1],[1,1],[0,2]];
-  for(const[kx,ky]of kicks){if(!collide(nm,p.x+kx,p.y+ky)){p.m=nm;p.x+=kx;p.y+=ky;p.r=(p.r+dir+4)%4;S.lastRot=true;moveReset();return}}
+  const to=(p.r+dir+4)%4,kicks=(p.t==='I'?SRS_I:SRS_JLSTZ)[p.r+''+to];
+  for(let i=0;i<kicks.length;i++){const[kx,ky]=kicks[i];if(!collide(nm,p.x+kx,p.y+ky)){p.m=nm;p.x+=kx;p.y+=ky;p.r=to;S.lastRot=true;S.lastKick=i;moveReset();return}}
 }
 function soft(){if(!grounded()){S.cur.y++;S.score+=1;S.dropAcc=0;S.lastRot=false}}
 function hard(){
@@ -758,7 +794,7 @@ function tspinCheck(p){
   const TL=occ(cx-1,cy-1),TR=occ(cx+1,cy-1),BL=occ(cx-1,cy+1),BR=occ(cx+1,cy+1);
   if(TL+TR+BL+BR<3)return null;
   const front=[[TL,TR],[TR,BR],[BL,BR],[TL,BL]][p.r];
-  return front[0]&&front[1]?'full':'mini';
+  return front[0]&&front[1]||S.lastKick===4?'full':'mini';
 }
 function lockPiece(){
   const p=S.cur;let over=false;
@@ -809,18 +845,21 @@ function lockPiece(){
     earn([0,2,5,9,15][n]+(ts==='full'?4*n:0)+(pc?20:0)+(S.combo>0?S.combo*(1+lv('combo')):0));
     if(n===4&&lv('drill')){S.board.splice(H-2,2);S.board.unshift(Array(W).fill(0),Array(W).fill(0))}
     S.totalLines+=n;
+    const clearKind=ts==='full'&&n===2?'tsd':ts==='full'&&n===3?'tst':'other';
     // technique callout
     const lines=[];let color='#e4eff8',size=1;
+    const dt=ts==='full'&&n===3&&S.prevClear==='tsd';
     if(ts){lines.push((ts==='full'?'T-SPIN ':'T-SPIN MINI ')+['','SINGLE','DOUBLE','TRIPLE'][n]);color='#b48cf0';size=ts==='full'?1.25:1}
     else if(n===4){lines.push('4ライン！');color='#5fd4e6';size=1.3}
     else if(n>=2)lines.push(['','','2ライン','3ライン'][n]);
+    if(dt){lines.unshift('DT砲！');color='#ff8fa0';size=1.4}
     if(b2b)lines.unshift('BACK-TO-BACK');
     if(S.combo>0)lines.push(`${S.combo} REN`);
     if(pc){lines.unshift('全消し！');color='#f2d06b';size=1.4}
     if(lines.length)pop(lines,color,size);
     if(hardClear||pc)shake(pc?7:n===4||ts==='full'?5:3,220);
     if(S.boss&&!S.boss.dead){
-      const dmg=bossDmg(n,ts,b2b,pc);
+      const dmg=Math.round(bossDmg(n,ts,b2b,pc)*(dt?1.3:1));
       S.boss.myDmg+=dmg;S.fx.push({k:'hit',t:0});
       dmgNum(dmg,hardClear||pc);
       if(n===4&&lv('lifeice')&&performance.now()-S.lastLeech>=15000&&S.hp<S.maxHp){
@@ -828,6 +867,7 @@ function lockPiece(){
       }
     }else if(n===4&&lv('drill'))toast('つるはしで2行粉砕');
     classSkill(n);
+    S.prevClear=clearKind;
   }else S.combo=-1;
   if(lv('bomb')&&++S.bombC>=bombInterval()){S.bombC=0;S.queue.splice(1,0,'B')}
   if(lv('sand')&&++S.sandC>=sandInterval()){S.sandC=0;S.queue.splice(1,0,'D')}
@@ -849,7 +889,7 @@ function addGarbage(n){
   return over;
 }
 function bossAtkMs(){
-  let m=Math.max(3500,9000-700*(S.floor-1))*(1+0.3*lv('shield'));
+  const ba=D().bossAtk;let m=Math.max(ba[2],ba[0]-ba[1]*(S.floor-1))*(1+0.3*lv('shield'));
   if(S.coop){
     if(S.cls==='tank'){if(anyAllyAlive())m*=0.85}
     else if(tankAlive())m*=1.4;
@@ -995,7 +1035,7 @@ function bossDefeated(){
   const name=S.boss.name;
   S.bossKills++;
   S.score+=Math.round(1000*S.floor*mult());
-  heal(BOSS_KILL_HEAL);
+  heal(killHeal());
   let g=earn(15+4*S.floor);
   if(lv('piggy')){const i=Math.min(20,Math.floor(S.gold*0.15));S.gold+=i;S.totalGold+=i;g+=i}
   S.lastEarn=g;S.lastBoss=name;
@@ -1015,7 +1055,7 @@ function bossDefeated(){
 function finishBoss(){
   if(S.floor===FINAL&&!S.endless){
     S.winFrom=S.mode;S.mode='win';hide('ovReward');noteDeep();
-    if(S.score>best){best=S.score;try{localStorage.setItem('hyokutsu-best',best)}catch(e){}}
+    saveBest();
     showWin();return;
   }
   afterBoss();
@@ -1068,7 +1108,7 @@ function openReward(first){
   $('rwLv').innerHTML=first?'':`<small>Lv ${S.level} →</small>Lv ${S.level+1}`;
   $('rwTitle').textContent=first?'最初の遺物':'レベルアップ';
   $('rwSub').textContent=first?`${clsOf(S.cls).n}として洞窟に入る。ひとつだけ持っていける`:
-    (S.afterReward==='shop'&&S.lastBoss?`${S.lastBoss}を倒した。${S.lastEarn}G を手に入れ、HPが${BOSS_KILL_HEAL}回復。`:'')+'遺物をひとつ選んでください';
+    (S.afterReward==='shop'&&S.lastBoss?`${S.lastBoss}を倒した。${S.lastEarn}G を手に入れ、HPが${killHeal()}回復。`:'')+'遺物をひとつ選んでください';
   const box=$('cards');box.innerHTML='';
   for(const k of keys){
     const b=document.createElement('button');
@@ -1179,7 +1219,7 @@ function hide(id){$(id).hidden=true}
 function gameOver(){
   S.mode='over';S.hp=Math.max(0,S.hp);noteDeep();
   S.newBest=S.score>best;
-  if(S.score>best){best=S.score;try{localStorage.setItem('hyokutsu-best',best)}catch(e){}}
+  saveBest();
   hide('ovReward');hide('ovShop');hide('ovWait');hide('ovWin');
   hud(true);showOver();
 }
@@ -1261,7 +1301,7 @@ function openClassPick(){
     const c=CLASSES[k],b=document.createElement('button');
     b.type='button';b.className='card clscard';b.style.color=c.col;
     b.innerHTML=`<span class="g" style="background:${c.col}">${ico(k,'#0b1320',0,36)}</span><span class="n" style="color:var(--fg)">${c.n}<span class="ct" style="color:${c.col}">${c.role}</span></span><span class="d">${c.d}<br><b style="color:${c.col}">スキル「${c.sk.n}」</b> ${c.sk.d}</span>`;
-    b.onclick=()=>{hide('ovClass');newRun(false,0,k)};
+    b.onclick=()=>{hide('ovClass');newRun(false,0,k,myDiff)};
     box.appendChild(b);
   }
   show('ovClass');
@@ -1290,6 +1330,7 @@ function setW(id,pct){const v=Math.max(0,Math.min(100,pct)).toFixed(1)+'%';if(hc
 function hud(force){
   if(!S||S.mode==='title')return;
   setText('floor',S.floor===FINAL?`地下${S.floor}階 最下層`:`地下${S.floor}階`);
+  {const k=S.floor+'/'+S.endless+'/'+S.diff;if(hc.prog!==k){hc.prog=k;$('prog').innerHTML=S.floor>FINAL||S.endless?`踏破済み・${DIFFS[S.diff].n}`:`クリアまで <b>${S.floor}/${FINAL}</b>・${DIFFS[S.diff].n}`}}
   setText('score',S.score.toLocaleString());
   setText('gold',S.gold+'G');
   setText('lv','Lv '+S.level);
@@ -1500,7 +1541,7 @@ function drawBoard(dt){
       const lh=s*1.25*P.size;
       P.lines.forEach((t,i)=>{
         const main=i===P.lines.length-1||P.lines.length===1;
-        const isMain=P.lines.length===1||(P.lines[0]==='BOSS'&&i===P.lines.length-1)||t.startsWith('T-SPIN')||t.includes('ライン')||t==='全消し！'||t==='撃破！';
+        const isMain=P.lines.length===1||(P.lines[0]==='BOSS'&&i===P.lines.length-1)||t.startsWith('T-SPIN')||t.includes('ライン')||t==='全消し！'||t==='撃破！'||t==='DT砲！';
         const fs=Math.floor(s*(isMain?1.05*P.size:0.72));
         const y=(i-(P.lines.length-1)/2)*lh*(isMain?1:0.85);
         bctx.font=`${fs}px DotGothic16, monospace`;
@@ -1699,6 +1740,7 @@ function renderMembers(){
   }
   if(list.length<MAXP-1)rows.push(`<div class="wait">仲間を待っています（${1+list.length}/${MAXP}）</div>`);
   if(NET.others.length>MAXP-1)rows.push(`<div class="wait">満員です。${MAXP}人を超えた人は参加できません</div>`);
+  {const hp=NET.isHost?null:NET.others.find(p=>p.presence&&p.presence.r==='host');const dk=NET.isHost?myDiff:(hp&&DIFFS[hp.presence.df]?hp.presence.df:'easy');rows.push(`<div class="wait">難易度：${DIFFS[dk].n}${NET.isHost?'（タイトル画面で変えられます）':'（ホストが決めます）'}</div>`)}
   $('members').innerHTML=rows.join('');
   $('coopStart').hidden=!NET.isHost;
   $('coopStart').disabled=!NET.others.length;
@@ -1752,7 +1794,7 @@ function netTick(now){
   if(NET.lobby&&!NET.isHost){
     const L=NET.others.find(p=>p.presence&&p.presence.r==='host'&&p.presence.e&&p.presence.g);
     if(L&&L.presence.e!==NET.seenEpoch){
-      NET.seenEpoch=L.presence.e;NET.lobby=false;hide('ovCoop');newRun(true,L.presence.e,myCls);
+      NET.seenEpoch=L.presence.e;NET.lobby=false;hide('ovCoop');newRun(true,L.presence.e,myCls,DIFFS[L.presence.df]?L.presence.df:'easy');
     }
   }
   if(coopOn()){
@@ -1790,6 +1832,7 @@ function netTick(now){
       boss:S.boss?{id:S.boss.id,n:S.boss.name,m:S.boss.max}:null}:null;
   }else pres={r:NET.isHost?'host':'guest',l:1,cls:myCls,e:null,g:null};
   pres.nm=myNick;
+  if(NET.isHost)pres.df=S&&S.coop?S.diff:myDiff;
   const key=JSON.stringify(pres);
   if(key===NET.lastKey)return;
   NET.lastKey=key;NET.lastSent=now;
@@ -1798,7 +1841,7 @@ function netTick(now){
 function hostStart(){
   if(!NET||!NET.isHost||!NET.others.length)return;
   NET.lobby=false;hide('ovCoop');
-  newRun(true,Date.now(),myCls);
+  newRun(true,Date.now(),myCls,myDiff);
 }
 
 /* ---------- input ---------- */
