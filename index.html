@@ -158,6 +158,65 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .rlist span{color:var(--muted)}
 .spin{display:inline-block;width:10px;height:10px;border:2px solid var(--ice);border-right-color:transparent;border-radius:50%;animation:spin .8s linear infinite;margin-right:8px;vertical-align:-1px}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* bigger touch targets, line icons on the pad */
+.iconbtn{width:44px;height:44px;border-radius:8px;display:grid;place-items:center}
+.pad button{display:grid;place-items:center}
+/* phase row: a fixed-height panel (so the board never resizes), red during boss fights */
+#phase{flex-direction:column;align-items:stretch;justify-content:center;gap:5px;height:40px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:#0d1826}
+#phase .ph{display:flex;align-items:center;gap:8px}
+#phaseLbl{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#phase .bar{flex:none}
+#phase .btag{display:none}
+#phase.bossing{border-color:#5a2732;background:#1a0f17}
+#phase.bossing .btag{display:inline-flex;align-items:center;gap:4px;font-style:normal;font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--bg);background:var(--danger);padding:1px 6px;border-radius:3px}
+#phase.bossing #phaseLbl{font-family:var(--display);font-size:16px;color:#ffd0d6}
+#phase.bossing .bar{height:8px;background:#2a141c}
+/* title */
+.sheet.title{gap:18px}
+#ovTitle{background:var(--bg)}
+#ovTitle .sheet{padding-top:24px}
+.icicles{position:absolute;top:0;left:0;width:100%;height:36px}
+.kicker{font-size:11px;letter-spacing:.24em;color:var(--muted)}
+.logo{display:flex;align-items:flex-end;gap:16px}
+.sheet.title h1{font-size:80px;line-height:.95;letter-spacing:.04em}
+.sheet.title h1 span{display:block}
+.sheet.title h1 span+span{font-size:40px;letter-spacing:.18em;color:var(--fg)}
+.mino{display:grid;grid-template-columns:repeat(3,14px);grid-auto-rows:14px;gap:2px;margin-bottom:8px;flex:none}
+.mino b{background:var(--ice)}.mino b.t{background:#b48cf0}.mino b.x{background:none}
+.routehead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:-8px}
+.deep{font-size:12px;color:var(--muted)}.deep b{font-family:var(--display);font-weight:400;color:var(--gold)}
+.route{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
+.route span{display:flex;flex-direction:column;align-items:center;gap:6px;font-family:var(--display);font-size:12px;color:#6f879b}
+.route span b{width:100%;height:6px;border-radius:1px;background:var(--line)}
+.route span.on{color:var(--fg)}.route span.on b{background:var(--ice)}
+.route span.last{color:var(--danger)}.route span.last b{background:var(--danger)}
+.clsrow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.clsrow div{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 0;border:1px solid var(--line);border-radius:8px;font-size:12px;color:#c7d6e3}
+.howto summary{cursor:pointer;color:var(--ice);font-size:13px;padding:12px 0;list-style-position:inside}
+.howto .rules{margin-bottom:10px}
+.btnrow.stack{grid-template-columns:1fr}
+.btnrow .ghostbtn small{font-size:12px;color:var(--muted);margin-left:10px}
+/* level-up, shop, room code */
+.lvhead{flex-direction:column;align-items:flex-start;gap:2px}
+.lvhead small{font-family:var(--display);font-size:16px;color:#6f879b;margin-right:6px}
+.purse span,.shhp{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.code{display:flex;justify-content:center;gap:10px;letter-spacing:0}
+.code span{width:56px;height:72px;display:grid;place-items:center;border:1px solid #2c4560;border-radius:8px;background:var(--bg);font-size:44px}
+/* result */
+.kick{font-size:11px;letter-spacing:.24em;color:var(--danger)}
+#goTitle{font-size:40px;letter-spacing:.08em}
+.scorecard{display:flex;align-items:center;gap:14px;padding:12px 16px;border:1px solid #5a4a22;border-radius:10px;background:#15140f}
+.scorecard div{flex:1;display:flex;flex-direction:column;gap:2px}
+.scorecard small{font-size:11px;letter-spacing:.16em;color:#c9b064}
+.scorecard strong{font-family:var(--display);font-weight:400;font-size:34px;color:var(--gold);font-variant-numeric:tabular-nums}
+.newbest{padding:4px 10px;border-radius:4px;background:var(--gold);color:var(--bg);font-size:12px;font-weight:700}
+.stats2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0}
+.stats2 div{display:flex;flex-direction:column;gap:3px;padding:9px 12px;border:1px solid #1a2b3e;border-radius:8px;background:#0d1826;min-width:0}
+.stats2 dt{font-size:11px;color:var(--muted)}
+.stats2 dd{margin:0;font-family:var(--display);font-size:19px;font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:6px}
+.relrow{display:flex;flex-wrap:wrap;gap:6px}
+.relrow span{width:38px;height:38px;display:grid;place-items:center;font-family:var(--display);font-size:15px}
+.relrow sup{position:absolute;right:-3px;top:-4px;font-size:10px;color:var(--gold)}
 /* icons: class = filled badge, relic = diamond + kanji, item = round frame, status = bare */
 .px{display:block;flex:none}
 i[data-ico]{display:contents}
@@ -185,13 +244,12 @@ i[data-ico]{display:contents}
     <div class="hud">
       <span class="cls" id="clsChip" hidden></span>
       <div class="floor" id="floor">地下1階</div>
-      <span class="tag" id="bossTag" hidden><i data-ico="boss" data-f="#0b1320"></i>ボス戦</span>
       <span class="tag buff" id="buffTag" hidden><i data-ico="rally" data-f="#0b1320"></i>鼓舞</span>
       <div class="hpbox" id="hpBox" aria-label="HP"><b id="hpFill"></b><b class="sh" id="hpShield"></b><span class="hpt"><i data-ico="hp" data-f="#ffffff"></i><i id="hpText">30/30</i></span></div>
-      <button class="iconbtn" id="pauseBtn" aria-label="一時停止">II</button>
+      <button class="iconbtn" id="pauseBtn" aria-label="一時停止"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="2" y="1" width="3.5" height="12" fill="currentColor"/><rect x="8.5" y="1" width="3.5" height="12" fill="currentColor"/></svg></button>
     </div>
     <div class="meter"><span class="lv"><i data-ico="xp" data-f="#b9a3ff"></i><i id="lv">Lv 1</i></span><div class="bar xp"><b id="xpbar"></b></div><span class="gold"><i data-ico="gold" data-f="#f2d06b" data-f2="#8a6d1f"></i><i id="gold">0G</i></span><span class="score" id="score">0</span></div>
-    <div class="meter" id="phase"><span id="phaseLbl">ボスまで</span><div class="bar" id="phaseBarWrap"><b id="phaseBar"></b></div><span class="val" id="phaseVal">1:20</span></div>
+    <div class="meter" id="phase"><div class="ph"><i class="btag"><i data-ico="boss" data-f="#0b1320"></i>BOSS</i><span id="phaseLbl">ボスまで</span><span class="val" id="phaseVal">1:20</span></div><div class="bar" id="phaseBarWrap"><b id="phaseBar"></b></div></div>
     <div class="meter" id="skillRow" hidden><span id="skillLbl">癒し</span><div class="bar skill"><b id="skillBar"></b></div><span class="val" id="skillVal">0/10</span></div>
   </header>
   <main>
@@ -213,20 +271,30 @@ i[data-ico]{display:contents}
     </aside>
   </main>
   <div class="pad" id="pad">
-    <button data-a="left" aria-label="左へ">◀</button>
-    <button data-a="right" aria-label="右へ">▶</button>
-    <button data-a="ccw" aria-label="左回転">⟲</button>
-    <button data-a="cw" aria-label="右回転">⟳</button>
-    <button data-a="soft" aria-label="ソフトドロップ">▼</button>
-    <button data-a="hard" class="hard" aria-label="ハードドロップ">⤓</button>
+    <button data-a="left" aria-label="左へ"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <button data-a="right" aria-label="右へ"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+    <button data-a="ccw" aria-label="左回転"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9a8 8 0 1 1 1.5 9"/><path d="M4 4v5h5"/></svg></button>
+    <button data-a="cw" aria-label="右回転"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 9a8 8 0 1 0-1.5 9"/><path d="M20 4v5h-5"/></svg></button>
+    <button data-a="soft" aria-label="ソフトドロップ"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 9l7 7 7-7"/></svg></button>
+    <button data-a="hard" class="hard" aria-label="ハードドロップ"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 5l6 6 6-6"/><path d="M6 11l6 6 6-6"/><path d="M5 21h14"/></svg></button>
     <button data-a="hold" class="wide" id="holdBtn">HOLD</button>
   </div>
 </div>
 
 <div class="ov" id="ovTitle">
-  <div class="sheet">
-    <h1>氷窟スタック</h1>
-    <p>凍った洞窟を降りていくローグライク型の落ちものパズル。クラスを選び、遺物を集め、最大4人のパーティでボスに挑む。</p>
+  <svg class="icicles" viewBox="0 0 390 40" preserveAspectRatio="none" aria-hidden="true"><path d="M0 0H390V2L378 2 372 28 366 2 350 2 344 14 338 2 318 2 312 36 306 2 290 2 286 10 282 2 262 2 256 22 250 2 230 2 226 12 222 2 200 2 194 40 188 2 170 2 166 10 162 2 142 2 136 26 130 2 112 2 108 14 104 2 84 2 78 32 72 2 56 2 52 10 48 2 30 2 24 22 18 2 0 2Z" fill="#13202f"/></svg>
+  <div class="sheet title">
+    <div class="kicker">ROGUELIKE · 落ちものパズル</div>
+    <div class="logo">
+      <h1><span>氷窟</span><span>スタック</span></h1>
+      <i class="mino" aria-hidden="true"><b></b><b></b><b></b><b class="x"></b><b class="t"></b><b class="x"></b><b class="x"></b><b class="t"></b><b class="x"></b></i>
+    </div>
+    <p>凍った洞窟を降りていく。列を消してボスを削り、遺物を集めて、地下8階の主を倒せ。最大4人のパーティでも潜れる。</p>
+    <div class="routehead"><span class="lbl">潜行ルート</span><span class="deep">最深 <b id="deepVal">-</b></span></div>
+    <div class="route" id="route"></div>
+    <div class="keys" id="bestTitle"></div>
+    <div class="clsrow" id="titleCls"></div>
+    <details class="howto"><summary>遊び方とルール</summary>
     <ol class="rules">
       <li>守護者・癒し手・鼓手・剣士の4クラス。クラスで出やすい遺物が変わり、専用の遺物もある</li>
       <li>スコアで経験値がたまり、レベルアップごとに遺物をひとつ選べる</li>
@@ -236,10 +304,10 @@ i[data-ico]{display:contents}
       <li>天井に届くとHP-12で盤面リセット。シールドはHPより先にダメージを吸収する。HPが尽きたら終わり。地下8階のボスを倒せば踏破</li>
     </ol>
     <div class="keys">キーボード：←→ 移動 / ↓ ソフト / Space ハード / Z・X(↑) 回転 / C ホールド / P 一時停止</div>
-    <div class="keys" id="bestTitle"></div>
-    <div class="btnrow">
+    </details>
+    <div class="btnrow stack">
       <button class="cta" id="startBtn">ひとりで潜る</button>
-      <button class="ghostbtn" id="coopBtn">みんなで潜る</button>
+      <button class="ghostbtn" id="coopBtn">みんなで潜る<small>最大4人</small></button>
     </div>
   </div>
 </div>
@@ -319,7 +387,7 @@ i[data-ico]{display:contents}
   <div class="sheet">
     <h1>踏破</h1>
     <p id="winNote">氷窟の最下層にたどり着いた。</p>
-    <dl class="stats" id="winStats"></dl>
+    <dl class="stats2" id="winStats"></dl>
     <button class="cta" id="deeperBtn">さらに深く潜る</button>
     <button class="ghostbtn" id="winTitleBtn">タイトルに戻る</button>
   </div>
@@ -327,20 +395,23 @@ i[data-ico]{display:contents}
 
 <div class="ov" id="ovOver" hidden>
   <div class="sheet">
+    <div class="kick" id="goKick">RUN OVER</div>
     <h2 id="goTitle">力尽きた</h2>
+    <p id="goCause"></p>
     <p id="goNote" hidden></p>
-    <dl class="stats">
-      <dt>クラス</dt><dd id="goCls">-</dd>
-      <dt>到達階</dt><dd id="goFloor">-</dd>
-      <dt>レベル</dt><dd id="goLv">-</dd>
-      <dt>倒したボス</dt><dd id="goBoss">-</dd>
-      <dt>消した列</dt><dd id="goLines">-</dd>
-      <dt>受けたダメージ</dt><dd id="goHits">-</dd>
-      <dt>稼いだゴールド</dt><dd id="goGold">-</dd>
-      <dt>スコア</dt><dd id="goScore">-</dd>
-      <dt>ベスト</dt><dd id="goBest">-</dd>
+    <div class="scorecard"><div><small>スコア</small><strong id="goScore">0</strong></div><span class="newbest" id="goNew" hidden>ベスト更新</span></div>
+    <dl class="stats2">
+      <div><dt>クラス</dt><dd id="goCls">-</dd></div>
+      <div><dt>到達階</dt><dd id="goFloor">-</dd></div>
+      <div><dt>レベル</dt><dd id="goLv">-</dd></div>
+      <div><dt>倒したボス</dt><dd id="goBoss">-</dd></div>
+      <div><dt>消した列</dt><dd id="goLines">-</dd></div>
+      <div><dt>受けたダメージ</dt><dd id="goHits">-</dd></div>
+      <div><dt>稼いだゴールド</dt><dd id="goGold">-</dd></div>
+      <div><dt>ベスト</dt><dd id="goBest">-</dd></div>
     </dl>
-    <p id="goRelics"></p>
+    <div class="lbl" id="goRelLbl"></div>
+    <div class="relrow" id="goRelics"></div>
     <button class="ghostbtn" id="watchBtn" hidden>仲間を観戦する</button>
     <button class="cta" id="againBtn">もう一度潜る</button>
   </div>
@@ -412,6 +483,15 @@ const nextC=$('nextC'),nctx=nextC.getContext('2d');
 let C=24,DPR=Math.min(2,window.devicePixelRatio||1);
 let S=null,best=0;
 try{best=+localStorage.getItem('hyokutsu-best')||0}catch(e){}
+let deep=0;
+try{deep=+localStorage.getItem('hyokutsu-deep')||0}catch(e){}
+function noteDeep(){if(S&&S.floor>deep){deep=S.floor;try{localStorage.setItem('hyokutsu-deep',deep)}catch(e){}}}
+function renderTitleInfo(){
+  $('bestTitle').textContent=best?`ベストスコア：${best.toLocaleString()}`:'';
+  $('deepVal').textContent=deep?`地下${Math.min(deep,FINAL)}階`:'-';
+  $('route').innerHTML=Array.from({length:FINAL},(_,i)=>i+1).map(n=>`<span class="${n<=deep?'on':''}${n===FINAL?' last':''}"><b></b>B${n}</span>`).join('');
+  $('titleCls').innerHTML=CLS_KEYS.map(k=>`<div>${clsBadge(k,36,24)}${CLASSES[k].n}</div>`).join('');
+}
 
 const emptyBoard=()=>Array.from({length:H},()=>Array(W).fill(0));
 const lv=k=>(S.relics&&S.relics[k])||0;
@@ -455,6 +535,7 @@ const PIX={
   rally:['.....##.....','....####....','...######...','..###..###..','.###....###.','###..##..###','#...####...#','...######...','..###..###..','.###....###.','###......###','#..........#'],
   gold:['...######...','.##########.','.####oo####.','####oooo####','####oo######','####oooo####','######oo####','####oooo####','#####oo#####','.####oo####.','.##########.','...######...'],
   xp:['.....##.....','.....##.....','....####....','....####....','############','.##########.','..########..','...######...','..###..###..','..##....##..','.##......##.','.#........#.'],
+  shield:['.....##.....','...######...','.##########.','##oo########','#oo#########','#o##########','############','############','.##########.','...######...','.....##.....','............'],
   boss:['...######...','.##########.','############','############','##..####..##','##..####..##','#####..#####','.####..####.','..########..','..#.#..#.#..','..########..','............'],
   heal_item:['....####....','....####....','.....##.....','.....##.....','...######...','..########..','.##o#######.','.#oo#######.','.##########.','.##########.','..########..','...######...'],
   charm:['..########..','..#oooooo#..','..########..','..###oo###..','..##oooo##..','..###oo###..','..########..','..##o##o##..','..########..','..########..','..#.#..#.#..','..#.#..#.#..'],
@@ -759,7 +840,7 @@ function applyDamage(n){
 }
 function topOut(){
   const r=applyDamage(TOPOUT_DMG);
-  if(r.dead){gameOver();return}
+  if(r.dead){S.cause='天井に届いた';gameOver();return}
   if(lv('bulwark')){
     const keep=S.board.slice(H-8).map(r=>r.slice());
     S.board=[...Array.from({length:H-8},()=>Array(W).fill(0)),...keep];
@@ -771,7 +852,7 @@ function topOut(){
 }
 function takeHit(n,why){
   const r=applyDamage(n);
-  if(r.dead){gameOver();return}
+  if(r.dead){S.cause=why;gameOver();return}
   toast(r.taken?`${why} HP-${r.taken}`:`${why}　シールドで吸収`);
 }
 function hpTick(dt){
@@ -850,7 +931,7 @@ function bossDefeated(){
 }
 function finishBoss(){
   if(S.floor===FINAL&&!S.endless){
-    S.winFrom=S.mode;S.mode='win';hide('ovReward');
+    S.winFrom=S.mode;S.mode='win';hide('ovReward');noteDeep();
     if(S.score>best){best=S.score;try{localStorage.setItem('hyokutsu-best',best)}catch(e){}}
     showWin();return;
   }
@@ -864,9 +945,9 @@ function showWin(){
   const al=allies();
   $('winNote').textContent=al.length?`${al.length+1}人のパーティで${BOSSES[FINAL-1]}を倒し、氷窟の最下層にたどり着いた。`:`${BOSSES[FINAL-1]}を倒し、氷窟の最下層にたどり着いた。`;
   const c=clsOf(S.cls);
-  $('winStats').innerHTML=[['クラス',`<span style="color:${c.col}">${c.n}</span>`],['レベル','Lv '+S.level],['消した列',S.totalLines],
+  $('winStats').innerHTML=[['クラス',`${clsBadge(S.cls,20,12)}${c.n}`],['レベル','Lv '+S.level],['消した列',S.totalLines],
     ['受けたダメージ',S.hitsTaken],...(S.cls==='tank'?[['防いだ強撃',S.blocked]]:[]),['稼いだゴールド',S.totalGold+'G'],['スコア',S.score.toLocaleString()]]
-    .map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('');
+    .map(([k,v])=>`<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
   show('ovWin');
 }
 
@@ -901,7 +982,7 @@ function openReward(first){
     const ex=shuffle(Object.keys(RELICS).filter(k=>RELICS[k].only===S.cls));
     keys=['ghost','hold',ex[0]];
   }else keys=pickRelics(3,k=>!(k==='potion'&&S.hp>=S.maxHp));
-  $('rwLv').textContent=first?'':`Lv ${S.level+1}`;
+  $('rwLv').innerHTML=first?'':`<small>Lv ${S.level} →</small>Lv ${S.level+1}`;
   $('rwTitle').textContent=first?'最初の遺物':'レベルアップ';
   $('rwSub').textContent=first?`${clsOf(S.cls).n}として洞窟に入る。ひとつだけ持っていける`:
     (S.afterReward==='shop'&&S.lastBoss?`${S.lastBoss}を倒した。${S.lastEarn}G を手に入れ、HPが${BOSS_KILL_HEAL}回復。`:'')+'遺物をひとつ選んでください';
@@ -949,8 +1030,8 @@ function openShop(){
 }
 const rerollCost=()=>8+6*S.shop.rerolls;
 function renderShop(){
-  $('shGold').textContent=S.gold+'G';
-  $('shHp').textContent=`HP ${S.hp}/${S.maxHp}${S.shield?`　シールド ${S.shield}`:''}`;
+  $('shGold').innerHTML=ico('gold','#f2d06b','#8a6d1f',24)+S.gold+'G';
+  $('shHp').innerHTML=ico('hp','#ff6f7f','#ffd0d6')+`${S.hp}/${S.maxHp}`+(S.shield?ico('shield','#8fe3ff','#e4f9ff')+S.shield:'');
   const box=$('shItems');box.innerHTML='';
   const hasG=S.board.some(r=>r.some(v=>v==='G'));
   S.shop.items.forEach((it,i)=>{
@@ -1001,7 +1082,7 @@ function leaveShop(){
   advanceFloor();
 }
 function advanceFloor(){
-  S.floor++;S.timeLeft=STAGE_MS;S.boss=null;S.phase='play';S.readyFloor=0;S.hitAcc=0;
+  S.floor++;noteDeep();S.timeLeft=STAGE_MS;S.boss=null;S.phase='play';S.readyFloor=0;S.hitAcc=0;
   addShield(10*lv('ward'));
   hide('ovWait');
   if(S.mode==='wait'||S.mode==='shop')resumePlay();
@@ -1013,7 +1094,8 @@ function advanceFloor(){
 function show(id){$(id).hidden=false}
 function hide(id){$(id).hidden=true}
 function gameOver(){
-  S.mode='over';S.hp=Math.max(0,S.hp);
+  S.mode='over';S.hp=Math.max(0,S.hp);noteDeep();
+  S.newBest=S.score>best;
   if(S.score>best){best=S.score;try{localStorage.setItem('hyokutsu-best',best)}catch(e){}}
   hide('ovReward');hide('ovShop');hide('ovWait');hide('ovWin');
   hud(true);showOver();
@@ -1024,7 +1106,10 @@ function showOver(){
   $('goNote').hidden=!coopOn();
   $('goNote').textContent=coopOn()?(allDead?'ここまでの潜行の記録です。':'仲間はまだ戦っている。癒し手の4列消しで蘇生できる。'):'';
   const c=clsOf(S.cls);
-  $('goCls').textContent=c.n;$('goCls').style.color=c.col;
+  $('goKick').textContent=`RUN OVER · 地下${S.floor}階`;
+  $('goCause').textContent=S.cause?`${S.cause}。HPが尽きた。`:'';
+  $('goNew').hidden=!S.newBest;
+  $('goCls').innerHTML=`${clsBadge(S.cls,20,12)}${c.n}`;
   $('goFloor').textContent=`地下${S.floor}階`;
   $('goLv').textContent='Lv '+S.level;
   $('goBoss').textContent=S.bossKills+' 体';
@@ -1033,8 +1118,9 @@ function showOver(){
   $('goGold').textContent=S.totalGold+'G';
   $('goScore').textContent=S.score.toLocaleString();
   $('goBest').textContent=best.toLocaleString();
-  const names=Object.keys(S.relics).map(k=>RELICS[k].n+(S.relics[k]>1?'×'+S.relics[k]:''));
-  $('goRelics').textContent=names.length?'持っていた遺物：'+names.join('、'):'';
+  const rk=Object.keys(S.relics);
+  $('goRelLbl').textContent=rk.length?`持っていた遺物 · ${rk.length}`:'';
+  $('goRelics').innerHTML=rk.map(k=>{const r=RELICS[k];return`<span class="dia" title="${r.n}" style="color:${relicCol(r)}"><i>${r.g}</i>${S.relics[k]>1?`<sup>${S.relics[k]}</sup>`:''}</span>`}).join('');
   $('watchBtn').hidden=!(coopOn()&&!allDead);
   $('againBtn').textContent=coopOn()?'タイトルに戻る':'もう一度潜る';
   S.overAllDead=allDead;
@@ -1080,7 +1166,7 @@ function toTitle(){
   NET=null;
   ['ovOver','ovPause','ovShop','ovReward','ovWait','ovCoop','ovClass','ovWin'].forEach(hide);
   demo();$('partyBox').hidden=true;$('clsChip').hidden=true;$('skillRow').hidden=true;$('buffTag').hidden=true;layout();
-  $('bestTitle').textContent=best?`ベストスコア：${best.toLocaleString()}`:'';
+  renderTitleInfo();
   show('ovTitle');
 }
 
@@ -1126,7 +1212,6 @@ function hud(force){
   setText('lv','Lv '+S.level);
   setW('xpbar',S.pendingLv?100:S.xp/xpNeed(S.level)*100);
   const b=S.boss;
-  $('bossTag').hidden=!b||b.dead;
   $('buffTag').hidden=!buffOn();
   $('phase').classList.toggle('bossing',!!b);
   $('phaseBarWrap').classList.toggle('boss',!!b);
@@ -1471,7 +1556,7 @@ async function enterRoom(code,isHost,tries){
   r.onPeers(onPeers,()=>{});
   r.presence({r:isHost?'host':'guest',l:1,cls:myCls,nm:myNick}).catch(()=>{});
   $('coopMenu').hidden=true;$('coopRoom').hidden=false;
-  $('codeShow').textContent=code;
+  $('codeShow').innerHTML=String(code).split('').map(d=>`<span>${d}</span>`).join('');
   coopMsg(isHost?'この部屋番号を仲間に伝えてください。全員そろったら出発できます。':'ホストが出発するのを待っています。クラスは出発まで変えられます。');
   renderMembers();
 }
@@ -1686,7 +1771,7 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 demo();layout();
-$('bestTitle').textContent=best?`ベストスコア：${best.toLocaleString()}`:'';
+renderTitleInfo();
 requestAnimationFrame(frame);
 })();
 </script>
