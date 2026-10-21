@@ -158,20 +158,39 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .rlist span{color:var(--muted)}
 .spin{display:inline-block;width:10px;height:10px;border:2px solid var(--ice);border-right-color:transparent;border-radius:50%;animation:spin .8s linear infinite;margin-right:8px;vertical-align:-1px}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* icons: class = filled badge, relic = diamond + kanji, item = round frame, status = bare */
+.px{display:block;flex:none}
+i[data-ico]{display:contents}
+.lv i,.gold i,.hpt i{font-style:normal}
+.lv,.gold,.tag{display:inline-flex;align-items:center;gap:4px}
+.gold{justify-content:flex-end}
+.hpbox .hpt{display:flex;align-items:center;justify-content:center;gap:4px;height:20px}
+.cb{display:inline-grid;place-items:center;flex:none;border-radius:22%;font-style:normal}
+.cls{border:none;width:28px;height:28px}
+.dia{position:relative}
+.dia::before{content:"";position:absolute;inset:16%;transform:rotate(45deg);border:1.5px solid currentColor;border-radius:3px;background:var(--bg)}
+.dia>i{position:relative;font-style:normal}
+.card .g.dia{border:none;font-size:20px}
+.card .g.round{border:1.5px solid currentColor;border-radius:50%}
+.card.clscard .g{border:none}
+.relics span.dia{border:none;background:none;font-size:10px}
+.relics span.dia::before{inset:3px;border-width:1px;background:var(--panel)}
+.members .cb{width:28px;height:28px}
+.rlist .cb{align-self:center}
 @media (prefers-reduced-motion:reduce){.bar b,.toast{transition:none}.spin{animation:none}}
 </style>
 
 <div class="app">
   <header>
     <div class="hud">
-      <span class="cls" id="clsChip" hidden>剣</span>
+      <span class="cls" id="clsChip" hidden></span>
       <div class="floor" id="floor">地下1階</div>
-      <span class="tag" id="bossTag" hidden>ボス戦</span>
-      <span class="tag buff" id="buffTag" hidden>鼓舞</span>
-      <div class="hpbox" id="hpBox" aria-label="HP"><b id="hpFill"></b><b class="sh" id="hpShield"></b><span id="hpText">30/30</span></div>
+      <span class="tag" id="bossTag" hidden><i data-ico="boss" data-f="#0b1320"></i>ボス戦</span>
+      <span class="tag buff" id="buffTag" hidden><i data-ico="rally" data-f="#0b1320"></i>鼓舞</span>
+      <div class="hpbox" id="hpBox" aria-label="HP"><b id="hpFill"></b><b class="sh" id="hpShield"></b><span class="hpt"><i data-ico="hp" data-f="#ffffff"></i><i id="hpText">30/30</i></span></div>
       <button class="iconbtn" id="pauseBtn" aria-label="一時停止">II</button>
     </div>
-    <div class="meter"><span class="lv" id="lv">Lv 1</span><div class="bar xp"><b id="xpbar"></b></div><span class="gold" id="gold">0G</span><span class="score" id="score">0</span></div>
+    <div class="meter"><span class="lv"><i data-ico="xp" data-f="#b9a3ff"></i><i id="lv">Lv 1</i></span><div class="bar xp"><b id="xpbar"></b></div><span class="gold"><i data-ico="gold" data-f="#f2d06b" data-f2="#8a6d1f"></i><i id="gold">0G</i></span><span class="score" id="score">0</span></div>
     <div class="meter" id="phase"><span id="phaseLbl">ボスまで</span><div class="bar" id="phaseBarWrap"><b id="phaseBar"></b></div><span class="val" id="phaseVal">1:20</span></div>
     <div class="meter" id="skillRow" hidden><span id="skillLbl">癒し</span><div class="bar skill"><b id="skillBar"></b></div><span class="val" id="skillVal">0/10</span></div>
   </header>
@@ -424,6 +443,32 @@ const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a
 const fmtTime=ms=>{const s=Math.ceil(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clsOf=k=>CLASSES[k]||CLASSES.atk;
+/* 12x12 pixel icons: '#' main colour, 'o' second colour */
+const PIX={
+  tank:['.##########.','.##########.','.####..####.','.####..####.','.##......##.','.##......##.','.####..####.','..###..###..','..########..','...######...','....####....','.....##.....'],
+  heal:['.....##.....','....####....','....####....','...######...','..###..###..','.####..####.','.##......##.','.##......##.','.####..####.','..###..###..','...######...','....####....'],
+  buff:['##........##','.##......##.','..##....##..','.##########.','#..........#','############','##.##..##.##','###.####.###','##.##..##.##','############','.##########.','............'],
+  atk:['..........##','.........###','........###.','.......###..','......###...','.#...###....','.##.###.....','..####......','...##.......','..##.#......','.##...#.....','##..........'],
+  hp:['............','.###....###.','#####..#####','#oo#########','#o##########','############','.##########.','..########..','...######...','....####....','.....##.....','............'],
+  rally:['.....##.....','....####....','...######...','..###..###..','.###....###.','###..##..###','#...####...#','...######...','..###..###..','.###....###.','###......###','#..........#'],
+  gold:['...######...','.##########.','.####oo####.','####oooo####','####oo######','####oooo####','######oo####','####oooo####','#####oo#####','.####oo####.','.##########.','...######...'],
+  xp:['.....##.....','.....##.....','....####....','....####....','############','.##########.','..########..','...######...','..###..###..','..##....##..','.##......##.','.#........#.'],
+  boss:['...######...','.##########.','############','############','##..####..##','##..####..##','#####..#####','.####..####.','..########..','..#.#..#.#..','..########..','............'],
+  heal_item:['....####....','....####....','.....##.....','.....##.....','...######...','..########..','.##o#######.','.#oo#######.','.##########.','.##########.','..########..','...######...'],
+  charm:['..########..','..#oooooo#..','..########..','..###oo###..','..##oooo##..','..###oo###..','..########..','..##o##o##..','..########..','..########..','..#.#..#.#..','..#.#..#.#..'],
+  clean:['..........##','.........##.','........##..','.......##...','......##....','.....##.....','..#####.....','.######.....','#######.....','######......','#####.......','#.#.#.......'],
+  weaken:['.##########.','.#oooooooo#.','.#o######o#.','.#o###.##o#.','.#o##..##o#.','.#o###..#o#.','.#o####.#o#.','.#o###..#o#.','.#o##.###o#.','.#o######o#.','.#oooooooo#.','.##########.']
+};
+const ICO={};
+function ico(k,f,f2,sz){
+  if(!ICO[k]){let a='',b='';PIX[k].forEach((row,y)=>{for(let x=0;x<12;x++){const s=`M${x} ${y}h1v1h-1z`;if(row[x]==='#')a+=s;else if(row[x]==='o')b+=s}});ICO[k]=[a,b]}
+  const[a,b]=ICO[k];sz=sz||12;
+  return`<svg class="px" width="${sz}" height="${sz}" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true"><path d="${a}" fill="${f||'currentColor'}"/>${b&&f2?`<path d="${b}" fill="${f2}"/>`:''}</svg>`;
+}
+const clsBadge=(k,box,sz)=>{const c=clsOf(k);return`<i class="cb" style="background:${c.col};width:${box}px;height:${box}px" title="${c.n}">${ico(CLASSES[k]?k:'atk','#0b1320',0,sz)}</i>`};
+const relicCol=r=>r.c?CLASSES[r.c].col:'#c7d6e3';
+const ITEM_COL={heal:'#f07c8c',charm:'#8fe3ff',clean:'#d8c49a',weaken:'#b9a3ff'};
+document.querySelectorAll('i[data-ico]').forEach(el=>{el.innerHTML=ico(el.dataset.ico,el.dataset.f,el.dataset.f2)});
 
 /* ---------- party (network) helpers ---------- */
 let ROOM=null,USER=null,NET=null;
@@ -490,7 +535,7 @@ function newRun(coop,epoch,cls){
   refill();renderRelics();
   if(NET){NET.seen={};NET.dmg={};NET.rosterKey=''}
   $('partyBox').hidden=!S.coop;
-  const chip=$('clsChip');chip.hidden=false;chip.textContent=c.g;chip.style.color=c.col;chip.title=`${c.n}（${c.role}）`;
+  const chip=$('clsChip');chip.hidden=false;chip.innerHTML=ico(S.cls,'#0b1320',0,24);chip.style.background=c.col;chip.title=`${c.n}（${c.role}）`;
   const sk=S.cls==='heal'||S.cls==='buff';
   $('skillRow').hidden=!sk;
   if(sk){$('skillBar').style.background=c.col}
@@ -841,7 +886,7 @@ function relicCardHtml(k,extra){
   const r=RELICS[k];
   const lvTxt=!r.once&&lv(k)?`Lv${lv(k)}→${lv(k)+1}`:'';
   const ct=r.c?`<span class="ct" style="color:${CLASSES[r.c].col}">${r.only?CLASSES[r.c].n+'専用':CLASSES[r.c].role+'向け'}</span>`:'';
-  return `<span class="g"${r.c?` style="color:${CLASSES[r.c].col}"`:''}>${r.g}</span><span class="n">${r.n}${lvTxt?`<em>${lvTxt}</em>`:''}${ct}</span>${extra||''}<span class="d">${r.d}</span>`;
+  return `<span class="g dia" style="color:${relicCol(r)}"><i>${r.g}</i></span><span class="n">${r.n}${lvTxt?`<em>${lvTxt}</em>`:''}${ct}</span>${extra||''}<span class="d">${r.d}</span>`;
 }
 
 /* ---------- level-up reward ---------- */
@@ -911,7 +956,7 @@ function renderShop(){
     const b=document.createElement('button');b.type='button';b.className='card shopcard';
     b.disabled=it.sold||!!useless||poor;
     b.innerHTML=it.kind==='relic'?relicCardHtml(it.k,priceHtml):
-      `<span class="g">${it.g}</span><span class="n">${it.n}</span>${priceHtml}<span class="d">${it.d}</span>`;
+      `<span class="g round" style="color:${ITEM_COL[it.kind]}">${ico(it.kind==='heal'?'heal_item':it.kind,ITEM_COL[it.kind],'#e4eff8',24)}</span><span class="n">${it.n}</span>${priceHtml}<span class="d">${it.d}</span>`;
     b.onclick=()=>buy(i);
     box.appendChild(b);
   });
@@ -999,8 +1044,8 @@ function pause(){
   $('pauseNote').hidden=!coopOn();
   const keys=Object.keys(S.relics);
   const c=clsOf(S.cls);
-  $('rlist').innerHTML=`<div><b style="color:${c.col}">${c.g}</b><span>${c.n}（${c.role}）：${c.d}</span></div>`+
-    (keys.length?keys.map(k=>`<div><b>${RELICS[k].g}</b><span>${RELICS[k].n}${S.relics[k]>1?' ×'+S.relics[k]:''}：${RELICS[k].d}</span></div>`).join(''):'<div><b>-</b><span>まだ遺物はない</span></div>');
+  $('rlist').innerHTML=`<div>${clsBadge(S.cls,18,12)}<span>${c.n}（${c.role}）：${c.d}</span></div>`+
+    (keys.length?keys.map(k=>`<div><b style="color:${relicCol(RELICS[k])}">${RELICS[k].g}</b><span>${RELICS[k].n}${S.relics[k]>1?' ×'+S.relics[k]:''}：${RELICS[k].d}</span></div>`).join(''):'<div><b>-</b><span>まだ遺物はない</span></div>');
   show('ovPause');
 }
 function resume(){hide('ovPause');resumePlay()}
@@ -1042,7 +1087,7 @@ function openClassPick(){
   for(const k of CLS_KEYS){
     const c=CLASSES[k],b=document.createElement('button');
     b.type='button';b.className='card clscard';b.style.color=c.col;
-    b.innerHTML=`<span class="g">${c.g}</span><span class="n" style="color:var(--fg)">${c.n}<span class="ct" style="color:${c.col}">${c.role}</span></span><span class="d">${c.d}</span>`;
+    b.innerHTML=`<span class="g" style="background:${c.col}">${ico(k,'#0b1320',0,36)}</span><span class="n" style="color:var(--fg)">${c.n}<span class="ct" style="color:${c.col}">${c.role}</span></span><span class="d">${c.d}</span>`;
     b.onclick=()=>{hide('ovClass');newRun(false,0,k)};
     box.appendChild(b);
   }
@@ -1055,7 +1100,7 @@ function renderCoopCls(){
   for(const k of CLS_KEYS){
     const c=CLASSES[k],b=document.createElement('button');
     b.type='button';b.className='clsbtn'+(k===myCls?' on':'');b.style.color=c.col;
-    b.innerHTML=`<b>${c.g}</b><span>${c.n}<small>${c.role}</small></span>`;
+    b.innerHTML=`${clsBadge(k,28,24)}<span>${c.n}<small>${c.role}</small></span>`;
     b.onclick=()=>{
       myCls=k;try{localStorage.setItem('hyokutsu-cls',k)}catch(e){}
       renderCoopCls();
@@ -1115,15 +1160,14 @@ function renderParty(){
   }
   al.forEach((p,i)=>{
     const q=p.presence,c=clsOf(q.cls);
-    const g=$('mg'+i);if(g&&g.style.color!==c.col)g.style.color=c.col;
-    setText('mg'+i,c.g);
+    const g=$('mg'+i);if(g&&g.dataset.k!==q.cls){g.dataset.k=q.cls;g.innerHTML=clsBadge(q.cls,16,12)}
     setText('mn'+i,nameOf(p));
     setText('mh'+i,q.a?`${q.hp}/${q.mh}${+q.sh?'+'+(+q.sh):''}`:'ダウン');
     const m=$('mate'+i);if(m)m.classList.toggle('down',!q.a);
   });
 }
 function renderRelics(){
-  $('relics').innerHTML=S&&S.relics?Object.keys(S.relics).map(k=>{const r=RELICS[k];return`<span title="${r.n}：${r.d}"${r.c?` style="color:${CLASSES[r.c].col}"`:''}>${r.g}${S.relics[k]>1?`<sup>${S.relics[k]}</sup>`:''}</span>`}).join(''):'';
+  $('relics').innerHTML=S&&S.relics?Object.keys(S.relics).map(k=>{const r=RELICS[k];return`<span class="dia" title="${r.n}：${r.d}" style="color:${relicCol(r)}"><i>${r.g}</i>${S.relics[k]>1?`<sup>${S.relics[k]}</sup>`:''}</span>`}).join(''):'';
 }
 
 /* ---------- drawing ---------- */
@@ -1445,11 +1489,11 @@ function onPeers(ch){
 }
 function renderMembers(){
   if(!NET)return;
-  const rows=[`<div><b style="color:${clsOf(myCls).col}">${clsOf(myCls).g}</b><em>${myNick?esc(myNick)+'（あなた）':'あなた'}</em><span>${NET.isHost?'ホスト':'参加'}・${clsOf(myCls).n}</span></div>`];
+  const rows=[`<div>${clsBadge(myCls,28,24)}<em>${myNick?esc(myNick)+'（あなた）':'あなた'}</em><span>${NET.isHost?'ホスト':'参加'}・${clsOf(myCls).n}</span></div>`];
   const list=NET.others.slice(0,MAXP-1);
   for(const p of list){
     const q=p.presence||{},c=clsOf(q.cls);
-    rows.push(`<div><b style="color:${c.col}">${c.g}</b><em>${esc(NET.names[p.peer]||nickOf(p)||'仲間')}</em><span>${q.r==='host'?'ホスト':'参加'}・${c.n}</span></div>`);
+    rows.push(`<div>${clsBadge(q.cls,28,24)}<em>${esc(NET.names[p.peer]||nickOf(p)||'仲間')}</em><span>${q.r==='host'?'ホスト':'参加'}・${c.n}</span></div>`);
   }
   if(list.length<MAXP-1)rows.push(`<div class="wait">仲間を待っています（${1+list.length}/${MAXP}）</div>`);
   if(NET.others.length>MAXP-1)rows.push(`<div class="wait">満員です。${MAXP}人を超えた人は参加できません</div>`);
