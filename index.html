@@ -212,6 +212,23 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .howto summary{cursor:pointer;color:var(--ice);font-size:13px;padding:12px 0;list-style-position:inside}
 .howto .rules{margin-bottom:10px}
 .btnrow.stack{grid-template-columns:1fr}
+.btnrow.three{grid-template-columns:repeat(3,1fr)}
+.btnrow.three .ghostbtn{height:40px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tabs button{height:32px;padding:0 12px;border-radius:16px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-family:var(--body);font-size:13px;font-weight:700;cursor:pointer}
+.tabs button.on{background:var(--ice);border-color:var(--ice);color:var(--bg)}
+.codex{display:grid;grid-template-columns:1fr;gap:6px}
+.cx{display:grid;grid-template-columns:30px 1fr;gap:2px 10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+.cx b{grid-row:span 2;font-family:var(--display);font-weight:400;font-size:18px;text-align:center}
+.cx span{font-weight:700;font-size:13px}
+.cx small{font-size:12px;color:var(--muted);line-height:1.5}
+.cx.locked{opacity:.55}
+.setlist{display:flex;flex-direction:column;gap:14px}
+.setrow{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center}
+.setrow label{font-weight:700;font-size:14px}
+.setrow output{font-family:var(--display);font-variant-numeric:tabular-nums;color:var(--ice)}
+.setrow input[type=range]{grid-column:1/3;width:100%;accent-color:var(--ice)}
+.setrow small{grid-column:1/3;font-size:12px;color:var(--muted)}
 .diff{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
 .diffrow{display:flex;gap:6px}
 .dbtn{height:32px;padding:0 14px;border-radius:16px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-family:var(--body);font-size:13px;font-weight:700;cursor:pointer}
@@ -339,6 +356,11 @@ i[data-ico]{display:contents}
       <button class="cta" id="startBtn">ひとりで潜る</button>
       <button class="ghostbtn" id="coopBtn">みんなで潜る<small>最大4人</small></button>
     </div>
+    <div class="btnrow three">
+      <button class="ghostbtn" id="practiceBtn" type="button">練習</button>
+      <button class="ghostbtn" id="codexBtn" type="button">図鑑</button>
+      <button class="ghostbtn" id="setBtn" type="button">設定</button>
+    </div>
   </div>
 </div>
 
@@ -409,7 +431,31 @@ i[data-ico]{display:contents}
     <p id="pauseNote" hidden>パーティで遊んでいる間は、あなたが止まっていても仲間の時間は進みます。</p>
     <div class="rlist" id="rlist"></div>
     <button class="cta" id="resumeBtn">再開</button>
+    <div class="btnrow" id="practiceTools" hidden>
+      <button class="ghostbtn" id="prClear" type="button">盤面を空にする</button>
+      <button class="ghostbtn" id="prGarb" type="button">ゴミ列を2段送る</button>
+    </div>
+    <button class="ghostbtn" id="setBtn2" type="button">設定</button>
     <button class="ghostbtn" id="quitBtn">この潜行をあきらめる</button>
+  </div>
+</div>
+
+<div class="ov" id="ovCodex" hidden>
+  <div class="sheet">
+    <h2>図鑑</h2>
+    <p id="codexSum"></p>
+    <div class="tabs" id="codexTabs"></div>
+    <div class="codex" id="codexList"></div>
+    <button class="ghostbtn" id="codexBack" type="button">戻る</button>
+  </div>
+</div>
+
+<div class="ov" id="ovSet" hidden>
+  <div class="sheet">
+    <h2>設定</h2>
+    <div class="setlist" id="setList"></div>
+    <button class="ghostbtn" id="setReset" type="button">初期値に戻す</button>
+    <button class="cta" id="setBack" type="button">閉じる</button>
   </div>
 </div>
 
@@ -587,6 +633,35 @@ const holdC=$('holdC'),hctx=holdC.getContext('2d');
 const nextC=$('nextC'),nctx=nextC.getContext('2d');
 let C=24,DPR=Math.min(2,window.devicePixelRatio||1);
 let S=null;
+/* ---------- settings: sound, controls, motion ---------- */
+const SET_DEF={sfx:70,bgm:45,das:170,arr:50,sdf:35,shake:1};
+let SET={...SET_DEF};
+try{Object.assign(SET,JSON.parse(localStorage.getItem('hyokutsu-set')||'{}'))}catch(e){}
+const saveSet=()=>{try{localStorage.setItem('hyokutsu-set',JSON.stringify(SET))}catch(e){}};
+/* ---------- meta progression: lifetime stats unlock relics ---------- */
+let META={tspin:0,quad:0,pc:0,kills:{},deep:0,tankDeep:0,unlocked:{}};
+try{Object.assign(META,JSON.parse(localStorage.getItem('hyokutsu-meta')||'{}'))}catch(e){}
+const saveMeta=()=>{try{localStorage.setItem('hyokutsu-meta',JSON.stringify(META))}catch(e){}};
+let SEEN={r:{},tf:{},b:{}};
+try{Object.assign(SEEN,JSON.parse(localStorage.getItem('hyokutsu-seen')||'{}'))}catch(e){}
+const saveSeen=()=>{try{localStorage.setItem('hyokutsu-seen',JSON.stringify(SEEN))}catch(e){}};
+const UNLOCKS=[
+  {k:'pcfield',d:'全消しを1回する',ok:()=>META.pc>=1},
+  {k:'tcharm',d:'T-SPINを通算10回決める',ok:()=>META.tspin>=10},
+  {k:'avalanche',d:'4ラインを通算20回決める',ok:()=>META.quad>=20},
+  {k:'goggles',d:'雪女を倒す',ok:()=>!!META.kills['雪女']},
+  {k:'torch',d:'氷柱の大蜘蛛を倒す',ok:()=>!!META.kills['氷柱の大蜘蛛']},
+  {k:'stake',d:'霜の巨人を倒す',ok:()=>!!META.kills['霜の巨人']},
+  {k:'amulet',d:'氷晶の魔女を倒す',ok:()=>!!META.kills['氷晶の魔女']},
+  {k:'anchor',d:'吹雪の双頭鷲を倒す',ok:()=>!!META.kills['吹雪の双頭鷲']},
+  {k:'guard',d:'守護者で地下4階に着く',ok:()=>META.tankDeep>=4},
+  {k:'altar',d:'地下5階に着く（呪われた祭壇が出るようになる）',ok:()=>META.deep>=5,name:'呪われた祭壇'}
+];
+const unlocked=k=>{const u=UNLOCKS.find(x=>x.k===k);return!u||!!META.unlocked[k]};
+function checkUnlocks(){
+  for(const u of UNLOCKS){if(!META.unlocked[u.k]&&u.ok()){META.unlocked[u.k]=1;if(S&&S.mode!=='title'){pop(['解放！',u.name||RELICS[u.k].n],'#f2d06b',1.1);sfx('unlock')}}}
+  saveMeta();
+}
 /* Difficulty presets. "easy" is the balance as of 2026-10-21; add harder presets here with the same keys.
    bossHp:[base, per floor]  strike/bossSk/bossAtk:[start ms, minus per floor, minimum ms]  strikeDmg:[base, per floor]
    cold:[interval ms, base dmg, first floor]  topout: share of max HP lost  xp:[first level, growth]  xpEarly: discount for Lv1,2,3...
@@ -605,7 +680,8 @@ const recKey=(k,d)=>d==='easy'?`hyokutsu-${k}`:`hyokutsu-${k}-${d}`;
 const readRec=(k,d)=>{try{return+localStorage.getItem(recKey(k,d))||0}catch(e){return 0}};
 let best=readRec('best',myDiff),deep=readRec('deep',myDiff);
 function saveBest(){const d=S.diff||'easy';if(S.score>readRec('best',d)){try{localStorage.setItem(recKey('best',d),S.score)}catch(e){}}if(d===myDiff)best=Math.max(best,S.score)}
-function noteDeep(){if(!S)return;const d=S.diff||'easy';if(S.floor>readRec('deep',d)){try{localStorage.setItem(recKey('deep',d),S.floor)}catch(e){}}if(d===myDiff)deep=Math.max(deep,S.floor)}
+function noteDeep(){if(!S||S.practice)return;
+  if(S.floor>META.deep)META.deep=S.floor;if(S.cls==='tank'&&S.floor>META.tankDeep)META.tankDeep=S.floor;checkUnlocks();const d=S.diff||'easy';if(S.floor>readRec('deep',d)){try{localStorage.setItem(recKey('deep',d),S.floor)}catch(e){}}if(d===myDiff)deep=Math.max(deep,S.floor)}
 function renderTitleInfo(){
   best=readRec('best',myDiff);deep=readRec('deep',myDiff);
   $('diffRow').innerHTML=DIFF_KEYS.map(k=>`<button type="button" class="dbtn${k===myDiff?' on':''}" data-d="${k}" title="${DIFFS[k].d}">${DIFFS[k].n}</button>`).join('');
@@ -757,7 +833,7 @@ function spawn(){
   S.cur=makePiece(t);S.canHold=true;S.lockAcc=0;S.lockResets=0;S.dropAcc=0;S.lastRot=false;
   if(collide(S.cur.m,S.cur.x,S.cur.y))topOut();
 }
-function newRun(coop,epoch,cls,diff){
+function newRun(coop,epoch,cls,diff,practice){
   const c=clsOf(cls);
   const allyN=coop&&NET?Math.min(MAXP-1,NET.others.length):0;
   const mhp=c.hp+(c.hpAlly||0)*allyN;
@@ -777,6 +853,11 @@ function newRun(coop,epoch,cls,diff){
   const sk=S.cls==='heal'||S.cls==='buff';
   $('skillRow').hidden=!sk;
   if(sk){$('skillBar').style.background=c.col}
+  if(practice){
+    S.practice=true;S.relics={ghost:1,hold:1,next:2};S.timeLeft=Infinity;renderRelics();layout();hud(true);
+    S.mode='play';spawn();pop(['練習モード'],'#8fe3ff',1.1);$('practiceTools').hidden=false;return;
+  }
+  $('practiceTools').hidden=true;
   layout();hud(true);
   openReward(true);
 }
@@ -784,7 +865,7 @@ function newRun(coop,epoch,cls,diff){
 /* ---------- actions ---------- */
 const grounded=()=>collide(S.cur.m,S.cur.x,S.cur.y+1);
 function moveReset(){if(grounded()&&S.lockResets<15){S.lockAcc=0;S.lockResets++}}
-function move(dx){if(!collide(S.cur.m,S.cur.x+dx,S.cur.y)){S.cur.x+=dx;S.lastRot=false;moveReset()}}
+function move(dx){if(!collide(S.cur.m,S.cur.x+dx,S.cur.y)){S.cur.x+=dx;S.lastRot=false;moveReset();sfx('move');return true}return false}
 // SRS kick tables (guideline). Written with y pointing down, so the usual tables' y signs are flipped.
 const SRS_JLSTZ={'01':[[0,0],[-1,0],[-1,-1],[0,2],[-1,2]],'10':[[0,0],[1,0],[1,1],[0,-2],[1,-2]],
   '12':[[0,0],[1,0],[1,1],[0,-2],[1,-2]],'21':[[0,0],[-1,0],[-1,-1],[0,2],[-1,2]],
@@ -798,7 +879,7 @@ function rotate(dir){
   const p=S.cur;if(p.t==='O'||p.m.length===1)return;
   const nm=rot(p.m,dir);
   const to=(p.r+dir+4)%4,kicks=(p.t==='I'?SRS_I:SRS_JLSTZ)[p.r+''+to];
-  for(let i=0;i<kicks.length;i++){const[kx,ky]=kicks[i];if(!collide(nm,p.x+kx,p.y+ky)){p.m=nm;p.x+=kx;p.y+=ky;p.r=to;S.lastRot=true;S.lastKick=i;moveReset();return}}
+  for(let i=0;i<kicks.length;i++){const[kx,ky]=kicks[i];if(!collide(nm,p.x+kx,p.y+ky)){p.m=nm;p.x+=kx;p.y+=ky;p.r=to;S.lastRot=true;S.lastKick=i;moveReset();sfx('rotate');return}}
 }
 function soft(){if(!grounded()){S.cur.y++;S.score+=1;S.dropAcc=0;S.lastRot=false}}
 function hard(){
@@ -812,6 +893,7 @@ function hard(){
     S.fx.push({k:'trail',cols:Object.values(cols),c:COL[p.t],t:0});
     shake(Math.min(4,1+d/5),110);
   }
+  if(d>0)sfx('hard');
   S.score+=2*d;lockPiece();
 }
 function hold(){
@@ -828,6 +910,7 @@ function act(a){
 
 /* ---------- rules ---------- */
 function gainXp(raw){
+  if(S.practice)return;
   S.xp+=Math.round(raw*(1+0.3*lv('wisdom'))*(buffOn()?1.5:1)*(lv('c_eye')?1.5:1));
   while(S.xp>=xpNeed(S.level+S.pendingLv)){S.xp-=xpNeed(S.level+S.pendingLv);S.pendingLv++}
 }
@@ -921,7 +1004,7 @@ function lockPiece(){
     const nx=p.x+c,ny=p.y+r;
     if(ny<0)over=true;else{S.board[ny][nx]=p.t;placed.push([nx,ny])}
   }
-  S.fx.push({k:'lock',cells:placed,t:0});
+  S.fx.push({k:'lock',cells:placed,t:0});sfx('lock');
   if(p.t==='B'&&!over){
     let n=0;
     for(let y=p.y-1;y<=p.y+1;y++)for(let x=p.x-1;x<=p.x+1;x++){
@@ -973,6 +1056,8 @@ function lockPiece(){
     if(S.combo>0)lines.push(`${S.combo} REN`);
     if(pc){lines.unshift('全消し！');color='#f2d06b';size=1.4}
     if(lines.length)pop(lines,color,size);
+    sfx(pc?'pc':ts?'tspin':n===4?'quad':'clear'+Math.min(3,n));
+    if(!S.practice){if(ts)META.tspin++;if(n===4)META.quad++;if(pc)META.pc++;if(ts||n===4||pc)checkUnlocks()}
     if(hardClear||pc)shake(pc?7:n===4||ts==='full'?5:3,220);
     if(S.boss&&!S.boss.dead){
       const det=bossDmgDetail(n,ts,b2b,pc),dmg=Math.round(det.d*(dt?1.3:1));
@@ -1014,7 +1099,7 @@ function addGarbage(n){
   return over;
 }
 const GARBAGE_DELAY=2600;
-function queueGarbage(rows){if(rows>0)S.incoming.push({rows,at:nowT()+GARBAGE_DELAY})}
+function queueGarbage(rows){if(rows>0){S.incoming.push({rows,at:nowT()+GARBAGE_DELAY});sfx('warn')}}
 function garbageTick(){
   while(S.incoming.length&&nowT()>=S.incoming[0].at){
     const g=S.incoming.shift();
@@ -1053,11 +1138,12 @@ function applyDamage(n,pierce){
   const ab=Math.min(S.shield,n);S.shield-=ab;n-=ab;
   S.hp-=n;S.hitsTaken+=n;
   S.fx.push({k:ab&&!n?'block':'hurt',t:0});
-  if(n)shake(Math.min(7,3+n/4),260);
+  if(n){shake(Math.min(7,3+n/4),260);sfx('hurt')}else sfx('block');
   hud(true);
   return{dead:S.hp<=0,taken:n,absorbed:ab};
 }
 function topOut(){
+  if(S.practice){S.board=emptyBoard();S.combo=-1;toast('盤面リセット');spawn();return}
   const r=applyDamage(topoutDmg(),true);
   if(r.dead){S.cause='天井に届いた';gameOver();return}
   if(lv('bulwark')){
@@ -1075,7 +1161,7 @@ function takeHit(n,why){
   toast(r.taken?`${why} HP-${r.taken}`:`${why}　シールドで吸収`);
 }
 function hpTick(dt){
-  if(S.mode!=='play')return;
+  if(S.mode!=='play'||S.practice)return;
   if(lv('regen')||tf('癒')){S.regenAcc+=dt;if(S.regenAcc>=10000){S.regenAcc-=10000;heal(lv('regen')+(tf('癒')?1:0))}}
   const b=S.boss&&!S.boss.dead?S.boss:null;
   if(b){
@@ -1100,7 +1186,7 @@ function useSkill(){
   const c=clsOf(S.cls),need=skNeed();
   if((S.skCharge||0)<need){if(!S.skMsg||nowT()-S.skMsg>900){S.skMsg=nowT();toast(`${c.sk.n}：あと${need-S.skCharge}列`)}return}
   S.skCharge=0;S.skUses++;
-  pop([c.sk.n],c.col,1.25);shake(4,200);
+  pop([c.sk.n],c.col,1.25);shake(4,200);sfx('skill');
   S.lastSkAt=nowT();if(NET&&NET.lastAllySk&&nowT()-NET.lastAllySk.t<3000)linkSkill(NET.lastAllySk.who);
   if(S.cls==='tank'){S.immuneUntil=nowT()+wallMs();addShield(wallSh());S.fx.push({k:'block',t:0})}
   else if(S.cls==='heal'){
@@ -1128,7 +1214,7 @@ function useSkill(){
 // link skill: you and an ally fire skills within 3 seconds of each other
 function linkSkill(who){
   if(nowT()-S.lastLinkAt<3000)return;S.lastLinkAt=nowT();
-  pop(['連携技！',`${clsOf(S.cls).sk.n}×${who}`],'#8fe3ff',1.3);shake(6,300);
+  sfx('link');pop(['連携技！',`${clsOf(S.cls).sk.n}×${who}`],'#8fe3ff',1.3);shake(6,300);
   addShield(10);
   if(S.boss&&!S.boss.dead){const d=Math.round(S.boss.max*0.06);S.boss.myDmg+=d;S.fx.push({k:'hit',t:0});dmgNum(d,true,'連携')}
 }
@@ -1177,7 +1263,7 @@ function makeBoss(id,name,max){
   const sk=BOSS_SK[(id-1)%BOSS_SK.length];
   const b={id,name,max,hp:max,atk:0,myDmg:0,dead:false,sk,sk2:BOSS_SK[id%7]===sk?'bite':BOSS_SK[id%7],skAcc:0,skN:0,warned:false,p2:false};
   if(S.weaken){b.myDmg=Math.round(max*0.3);S.weaken=false}
-  S.boss=b;S.hitAcc=0;floorShield();pop(['BOSS',name],'#ff6f7f',1.15);shake(5,300);hud(true);
+  S.boss=b;S.hitAcc=0;floorShield();pop(['BOSS',name],'#ff6f7f',1.15);sfx('boss');shake(5,300);hud(true);
 }
 function spawnBoss(){
   const n=1+aliveAllies().length-(S.mode==='over'?1:0);
@@ -1202,6 +1288,7 @@ function bossHpTick(){
 function bossDefeated(){
   const name=S.boss.name;
   S.bossKills++;
+  SEEN.b[name]=1;saveSeen();if(!S.practice){META.kills[name]=(META.kills[name]||0)+1;checkUnlocks()}
   S.score+=Math.round(1000*S.floor*mult());
   heal(killHeal()*(tf('癒')?2:1));
   let g=earn(15+4*S.floor);
@@ -1213,7 +1300,7 @@ function bossDefeated(){
   // short victory beat before menus open
   if(S.mode==='play'){
     S.mode='cele';
-    pop([name,'撃破！'],'#f2d06b',1.35);shake(6,320);
+    pop([name,'撃破！'],'#f2d06b',1.35);shake(6,320);sfx('kill');
     for(let y=H-1;y>=H-6;y--)burst(y,Array(W).fill('O'),1);
     setTimeout(()=>{if(S&&S.mode==='cele'){S.mode='play';finishBoss()}},1200);
     return;
@@ -1230,7 +1317,7 @@ function finishBoss(){
 }
 function afterBoss(){
   if(S.mode==='reward'){S.afterReward='shop';return}
-  if(!S.altarDone){S.altarDone=true;const offer=shuffle(Object.keys(RELICS).filter(k=>RELICS[k].cursed&&!lv(k))).slice(0,3);if(offer.length){openAltar(offer);return}}
+  if(!S.altarDone&&unlocked('altar')&&!S.practice){S.altarDone=true;const offer=shuffle(Object.keys(RELICS).filter(k=>RELICS[k].cursed&&!lv(k))).slice(0,3);if(offer.length){openAltar(offer);return}}
   if(S.pendingLv){S.afterReward='shop';openReward(false)}else openShop();
 }
 function openAltar(keys){
@@ -1259,7 +1346,7 @@ function pickRelics(n,ok){
   const pool=Object.keys(RELICS).filter(k=>{
     const r=RELICS[k];
     if(r.only&&r.only!==S.cls)return false;
-    if(r.cursed)return false;
+    if(r.cursed||!unlocked(k))return false;
     if(r.duo){if(!S.coop||!r.duo.includes(S.cls)||!partyHas(r.duo.find(c=>c!==S.cls)))return false}
     return lv(k)<r.max&&ok(k);
   });
@@ -1273,7 +1360,7 @@ function pickRelics(n,ok){
   return out;
 }
 function relicCardHtml(k,extra){
-  const r=RELICS[k];
+  const r=RELICS[k];if(!SEEN.r[k]){SEEN.r[k]=1;saveSeen()}
   const lvTxt=!r.once&&lv(k)?`Lv${lv(k)}→${lv(k)+1}`:'';
   const ct=r.cursed?`<span class="ct" style="color:#c58cff">代償つき</span>`:r.duo?`<span class="ct duo">デュオ <b style="color:${CLASSES[r.duo[0]].col}">${CLASSES[r.duo[0]].n}</b>×<b style="color:${CLASSES[r.duo[1]].col}">${CLASSES[r.duo[1]].n}</b></span>`:
     r.c?`<span class="ct" style="color:${CLASSES[r.c].col}">${r.only?CLASSES[r.c].n+'専用':CLASSES[r.c].role+'向け'}</span>`:'';
@@ -1329,7 +1416,7 @@ function checkTransform(){
 }
 function announceTransform(){
   if(!S.tfNew)return;const t=S.tfNew;S.tfNew=null;
-  pop(['変身！',TAGS[t].tf],TAGS[t].col,1.3);shake(5,300);toast(TAGS[t].d);
+  pop(['変身！',TAGS[t].tf],TAGS[t].col,1.3);shake(5,300);toast(TAGS[t].d);sfx('transform');SEEN.tf[t]=1;saveSeen();
   renderRelics();layout();
 }
 function openSkillUp(ti){
@@ -1353,7 +1440,7 @@ function pickRelic(k,first){
   levelPicked();
 }
 function levelPicked(){
-  S.pendingLv--;S.level++;hud(true);
+  S.pendingLv--;S.level++;hud(true);sfx('level');
   if(S.pendingLv>0){openReward(false);return}
   if(S.afterReward==='shop'){S.afterReward=null;S.mode='play';afterBoss();return}
   resumePlay();
@@ -1401,7 +1488,7 @@ function renderShop(){
 function buy(i){
   const it=S.shop.items[i];
   if(it.sold||S.gold<it.price)return;
-  S.gold-=it.price;it.sold=true;
+  S.gold-=it.price;it.sold=true;sfx('buy');
   if(it.kind==='relic'||it.kind==='up'){applyRelic(it.k);announceTransform()}
   else if(it.kind==='heal')heal(15);
   else if(it.kind==='charm')addShield(20);
@@ -1482,6 +1569,7 @@ function pause(){
   if(S.mode!=='play')return;
   S.mode='pause';
   $('pauseNote').hidden=!coopOn();
+  $('quitBtn').textContent=S.practice?'練習をやめる':'この潜行をあきらめる';$('practiceTools').hidden=!S.practice;
   const keys=Object.keys(S.relics);
   const c=clsOf(S.cls);
   const ups=[0,1].filter(i=>su(i)).map(i=>SKUP[S.cls][i]['AB'.indexOf(su(i))]);
@@ -1495,6 +1583,60 @@ function pause(){
   show('ovPause');
 }
 function resume(){hide('ovPause');resumePlay()}
+/* ---------- sound ---------- */
+let AC=null,SFXG=null,BGMG=null,bgmTimer=0,bgmStep=0,bgmNext=0;
+function audioInit(){
+  if(AC)return;
+  try{AC=new (window.AudioContext||window.webkitAudioContext)();SFXG=AC.createGain();BGMG=AC.createGain();SFXG.connect(AC.destination);BGMG.connect(AC.destination);applyVol();bgmStart()}catch(e){AC=null}
+}
+function applyVol(){if(!AC)return;SFXG.gain.value=(SET.sfx/100)*0.5;BGMG.gain.value=(SET.bgm/100)*0.22}
+function tone(f,d,type,v,slide,at){
+  if(!AC||!SET.sfx)return;const t=(at||AC.currentTime);
+  const o=AC.createOscillator(),g=AC.createGain();o.type=type||'square';o.frequency.setValueAtTime(f,t);
+  if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f*slide),t+d);
+  g.gain.setValueAtTime(v||0.3,t);g.gain.exponentialRampToValueAtTime(0.001,t+d);o.connect(g);g.connect(SFXG);o.start(t);o.stop(t+d+0.02);
+}
+function noise(d,v,hp){
+  if(!AC||!SET.sfx)return;const t=AC.currentTime,n=AC.createBufferSource(),b=AC.createBuffer(1,Math.ceil(AC.sampleRate*d),AC.sampleRate),a=b.getChannelData(0);
+  for(let i=0;i<a.length;i++)a[i]=Math.random()*2-1;n.buffer=b;const g=AC.createGain(),f=AC.createBiquadFilter();f.type='highpass';f.frequency.value=hp||800;
+  g.gain.setValueAtTime(v||0.25,t);g.gain.exponentialRampToValueAtTime(0.001,t+d);n.connect(f);f.connect(g);g.connect(SFXG);n.start(t);
+}
+const SFX={
+  move:()=>tone(660,0.03,'square',0.06),rotate:()=>tone(880,0.04,'triangle',0.08),hold:()=>tone(520,0.06,'triangle',0.1,1.4),
+  lock:()=>{noise(0.05,0.12,1500);tone(140,0.06,'sine',0.2)},hard:()=>{noise(0.08,0.2,600);tone(90,0.1,'sine',0.35)},
+  clear1:()=>tone(784,0.12,'square',0.14,1.5),clear2:()=>{tone(784,0.1,'square',0.14);tone(988,0.14,'square',0.14,1.3,AC&&AC.currentTime+0.06)},
+  clear3:()=>[784,988,1175].forEach((f,i)=>tone(f,0.12,'square',0.14,1,AC&&AC.currentTime+i*0.05)),
+  quad:()=>[523,659,784,1047].forEach((f,i)=>tone(f,0.16,'square',0.16,1,AC&&AC.currentTime+i*0.06)),
+  tspin:()=>{tone(392,0.08,'sawtooth',0.12,2);[784,1047,1319].forEach((f,i)=>tone(f,0.14,'triangle',0.16,1,AC&&AC.currentTime+0.08+i*0.06))},
+  pc:()=>[523,659,784,1047,1319,1568].forEach((f,i)=>tone(f,0.2,'triangle',0.15,1,AC&&AC.currentTime+i*0.07)),
+  hurt:()=>{noise(0.18,0.25,300);tone(180,0.2,'sawtooth',0.18,0.5)},block:()=>tone(1400,0.08,'triangle',0.12,0.7),
+  boss:()=>[110,104,98].forEach((f,i)=>tone(f,0.35,'sawtooth',0.2,1,AC&&AC.currentTime+i*0.18)),
+  kill:()=>[392,523,659,784,1047].forEach((f,i)=>tone(f,0.22,'square',0.15,1,AC&&AC.currentTime+i*0.08)),
+  level:()=>[659,784,988].forEach((f,i)=>tone(f,0.12,'triangle',0.15,1,AC&&AC.currentTime+i*0.07)),
+  skill:()=>{tone(330,0.25,'sawtooth',0.15,3);noise(0.2,0.1,2000)},transform:()=>[392,494,587,784,988].forEach((f,i)=>tone(f,0.18,'triangle',0.16,1,AC&&AC.currentTime+i*0.06)),
+  buy:()=>{tone(1319,0.06,'square',0.1);tone(1760,0.1,'square',0.1,1,AC&&AC.currentTime+0.05)},warn:()=>tone(220,0.12,'square',0.12,0.8),
+  unlock:()=>[784,1047,1568].forEach((f,i)=>tone(f,0.2,'triangle',0.16,1,AC&&AC.currentTime+i*0.09)),
+  link:()=>[523,784,1047,1568].forEach((f,i)=>tone(f,0.15,'square',0.14,1,AC&&AC.currentTime+i*0.04))
+};
+function sfx(k){try{if(AC&&SFX[k])SFX[k]()}catch(e){}}
+// generative BGM: a calm pentatonic loop while exploring, a darker faster one in boss fights
+const BGM_EXP={tempo:0.21,root:[0,0,-3,-5],scale:[0,2,4,7,9,12,14,16]};
+const BGM_BOSS={tempo:0.16,root:[0,-2,-4,-5],scale:[0,3,5,7,10,12,15,17]};
+function bgmStart(){if(bgmTimer)return;bgmNext=AC.currentTime+0.1;bgmTimer=setInterval(bgmTick,60)}
+function bgmTick(){
+  if(!AC||!SET.bgm||!S||S.mode==='title'){bgmNext=AC?AC.currentTime+0.1:0;return}
+  const P=S.boss&&!S.boss.dead?BGM_BOSS:BGM_EXP;
+  while(bgmNext<AC.currentTime+0.25){
+    const bar=(bgmStep>>3)%4,st=bgmStep%8,root=220*Math.pow(2,P.root[bar]/12);
+    const mel=[0,2,4,2,5,4,2,1][(st+bar)%8];
+    if(st%2===0){const f=root*Math.pow(2,P.scale[(mel+bar)%P.scale.length]/12);btone(f,P.tempo*1.6,'triangle',0.5)}
+    if(st===0||st===4)btone(root/2,P.tempo*3.5,'sine',0.7);
+    if(S.boss&&!S.boss.dead&&st%2===1)btone(root*2*Math.pow(2,P.scale[(st+bar*2)%P.scale.length]/12),P.tempo*0.6,'square',0.18);
+    bgmNext+=P.tempo;bgmStep++;
+  }
+}
+function btone(f,d,type,v){const o=AC.createOscillator(),g=AC.createGain(),t=bgmNext;o.type=type;o.frequency.value=f;g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(v,t+0.02);g.gain.exponentialRampToValueAtTime(0.001,t+d);o.connect(g);g.connect(BGMG);o.start(t);o.stop(t+d+0.05)}
+addEventListener('pointerdown',audioInit,{once:true});addEventListener('keydown',audioInit,{once:true});
 /* ---------- juice: callouts, particles, shake ---------- */
 const RM=(()=>{try{return matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){return false}})();
 function pop(lines,color,size){
@@ -1514,19 +1656,56 @@ function burst(y,row,mul){
   }
   if(P.length>400)P.splice(0,P.length-400);
 }
-function shake(mag,dur){if(RM)return;S.shake={mag,dur,t:0}}
+function shake(mag,dur){if(RM||!SET.shake)return;S.shake={mag,dur,t:0}}
 let toastT=0;
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),1300)}
 function toTitle(){
   if(NET&&NET.room){try{NET.room.leave()}catch(e){}}
   NET=null;
-  ['ovOver','ovPause','ovShop','ovReward','ovWait','ovCoop','ovClass','ovWin'].forEach(hide);
+  ['ovOver','ovPause','ovShop','ovReward','ovWait','ovCoop','ovClass','ovWin','ovCodex','ovSet'].forEach(hide);
+  $('practiceTools').hidden=true;
   demo();$('partyBox').hidden=true;$('clsChip').hidden=true;$('skillRow').hidden=true;$('buffTag').hidden=true;layout();
   renderTitleInfo();
   show('ovTitle');
 }
 
 /* ---------- class pickers ---------- */
+/* ---------- codex ---------- */
+let codexTab='relic';
+function openCodex(){hide('ovTitle');renderCodex();show('ovCodex')}
+function renderCodex(){
+  const tabs=[['relic','遺物'],['tf','変身'],['boss','ボス'],['duo','デュオ'],['cursed','代償つき']];
+  $('codexTabs').innerHTML=tabs.map(([k,n])=>`<button type="button" data-k="${k}" class="${k===codexTab?'on':''}">${n}</button>`).join('');
+  $('codexTabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{codexTab=b.dataset.k;renderCodex()});
+  const lockOf=k=>UNLOCKS.find(u=>u.k===k&&!META.unlocked[k]);
+  let rows=[];
+  if(codexTab==='tf')rows=Object.keys(TAGS).map(t=>({seen:!!SEEN.tf[t],g:t,col:TAGS[t].col,n:TAGS[t].tf,d:`${t}タグの遺物を3つ集める：${TAGS[t].d}`}));
+  else if(codexTab==='boss')rows=BOSSES.map((n,i)=>{const k=BOSS_SK[i];return{seen:!!SEEN.b[n],g:`B${i+1}`,col:'#ff6f7f',n,d:k==='king'?'すべてのスキルを順に使う':`スキル「${BSK[k].n}」：${BSK[k].d}`}});
+  else{
+    const keys=Object.keys(RELICS).filter(k=>k!=='potion'&&(codexTab==='duo'?RELICS[k].duo:codexTab==='cursed'?RELICS[k].cursed:!RELICS[k].duo&&!RELICS[k].cursed));
+    rows=keys.map(k=>{const r=RELICS[k],l=lockOf(k);return{seen:!!SEEN.r[k],g:r.g,col:relicCol(r),n:r.n,d:(l?`【未解放：${l.d}】`:'')+r.d+(r.t?`（${r.t}）`:''),locked:!!l}});
+  }
+  const seenN=rows.filter(r=>r.seen).length;
+  $('codexSum').textContent=`見つけた数 ${seenN} / ${rows.length}。解放した遺物 ${Object.keys(META.unlocked).length} / ${UNLOCKS.length}`;
+  $('codexList').innerHTML=rows.map(r=>r.seen?`<div class="cx${r.locked?' locked':''}"><b style="color:${r.col}">${esc(r.g)}</b><span>${esc(r.n)}</span><small>${esc(r.d)}</small></div>`
+    :`<div class="cx locked"><b>？</b><span>？？？</span><small>${r.locked?esc(r.d.match(/【.*?】/)?.[0]||'まだ見つけていない'):'まだ見つけていない'}</small></div>`).join('');
+}
+/* ---------- settings ---------- */
+let setFrom='ovTitle';
+const SET_UI=[
+  ['sfx','効果音','%',0,100,5,''],['bgm','BGM','%',0,100,5,''],
+  ['das','移動の連射が始まるまで','ms',50,300,10,'左右を押しっぱなしにしてから連射が始まるまでの時間（DAS）'],
+  ['arr','移動の連射の間隔','ms',0,100,5,'0にすると押しっぱなしで壁まで一気に動く（ARR）'],
+  ['sdf','ソフトドロップの速さ','ms',10,80,5,'小さいほど速く落ちる']
+];
+function openSettings(from){setFrom=from;hide(from);renderSettings();show('ovSet')}
+function renderSettings(){
+  $('setList').innerHTML=SET_UI.map(([k,n,u,mn,mx,st,d])=>`<div class="setrow"><label for="set-${k}">${n}</label><output id="out-${k}">${SET[k]}${u}</output><input type="range" id="set-${k}" min="${mn}" max="${mx}" step="${st}" value="${SET[k]}">${d?`<small>${d}</small>`:''}</div>`).join('')+
+    `<div class="setrow"><label for="set-shake">画面の揺れ</label><input type="checkbox" id="set-shake" ${SET.shake?'checked':''}></div>`;
+  SET_UI.forEach(([k,,u])=>{$('set-'+k).oninput=e=>{SET[k]=+e.target.value;$('out-'+k).textContent=SET[k]+u;saveSet();applyVol();if(k==='sfx')sfx('rotate')}});
+  $('set-shake').onchange=e=>{SET.shake=e.target.checked?1:0;saveSet()};
+}
+$('setReset').onclick=()=>{SET={...SET_DEF};saveSet();applyVol();renderSettings()};
 function openClassPick(){
   hide('ovTitle');
   const box=$('classCards');box.innerHTML='';
@@ -1534,7 +1713,7 @@ function openClassPick(){
     const c=CLASSES[k],b=document.createElement('button');
     b.type='button';b.className='card clscard';b.style.color=c.col;
     b.innerHTML=`<span class="g" style="background:${c.col}">${ico(k,'#0b1320',0,36)}</span><span class="n" style="color:var(--fg)">${c.n}<span class="ct" style="color:${c.col}">${c.role}</span></span><span class="d">${c.d}<br><b style="color:${c.col}">スキル「${c.sk.n}」</b> ${c.sk.d}</span>`;
-    b.onclick=()=>{hide('ovClass');newRun(false,0,k,myDiff)};
+    b.onclick=()=>{hide('ovClass');const pr=pickMode==='practice';pickMode='run';newRun(false,0,k,myDiff,pr)};
     box.appendChild(b);
   }
   show('ovClass');
@@ -1573,6 +1752,7 @@ function hud(force){
   $('phase').classList.toggle('bossing',!!b);
   $('phaseBarWrap').classList.toggle('boss',!!b);
   if(b){setText('phaseLbl',b.name+(b.p2&&!b.dead?'・第2形態':''));setW('phaseBar',b.hp/b.max*100);setText('phaseVal',b.dead?'討伐':`${b.hp} / ${b.max}`)}
+  else if(S.practice){setText('phaseLbl','練習モード（ボスなし・ダメージなし）');setW('phaseBar',100);setText('phaseVal','∞')}
   else{setText('phaseLbl','ボスまで');setW('phaseBar',S.timeLeft/STAGE_MS*100);setText('phaseVal',fmtTime(S.timeLeft))}
   if(S.cls==='heal'){setText('skillLbl','癒し');setW('skillBar',S.skillLines/healNeed()*100);setText('skillVal',`${S.skillLines}/${healNeed()}`)}
   else if(S.cls==='buff'){
@@ -2093,22 +2273,33 @@ function hostStart(){
 }
 
 /* ---------- input ---------- */
+// held left/right/soft use DAS (delay) then ARR (repeat); ARR 0 slides to the wall at once
+const held={};
+function startRepeat(a,src){
+  stopRepeat(a);
+  const rep=()=>{if(a==='soft')act('soft');else if(SET.arr<=0){if(S&&S.mode==='play')while(move(a==='left'?-1:1)){}}else act(a)};
+  held[a]={src,t1:setTimeout(()=>{rep();held[a].t2=setInterval(rep,a==='soft'?SET.sdf:Math.max(16,SET.arr))},a==='soft'?Math.min(90,SET.das):SET.das)};
+}
+function stopRepeat(a){const h=held[a];if(h){clearTimeout(h.t1);clearInterval(h.t2);delete held[a]}}
 const keymap={ArrowLeft:'left',ArrowRight:'right',ArrowDown:'soft',ArrowUp:'cw',x:'cw',X:'cw',z:'ccw',Z:'ccw',' ':'hard',c:'hold',C:'hold',Shift:'hold',a:'skill',A:'skill',v:'skill',V:'skill'};
 addEventListener('keydown',e=>{
   if(e.target&&e.target.tagName==='INPUT')return;
   if(e.key==='p'||e.key==='P'||e.key==='Escape'){S&&S.mode==='pause'?resume():pause();e.preventDefault();return}
   const a=keymap[e.key];if(!a||!S||S.mode!=='play')return;
   e.preventDefault();
-  if((a==='hard'||a==='hold'||a==='cw'||a==='ccw'||a==='skill')&&e.repeat)return;
+  if(e.repeat)return;
   act(a);
+  if(a==='left'||a==='right'||a==='soft'){if(a!=='soft')stopRepeat(a==='left'?'right':'left');startRepeat(a,'key')}
 });
+addEventListener('keyup',e=>{const a=keymap[e.key];if(a&&held[a]&&held[a].src==='key')stopRepeat(a)});
+addEventListener('blur',()=>Object.keys(held).forEach(stopRepeat));
 const REPEAT={left:1,right:1,soft:1};
 document.querySelectorAll('#pad button').forEach(b=>{
-  const a=b.dataset.a;let t1=0,t2=0;
-  const stop=()=>{clearTimeout(t1);clearInterval(t2);b.classList.remove('down')};
+  const a=b.dataset.a;
+  const stop=()=>{stopRepeat(a);b.classList.remove('down')};
   b.addEventListener('pointerdown',e=>{
     e.preventDefault();b.classList.add('down');act(a);
-    if(REPEAT[a]){t1=setTimeout(()=>{t2=setInterval(()=>act(a),a==='soft'?35:50)},a==='soft'?90:170)}
+    if(REPEAT[a])startRepeat(a,'pad');
     try{b.setPointerCapture(e.pointerId)}catch(_){}
   });
   ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>b.addEventListener(ev,stop));
@@ -2118,9 +2309,18 @@ $('pauseBtn').onclick=()=>S&&S.mode==='pause'?resume():pause();
 $('resumeBtn').onclick=resume;
 $('rerollBtn').onclick=reroll;
 $('leaveBtn').onclick=leaveShop;
-$('quitBtn').onclick=()=>{hide('ovPause');gameOver()};
-$('startBtn').onclick=openClassPick;
-$('classBack').onclick=()=>{hide('ovClass');show('ovTitle')};
+$('quitBtn').onclick=()=>{hide('ovPause');if(S&&S.practice){toTitle();return}gameOver()};
+$('prClear').onclick=()=>{S.board=emptyBoard();S.incoming=[];resume()};
+$('prGarb').onclick=()=>{resume();queueGarbage(2)};
+let pickMode='run';
+$('practiceBtn').onclick=()=>{pickMode='practice';openClassPick()};
+$('codexBtn').onclick=openCodex;
+$('setBtn').onclick=()=>openSettings('ovTitle');
+$('setBtn2').onclick=()=>openSettings('ovPause');
+$('codexBack').onclick=()=>{hide('ovCodex');show('ovTitle')};
+$('setBack').onclick=()=>{hide('ovSet');show(setFrom)};
+$('startBtn').onclick=()=>{pickMode='run';openClassPick()};
+$('classBack').onclick=()=>{pickMode='run';hide('ovClass');show('ovTitle')};
 $('againBtn').onclick=()=>{if(S&&S.coop){toTitle()}else{hide('ovOver');openClassPick()}};
 $('watchBtn').onclick=()=>{hide('ovOver');S.watching=true};
 $('deeperBtn').onclick=()=>{hide('ovWin');S.endless=true;S.mode=S.winFrom==='reward'?'reward':'play';if(S.mode==='reward'){show('ovReward');S.afterReward='shop'}else afterBoss()};
@@ -2160,7 +2360,7 @@ function frame(now){
   }
   if(S&&S.mode!=='title'){
     // solo: the clock stops behind menus. party: the leader's clock keeps running for everyone.
-    const timerRuns=S.phase==='play'&&isAuthority()&&(S.coop?(S.mode!=='over'||anyAllyAlive()):S.mode==='play');
+    const timerRuns=!S.practice&&S.phase==='play'&&isAuthority()&&(S.coop?(S.mode!=='over'||anyAllyAlive()):S.mode==='play');
     if(timerRuns&&!S.boss){S.timeLeft-=dt;if(S.timeLeft<=0){S.timeLeft=0;spawnBoss()}}
     if(S.mode==='play'&&S.boss&&!S.boss.dead&&!frozen()){
       const b=S.boss;
