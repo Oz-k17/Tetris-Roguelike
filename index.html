@@ -213,6 +213,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .howto .rules{margin-bottom:10px}
 .btnrow.stack{grid-template-columns:1fr}
 .btnrow.three{grid-template-columns:repeat(3,1fr)}
+.routepath{display:flex;flex-wrap:wrap;gap:4px;font-size:12px;color:var(--muted)}
+.routepath span{padding:1px 8px;border:1px solid var(--line);border-radius:10px}
+.card.node .g{font-family:var(--display);font-size:24px;border-color:currentColor}
 .fbtn{position:absolute;z-index:4;border:1px solid var(--line);background:rgba(19,32,47,.92);color:var(--fg);font-family:var(--body);font-size:12px;font-weight:700;border-radius:14px;height:28px;padding:0 10px;cursor:pointer}
 .fbtn.emo{top:12px;right:6px}
 .fbtn.cheer{left:50%;bottom:16px;transform:translateX(-50%);height:40px;padding:0 18px;font-size:14px;border-color:var(--gold);color:var(--gold)}
@@ -352,6 +355,7 @@ i[data-ico]{display:contents}
       <li>ボスはそれぞれ固有のスキルを持つ。盤面上の紫の線が満ちると発動</li>
       <li>遺物には「刃・盾・癒・富・爆・技」のタグがある。同じタグの遺物を3つ集めると「化身」に変身する</li>
       <li>ボスのゴミ列は少し遅れてせり上がる。盤面左の赤い線が予告で、その間にラインを消すと相殺できる。ボスはHPが半分を切ると第2形態になる</li>
+      <li>マップ「分岐の氷窟」では、階の間でエリート・イベント・休憩所・宝箱・行商人から道を選ぶ</li>
       <li>パーティでは「スタンプ」（1〜4キー）で気持ちを伝えられる。倒れても「応援を送る」で仲間を支えられる</li>
       <li>Lv5・Lv10・Lv15ではクラススキルの強化を2択で選ぶ。パーティでは、仲間のクラスとの組み合わせで出る「デュオ遺物」がある</li>
       <li>ボスへのダメージは「（基本値＋＋ダメージ）×各倍率」。遺物の「＋ダメージ」「×ダメージ」の印で見分けられる</li>
@@ -364,6 +368,7 @@ i[data-ico]{display:contents}
     </ol>
     <div class="keys">キーボード：←→ 移動 / ↓ ソフト / Space ハード / Z・X(↑) 回転 / C ホールド / A スキル / P 一時停止</div>
     </details>
+    <div class="diff"><span class="lbl">マップ</span><div class="diffrow" id="mapRow"></div><span class="dnote" id="mapNote"></span></div>
     <div class="diff"><span class="lbl">難易度</span><div class="diffrow" id="diffRow"></div><span class="dnote" id="diffNote"></span></div>
     <div class="btnrow stack">
       <button class="cta" id="startBtn">ひとりで潜る</button>
@@ -450,6 +455,15 @@ i[data-ico]{display:contents}
     </div>
     <button class="ghostbtn" id="setBtn2" type="button">設定</button>
     <button class="ghostbtn" id="quitBtn">この潜行をあきらめる</button>
+  </div>
+</div>
+
+<div class="ov" id="ovRoute" hidden>
+  <div class="sheet">
+    <h2>分かれ道</h2>
+    <p id="routeSub">次の階へ降りる前に、進む道を選ぶ</p>
+    <div class="routepath" id="routePath"></div>
+    <div class="cards" id="routeCards"></div>
   </div>
 </div>
 
@@ -686,6 +700,10 @@ const DIFFS={
     xp:[280,1.18],xpEarly:[0.5,0.6,0.7,0.85,0.95],bossSk:[26000,1200,15000],bossAtk:[9000,700,3500],gravity:0.85}
 };
 const DIFF_KEYS=Object.keys(DIFFS);
+const MAPS={line:{n:'一本道の氷窟',s:'一本道',d:'これまでどおり。階ごとにボスと行商人'},
+  branch:{n:'分岐の氷窟',s:'分岐',d:'階の間で道を選ぶ。エリート・イベント・休憩・宝箱・行商人'}};
+let myMap='line';
+try{const m=localStorage.getItem('hyokutsu-map');if(MAPS[m])myMap=m}catch(e){}
 let myDiff='easy';
 try{const d=localStorage.getItem('hyokutsu-diff');if(DIFFS[d])myDiff=d}catch(e){}
 const D=()=>DIFFS[S&&S.diff]||DIFFS.easy;
@@ -701,6 +719,9 @@ function renderTitleInfo(){
   $('diffRow').innerHTML=DIFF_KEYS.map(k=>`<button type="button" class="dbtn${k===myDiff?' on':''}" data-d="${k}" title="${DIFFS[k].d}">${DIFFS[k].n}</button>`).join('');
   $('diffRow').querySelectorAll('button').forEach(b=>b.onclick=()=>{myDiff=b.dataset.d;try{localStorage.setItem('hyokutsu-diff',myDiff)}catch(e){}renderTitleInfo()});
   $('diffNote').textContent=DIFFS[myDiff].d;
+  $('mapRow').innerHTML=Object.keys(MAPS).map(k=>`<button type="button" class="dbtn${k===myMap?' on':''}" data-m="${k}">${MAPS[k].n}</button>`).join('');
+  $('mapRow').querySelectorAll('button').forEach(b=>b.onclick=()=>{myMap=b.dataset.m;try{localStorage.setItem('hyokutsu-map',myMap)}catch(e){}renderTitleInfo()});
+  $('mapNote').textContent=MAPS[myMap].d;
   $('bestTitle').textContent=best?`ベストスコア：${best.toLocaleString()}`:'';
   $('deepVal').textContent=deep?`地下${Math.min(deep,FINAL)}階`:'-';
   $('route').innerHTML=Array.from({length:FINAL},(_,i)=>i+1).map(n=>`<span class="${n<=deep?'on':''}${n===FINAL?' last':''}"><b></b>B${n}</span>`).join('');
@@ -850,11 +871,11 @@ function spawn(){
   S.cur=makePiece(t);S.canHold=true;S.lockAcc=0;S.lockResets=0;S.dropAcc=0;S.lastRot=false;
   if(collide(S.cur.m,S.cur.x,S.cur.y))topOut();
 }
-function newRun(coop,epoch,cls,diff,practice){
+function newRun(coop,epoch,cls,diff,practice,map){
   const c=clsOf(cls);
   const allyN=coop&&NET?Math.min(MAXP-1,NET.others.length):0;
   const mhp=c.hp+(c.hpAlly||0)*allyN;
-  S={board:emptyBoard(),floor:1,hp:mhp,maxHp:mhp,cls:CLASSES[cls]?cls:'atk',diff:DIFFS[diff]?diff:'easy',prevClear:'',
+  S={board:emptyBoard(),floor:1,hp:mhp,maxHp:mhp,cls:CLASSES[cls]?cls:'atk',diff:DIFFS[diff]?diff:'easy',map:MAPS[map]&&!practice?map:'line',route:[],nodePicked:false,readyNode:0,prevClear:'',
      score:0,gold:0,totalGold:0,level:1,xp:0,pendingLv:0,
      timeLeft:STAGE_MS,phase:'play',boss:null,weaken:false,bossKills:0,afterReward:null,readyFloor:0,
      coop:!!coop,epoch:epoch||0,watching:false,
@@ -1277,8 +1298,9 @@ function revive(by){
   toast(`${by}が蘇生してくれた`);
 }
 function makeBoss(id,name,max){
-  const sk=BOSS_SK[(id-1)%BOSS_SK.length];
-  const b={id,name,max,hp:max,atk:0,myDmg:0,dead:false,sk,sk2:BOSS_SK[id%7]===sk?'bite':BOSS_SK[id%7],skAcc:0,skN:0,warned:false,p2:false};
+  const el=id>=100?ELITES[id%ELITES.length]:null;
+  const sk=el?el.sk:BOSS_SK[(id-1)%BOSS_SK.length];
+  const b={id,name,max,hp:max,atk:0,myDmg:0,dead:false,sk,sk2:BOSS_SK[id%7]===sk?'bite':BOSS_SK[id%7],skAcc:0,skN:0,warned:false,p2:false,elite:!!el};
   if(S.weaken){b.myDmg=Math.round(max*0.3);S.weaken=false}
   S.boss=b;S.hitAcc=0;floorShield();pop(['BOSS',name],'#ff6f7f',1.15);sfx('boss');shake(5,300);hud(true);
 }
@@ -1297,12 +1319,13 @@ function bossHpTick(){
     toast(b.sk==='king'?'攻撃が速くなった':`攻撃が速くなり、「${BSK[b.sk2].n}」も使ってくる`);
   }
   if(b.hp<=0&&!b.dead){
-    b.dead=true;S.phase='shop';
+    b.dead=true;S.phase=b.elite?'node':'shop';
     if(S.mode==='over')return;
     bossDefeated();
   }
 }
 function bossDefeated(){
+  if(S.boss.elite){eliteDefeated();return}
   const name=S.boss.name;
   S.bossKills++;
   SEEN.b[name]=1;saveSeen();if(!S.practice){META.kills[name]=(META.kills[name]||0)+1;checkUnlocks()}
@@ -1460,6 +1483,8 @@ function levelPicked(){
   S.pendingLv--;S.level++;hud(true);sfx('level');
   if(S.pendingLv>0){openReward(false);return}
   if(S.afterReward==='shop'){S.afterReward=null;S.mode='play';afterBoss();return}
+  if(S.afterReward==='node'){S.afterReward=null;S.mode='play';nodeDone();return}
+  if(S.afterReward==='elite'){S.afterReward=null;S.mode='play';eliteLoot();return}
   resumePlay();
 }
 function resumePlay(){S.mode='play';S.dropAcc=0;S.lockAcc=0}
@@ -1526,6 +1551,8 @@ function reroll(){
 }
 function leaveShop(){
   hide('ovShop');layout();
+  if(S.inNodeShop){S.inNodeShop=false;nodeDone();return}
+  if(S.map==='branch'&&!(coopOn()&&anyAllyAlive())){openRoute();return}
   if(coopOn()&&anyAllyAlive()){
     S.readyFloor=S.floor+1;S.mode='wait';
     $('waitMsg').textContent='仲間の買い物が終わるのを待っています';
@@ -1534,8 +1561,127 @@ function leaveShop(){
   }
   advanceFloor();
 }
+/* ---------- branching map ---------- */
+const NODES={
+  elite:{n:'エリート',g:'鬼',col:'#ff6f7f',d:'精鋭の敵と戦う。勝てば自分のクラスに合った遺物を3つから選べる'},
+  event:{n:'イベント',g:'？',col:'#b9a3ff',d:'何が起きるかは行ってみないとわからない'},
+  rest:{n:'休憩所',g:'焚',col:'#f2d06b',d:'HPを回復するか、遺物を1つ研ぐ'},
+  treasure:{n:'宝箱',g:'宝',col:'#7ee0a1',d:'遺物を3つから1つ選ぶ'},
+  merchant:{n:'行商人',g:'商',col:'#8fe3ff',d:'もう一度買い物ができる'}
+};
+const ELITES=[{n:'氷の騎士',sk:'bite'},{n:'凍てる亡霊',sk:'blind'},{n:'氷塊ゴーレム',sk:'quake'},{n:'吹雪の魔術師',sk:'gale'},{n:'雪原の狩人',sk:'web'}];
+function genNodes(){
+  const w={elite:S.floor>=1?1.2:0,event:1.5,rest:1,treasure:0.8,merchant:0.7},out=[];
+  const pool=Object.keys(w).filter(k=>w[k]>0);
+  while(out.length<3&&pool.length){let t=pool.reduce((a,k)=>a+w[k],0),r=Math.random()*t,i=0;while(i<pool.length-1&&r>=w[pool[i]]){r-=w[pool[i]];i++}out.push(pool.splice(i,1)[0])}
+  return out;
+}
+function openRoute(){
+  S.mode='route';S.phase=S.coop?'route':S.phase;
+  const nodes=genNodes();
+  $('routeSub').textContent=`地下${S.floor+1}階へ降りる前に、進む道を選ぶ${S.coop?'（パーティ全員がこの道を進む）':''}`;
+  $('routePath').innerHTML=S.route.length?S.route.map((k,i)=>`<span>${i+2}階前：${NODES[k].n}</span>`).join(''):'<span>まだ道を選んでいない</span>';
+  const box=$('routeCards');box.innerHTML='';
+  nodes.forEach(k=>{const n=NODES[k],b=document.createElement('button');b.type='button';b.className='card node';b.style.color=n.col;
+    b.innerHTML=`<span class="g" style="color:${n.col}">${n.g}</span><span class="n" style="color:var(--fg)">${n.n}</span><span class="d">${n.d}</span>`;
+    b.onclick=()=>pickNode(k);box.appendChild(b)});
+  show('ovRoute');
+}
+function pickNode(k){
+  hide('ovRoute');S.nodePicked=true;S.route.push(k);S.nodeKind=k;
+  if(S.coop)S.phase=k==='elite'?'play':'node';
+  resolveNode(k);
+}
+function resolveNode(k){
+  if(S.mode==='over'){S.readyNode=S.floor+1;return}
+  if(k==='elite'){
+    if(isAuthority())spawnElite();
+    resumePlay();toast('精鋭が現れた');return;
+  }
+  if(k==='treasure'){openRelicChoice(pickRelics(3,x=>x!=='potion'),'宝箱','遺物をひとつ選ぶ',nodeDone);return}
+  if(k==='merchant'){S.inNodeShop=true;S.mode='shop';S.shop={items:shopItems(),rerolls:0};$('shSub').textContent='分かれ道の行商人';renderShop();show('ovShop');return}
+  if(k==='rest'){
+    const ups=Object.keys(S.relics).filter(x=>RELICS[x]&&!RELICS[x].once&&!RELICS[x].cursed&&lv(x)<RELICS[x].max);
+    const amt=Math.round(S.maxHp*0.4);
+    openChoice('休憩所','焚き火で体を温める',[
+      {g:'癒',n:`HPを${amt}回復する`,d:'しっかり休む',go:()=>{heal(amt);nodeDone()}},
+      ...(ups.length?[{g:'研',n:'遺物を1つ研ぐ',d:'持っている遺物を1つ選んでLv+1',go:()=>openRelicChoice(shuffle(ups).slice(0,3),'遺物を研ぐ','Lvを上げる遺物を選ぶ',nodeDone)}]:[])
+    ]);return;
+  }
+  if(k==='event'){runEvent();return}
+  nodeDone();
+}
+function spawnElite(){
+  const n=1+aliveAllies().length-(S.mode==='over'?1:0),id=100+S.floor,e=ELITES[id%ELITES.length];
+  makeBoss(id,'精鋭・'+e.n,Math.round(bossBaseHp()*0.6*(1+0.6*Math.max(0,n-1))));
+}
+function eliteDefeated(){
+  const b=S.boss;
+  heal(5);S.eliteGold=earn(12+3*S.floor);S.score+=Math.round(400*S.floor*mult());
+  pop([b.name,'撃破！'],'#f2d06b',1.2);sfx('kill');hud(true);
+  hide('ovPause');if(S.mode==='pause')S.mode='play';
+  if(S.mode==='reward'){S.afterReward='elite';return}
+  if(S.mode!=='play'){eliteLoot();return}
+  S.mode='cele';
+  setTimeout(()=>{if(S&&S.mode==='cele'){S.mode='play';eliteLoot()}},900);
+}
+function eliteLoot(){
+  const keys=pickRelics(3,x=>x!=='potion'&&(!RELICS[x].c||RELICS[x].c===S.cls));
+  openRelicChoice(keys,'精鋭の戦利品',`${S.eliteGold||0}G を手に入れた。遺物をひとつ選ぶ`,()=>{if(S.pendingLv){S.afterReward='node';openReward(false)}else nodeDone()});
+}
+// node finished: solo goes down at once, a party waits for everyone
+function nodeDone(){
+  S.readyNode=S.floor+1;
+  if(coopOn()&&anyAllyAlive()){S.mode='wait';$('waitMsg').textContent='仲間を待っています';show('ovWait');return}
+  advanceFloor();
+}
+function openChoice(title,sub,opts){
+  S.mode='reward';
+  $('rwLv').innerHTML='';$('rwTitle').textContent=title;$('rwSub').textContent=sub;
+  const box=$('cards');box.innerHTML='';
+  opts.forEach(o=>{const b=document.createElement('button');b.className='card';b.type='button';b.disabled=!!o.off;
+    b.innerHTML=`<span class="g" style="color:${o.col||'var(--ice)'}">${o.g}</span><span class="n">${o.n}</span><span class="d">${o.d}</span>`;
+    b.onclick=()=>{hide('ovReward');S.mode='play';o.go()};box.appendChild(b)});
+  show('ovReward');
+}
+function openRelicChoice(keys,title,sub,done){
+  if(!keys.length){done();return}
+  S.mode='reward';
+  $('rwLv').innerHTML='';$('rwTitle').textContent=title;$('rwSub').textContent=sub;
+  const box=$('cards');box.innerHTML='';
+  keys.forEach(k=>{const b=document.createElement('button');b.className='card';b.type='button';b.innerHTML=relicCardHtml(k);
+    b.onclick=()=>{applyRelic(k);hide('ovReward');renderRelics();layout();hud(true);S.mode='play';announceTransform();done()};box.appendChild(b)});
+  show('ovReward');
+}
+function runEvent(){
+  const evs=[
+    ()=>openChoice('凍った祭壇','氷に閉ざされた祭壇に、遺物が眠っている',[
+      {g:'血',n:`最大HPの2割（${Math.round(S.maxHp*0.2)}）を払って遺物を得る`,d:'祭壇に血を捧げる',off:S.hp<=Math.round(S.maxHp*0.2),go:()=>{S.hp-=Math.round(S.maxHp*0.2);hud(true);openRelicChoice(pickRelics(3,x=>x!=='potion'),'凍った祭壇','遺物をひとつ選ぶ',nodeDone)}},
+      {g:'去',n:'立ち去る',d:'何もしない',go:nodeDone}]),
+    ()=>openChoice('迷子の商人','道に迷った商人が、荷物を安く譲ってくれるという',[
+      {g:'金',n:'40Gで遺物を買う',d:'3つから1つ選べる',off:S.gold<40,go:()=>{S.gold-=40;hud(true);openRelicChoice(pickRelics(3,x=>x!=='potion'),'迷子の商人','遺物をひとつ選ぶ',nodeDone)}},
+      {g:'去',n:'立ち去る',d:'お金を大事にする',go:nodeDone}]),
+    ()=>openChoice('雪の精','小さな雪の精が、ひとつだけ願いを聞いてくれる',[
+      {g:'命',n:'最大HP+6',d:'体が少し丈夫になる',go:()=>{S.maxHp+=6;heal(6);nodeDone()}},
+      {g:'技',n:'スキルのゲージを満タンにする',d:'次の階の始まりからスキルが使える',go:()=>{S.skCharge=skNeed();nodeDone()}}]),
+    ()=>{const ups=Object.keys(S.relics).filter(x=>RELICS[x]&&!RELICS[x].once&&!RELICS[x].cursed&&lv(x)<RELICS[x].max);
+      openChoice('古い石碑','文字が刻まれた石碑が、淡く光っている',[
+      {g:'研',n:'遺物を1つ研ぐ',d:'持っている遺物の中からランダムに1つLv+1',off:!ups.length,go:()=>{const k=ups[Math.random()*ups.length|0];applyRelic(k);renderRelics();toast(`${RELICS[k].n} Lv+1`);announceTransform();nodeDone()}},
+      {g:'知',n:'経験値を得る',d:'石碑を読み解く（経験値+300）',go:()=>{gainXp(300);if(S.pendingLv){S.afterReward='node';openReward(false)}else nodeDone()}}])},
+    ()=>openChoice('秘湯','洞窟の奥に、湯気の立つ温泉がある',[
+      {g:'湯',n:'HPを全回復する',d:'ゆっくり浸かる',go:()=>{heal(S.maxHp);nodeDone()}},
+      {g:'掃',n:'ゴミ列を全部消し、シールド+20',d:'体を清めて、気を引き締める',go:()=>{S.board=S.board.map(r=>r.map(v=>v==='G'?0:v));settleColumns([...Array(W).keys()]);clearFullRows();addShield(20);nodeDone()}}]),
+    ()=>openChoice('呪いの宝箱','黒い霜に覆われた宝箱がある',[
+      {g:'呪',n:'開ける',d:'代償つきの遺物を3つから選ぶ',go:()=>openRelicChoice(shuffle(Object.keys(RELICS).filter(k=>RELICS[k].cursed&&!lv(k))).slice(0,3),'呪いの宝箱','代償つきの遺物をひとつ選ぶ',nodeDone)},
+      {g:'去',n:'立ち去る',d:'触らぬ神にたたりなし',go:nodeDone}]),
+    ()=>openChoice('賭け好きの雪だるま','「30G賭けないか？　勝てば3倍だ」',[
+      {g:'賭',n:'30Gを賭ける',d:'半分の確率で90Gになる',off:S.gold<30,go:()=>{S.gold-=30;const win=Math.random()<0.5;if(win){S.gold+=90;S.totalGold+=60;toast('勝った！ 90G')}else toast('負けた…');hud(true);nodeDone()}},
+      {g:'去',n:'断る',d:'賭けはしない',go:nodeDone}])
+  ];
+  evs[Math.random()*evs.length|0]();
+}
 function advanceFloor(){
-  S.altarDone=false;S.incoming=[];
+  S.altarDone=false;S.incoming=[];S.nodePicked=false;S.readyNode=0;S.nodeSeen=false;hide('ovRoute');
   S.floor++;noteDeep();S.timeLeft=stageMs();S.boss=null;S.phase='play';S.readyFloor=0;S.hitAcc=0;
   floorShield();
   hide('ovWait');
@@ -1679,7 +1825,7 @@ function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show')
 function toTitle(){
   if(NET&&NET.room){try{NET.room.leave()}catch(e){}}
   NET=null;
-  ['ovOver','ovPause','ovShop','ovReward','ovWait','ovCoop','ovClass','ovWin','ovCodex','ovSet'].forEach(hide);
+  ['ovOver','ovPause','ovShop','ovReward','ovWait','ovCoop','ovClass','ovWin','ovCodex','ovSet','ovRoute'].forEach(hide);
   $('practiceTools').hidden=true;
   demo();$('partyBox').hidden=true;$('clsChip').hidden=true;$('skillRow').hidden=true;$('buffTag').hidden=true;layout();
   renderTitleInfo();
@@ -1730,7 +1876,7 @@ function openClassPick(){
     const c=CLASSES[k],b=document.createElement('button');
     b.type='button';b.className='card clscard';b.style.color=c.col;
     b.innerHTML=`<span class="g" style="background:${c.col}">${ico(k,'#0b1320',0,36)}</span><span class="n" style="color:var(--fg)">${c.n}<span class="ct" style="color:${c.col}">${c.role}</span></span><span class="d">${c.d}<br><b style="color:${c.col}">スキル「${c.sk.n}」</b> ${c.sk.d}</span>`;
-    b.onclick=()=>{hide('ovClass');const pr=pickMode==='practice';pickMode='run';newRun(false,0,k,myDiff,pr)};
+    b.onclick=()=>{hide('ovClass');const pr=pickMode==='practice';pickMode='run';newRun(false,0,k,myDiff,pr,myMap)};
     box.appendChild(b);
   }
   show('ovClass');
@@ -1759,7 +1905,7 @@ function setW(id,pct){const v=Math.max(0,Math.min(100,pct)).toFixed(1)+'%';if(hc
 function hud(force){
   if(!S||S.mode==='title')return;
   setText('floor',S.floor===FINAL?`地下${S.floor}階 最下層`:`地下${S.floor}階`);
-  {const k=S.floor+'/'+S.endless+'/'+S.diff;if(hc.prog!==k){hc.prog=k;$('prog').innerHTML=S.floor>FINAL||S.endless?`踏破済み・${DIFFS[S.diff].n}`:`クリアまで <b>${S.floor}/${FINAL}</b>・${DIFFS[S.diff].n}`}}
+  {const k=S.floor+'/'+S.endless+'/'+S.diff+'/'+S.map;if(hc.prog!==k){hc.prog=k;$('prog').innerHTML=S.floor>FINAL||S.endless?`踏破済み・${DIFFS[S.diff].n}${S.map==='branch'?'・分岐':''}`:`クリアまで <b>${S.floor}/${FINAL}</b>・${DIFFS[S.diff].n}${S.map==='branch'?'・分岐':''}`}}
   setText('score',S.score.toLocaleString());
   setText('gold',S.gold+'G');
   setText('lv','Lv '+S.level);
@@ -2224,7 +2370,7 @@ function renderMembers(){
   }
   if(list.length<MAXP-1)rows.push(`<div class="wait">仲間を待っています（${1+list.length}/${MAXP}）</div>`);
   if(NET.others.length>MAXP-1)rows.push(`<div class="wait">満員です。${MAXP}人を超えた人は参加できません</div>`);
-  {const hp=NET.isHost?null:NET.others.find(p=>p.presence&&p.presence.r==='host');const dk=NET.isHost?myDiff:(hp&&DIFFS[hp.presence.df]?hp.presence.df:'easy');rows.push(`<div class="wait">難易度：${DIFFS[dk].n}${NET.isHost?'（タイトル画面で変えられます）':'（ホストが決めます）'}</div>`)}
+  {const hp=NET.isHost?null:NET.others.find(p=>p.presence&&p.presence.r==='host');const dk=NET.isHost?myDiff:(hp&&DIFFS[hp.presence.df]?hp.presence.df:'easy');const mk=NET.isHost?myMap:(hp&&MAPS[hp.presence.mp]?hp.presence.mp:'line');rows.push(`<div class="wait">${MAPS[mk].n}・難易度：${DIFFS[dk].n}${NET.isHost?'（タイトル画面で変えられます）':'（ホストが決めます）'}</div>`)}
   $('members').innerHTML=rows.join('');
   $('coopStart').hidden=!NET.isHost;
   $('coopStart').disabled=!NET.others.length;
@@ -2292,7 +2438,7 @@ function netTick(now){
   if(NET.lobby&&!NET.isHost){
     const L=NET.others.find(p=>p.presence&&p.presence.r==='host'&&p.presence.e&&p.presence.g);
     if(L&&L.presence.e!==NET.seenEpoch){
-      NET.seenEpoch=L.presence.e;NET.lobby=false;hide('ovCoop');newRun(true,L.presence.e,myCls,DIFFS[L.presence.df]?L.presence.df:'easy');
+      NET.seenEpoch=L.presence.e;NET.lobby=false;hide('ovCoop');newRun(true,L.presence.e,myCls,DIFFS[L.presence.df]?L.presence.df:'easy',false,MAPS[L.presence.mp]?L.presence.mp:'line');
     }
   }
   if(coopOn()){
@@ -2307,7 +2453,13 @@ function netTick(now){
       }
       if(+g.f===S.floor){
         S.timeLeft=+g.t||0;
-        if(g.ph==='play'||g.ph==='shop')S.phase=(S.boss&&S.boss.dead)?'shop':g.ph;
+        if(['play','shop','route','node'].includes(g.ph))S.phase=(S.boss&&S.boss.dead)?(S.boss.elite?'node':'shop'):g.ph;
+        if(g.ph==='route'&&S.mode==='wait')$('waitMsg').textContent='ホストが次の道を選んでいます';
+        if(g.node&&+g.node.f===S.floor&&!S.nodeSeen&&NODES[g.node.k]&&(S.mode==='wait'||S.mode==='over')){
+          S.nodeSeen=true;S.nodePicked=true;S.route.push(g.node.k);S.nodeKind=g.node.k;hide('ovWait');
+          if(S.mode==='wait')S.mode='play';
+          toast(`ホストが「${NODES[g.node.k].n}」を選んだ`);resolveNode(g.node.k);
+        }
         if(g.boss&&(!S.boss||S.boss.id!==g.boss.id))makeBoss(+g.boss.id,String(g.boss.n).slice(0,24),Math.max(1,+g.boss.m|0));
       }
     }
@@ -2315,7 +2467,15 @@ function netTick(now){
       const meReady=S.readyFloor===S.floor+1||S.mode==='over';
       const othersReady=aliveAllies().every(p=>+p.presence.rd===S.floor+1);
       const someoneAlive=S.mode!=='over'||anyAllyAlive();
-      if(meReady&&othersReady&&someoneAlive)advanceFloor();
+      if(meReady&&othersReady&&someoneAlive){
+        if(S.map==='branch'&&!S.nodePicked){hide('ovWait');if(S.mode==='over'){S.phase='node';S.nodePicked=true;S.route.push('rest');S.nodeKind='rest';S.readyNode=S.floor+1}else openRoute()}
+        else advanceFloor();
+      }
+    }
+    if(L==='me'&&S.phase==='node'&&S.nodePicked){
+      const meReady=S.readyNode===S.floor+1||S.mode==='over';
+      const othersReady=aliveAllies().every(p=>+p.presence.rn===S.floor+1);
+      if(meReady&&othersReady&&(S.mode!=='over'||anyAllyAlive()))advanceFloor();
     }
     if(S.mode==='over'){
       if(!S.overAllDead&&!anyAllyAlive()){S.watching=false;hide('ovOver');showOver()}
@@ -2326,13 +2486,13 @@ function netTick(now){
   if(coopOn()){
     pres={r:NET.isHost?'host':'guest',e:S.epoch,cls:S.cls,a:S.mode!=='over'?1:0,hp:S.hp,mh:S.maxHp,lv:S.level,
       b:boardStr(),d:S.boss?{i:S.boss.id,v:S.boss.myDmg}:null,rd:S.readyFloor,
-      hc:S.healCount,hr:S.reviveCount,sk:S.skUses,su:(su(0)||'-')+(su(1)||'-')+(su(2)||'-'),skv:{ws:wallSh(),hh:mirHeal(),hs:mirSh(),fm:songMs(),fx:songMul()},im:immune()?1:0,cl:lv('purify'),ha:HEAL_AMT,hs:6*lv('aegis'),sh:S.shield,bc:S.buffCount,bd:buffDur(),l:null};
+      hc:S.healCount,hr:S.reviveCount,rn:S.readyNode,sk:S.skUses,su:(su(0)||'-')+(su(1)||'-')+(su(2)||'-'),skv:{ws:wallSh(),hh:mirHeal(),hs:mirSh(),fm:songMs(),fx:songMul()},im:immune()?1:0,cl:lv('purify'),ha:HEAL_AMT,hs:6*lv('aegis'),sh:S.shield,bc:S.buffCount,bd:buffDur(),l:null};
     pres.g=NET.isHost?{ph:S.phase,f:S.floor,t:Math.round(S.timeLeft/100)*100,
-      boss:S.boss?{id:S.boss.id,n:S.boss.name,m:S.boss.max}:null}:null;
+      boss:S.boss?{id:S.boss.id,n:S.boss.name,m:S.boss.max}:null,node:S.nodePicked?{f:S.floor,k:S.nodeKind}:null}:null;
   }else pres={r:NET.isHost?'host':'guest',l:1,cls:myCls,e:null,g:null};
   pres.nm=myNick;pres.uid=MYUID;
   if(coopOn()){pres.ch=S.cheers||0;pres.em={n:S.emN||0,i:S.emI||0}}
-  if(NET.isHost)pres.df=S&&S.coop?S.diff:myDiff;
+  if(NET.isHost){pres.df=S&&S.coop?S.diff:myDiff;pres.mp=S&&S.coop?S.map:myMap}
   const key=JSON.stringify(pres);
   if(key===NET.lastKey)return;
   NET.lastKey=key;NET.lastSent=now;
@@ -2341,7 +2501,7 @@ function netTick(now){
 function hostStart(){
   if(!NET||!NET.isHost||!NET.others.length)return;
   NET.lobby=false;hide('ovCoop');
-  newRun(true,Date.now(),myCls,myDiff);
+  newRun(true,Date.now(),myCls,myDiff,false,myMap);
 }
 
 /* ---------- input ---------- */
