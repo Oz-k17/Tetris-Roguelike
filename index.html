@@ -213,6 +213,14 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .howto .rules{margin-bottom:10px}
 .btnrow.stack{grid-template-columns:1fr}
 .btnrow.three{grid-template-columns:repeat(3,1fr)}
+.fbtn{position:absolute;z-index:4;border:1px solid var(--line);background:rgba(19,32,47,.92);color:var(--fg);font-family:var(--body);font-size:12px;font-weight:700;border-radius:14px;height:28px;padding:0 10px;cursor:pointer}
+.fbtn.emo{top:12px;right:6px}
+.fbtn.cheer{left:50%;bottom:16px;transform:translateX(-50%);height:40px;padding:0 18px;font-size:14px;border-color:var(--gold);color:var(--gold)}
+.fbtn.cheer:disabled{opacity:.45}
+.emotebar{position:absolute;z-index:4;top:44px;right:6px;display:flex;flex-direction:column;gap:4px}
+.emotebar button{height:30px;padding:0 10px;border-radius:15px;border:1px solid var(--ice);background:rgba(11,19,32,.92);color:var(--ice);font-family:var(--body);font-size:13px;font-weight:700;cursor:pointer}
+.mybub{position:absolute;z-index:4;top:12px;left:8px;padding:2px 10px;border-radius:12px;background:var(--ice);color:var(--bg);font-weight:700;font-size:13px}
+.mate .bub{font-size:10px;font-weight:700;color:var(--bg);background:var(--ice);border-radius:8px;padding:0 5px;max-width:none}
 .btnrow.three .ghostbtn{height:40px}
 .tabs{display:flex;flex-wrap:wrap;gap:6px}
 .tabs button{height:32px;padding:0 12px;border-radius:16px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-family:var(--body);font-size:13px;font-weight:700;cursor:pointer}
@@ -295,6 +303,10 @@ i[data-ico]{display:contents}
     <div class="boardwrap">
       <canvas id="board"></canvas>
       <div class="toast" id="toast"></div>
+      <button class="fbtn emo" id="emoteBtn" type="button" hidden>スタンプ</button>
+      <div class="emotebar" id="emoteBar" hidden></div>
+      <div class="mybub" id="myBub" hidden></div>
+      <button class="fbtn cheer" id="cheerBtn" type="button" hidden>応援を送る</button>
     </div>
     <aside>
       <div class="lbl">HOLD</div>
@@ -340,6 +352,7 @@ i[data-ico]{display:contents}
       <li>ボスはそれぞれ固有のスキルを持つ。盤面上の紫の線が満ちると発動</li>
       <li>遺物には「刃・盾・癒・富・爆・技」のタグがある。同じタグの遺物を3つ集めると「化身」に変身する</li>
       <li>ボスのゴミ列は少し遅れてせり上がる。盤面左の赤い線が予告で、その間にラインを消すと相殺できる。ボスはHPが半分を切ると第2形態になる</li>
+      <li>パーティでは「スタンプ」（1〜4キー）で気持ちを伝えられる。倒れても「応援を送る」で仲間を支えられる</li>
       <li>Lv5・Lv10・Lv15ではクラススキルの強化を2択で選ぶ。パーティでは、仲間のクラスとの組み合わせで出る「デュオ遺物」がある</li>
       <li>ボスへのダメージは「（基本値＋＋ダメージ）×各倍率」。遺物の「＋ダメージ」「×ダメージ」の印で見分けられる</li>
       <li>回転は標準のSRS。TSD・TST・DT砲などの定番の積み方がそのまま使える。T-SPINはボスに大ダメージ、DT砲（TSDのあとのTST）はさらに1.3倍</li>
@@ -489,6 +502,7 @@ i[data-ico]{display:contents}
     <div class="lbl" id="goRelLbl"></div>
     <div class="relrow" id="goRelics"></div>
     <button class="ghostbtn" id="watchBtn" hidden>仲間を観戦する</button>
+    <button class="ghostbtn" id="cheerBtn2" type="button" hidden>応援を送る（仲間にシールド+4・スキル+1）</button>
     <button class="cta" id="againBtn">もう一度潜る</button>
   </div>
 </div>
@@ -783,6 +797,9 @@ document.querySelectorAll('i[data-ico]').forEach(el=>{el.innerHTML=ico(el.datase
 
 /* ---------- party (network) helpers ---------- */
 let ROOM=null,USER=null,NET=null;
+const MYUID=Math.random().toString(36).slice(2,10);
+const EMOTES=['ナイス！','ピンチ！','ありがとう','いくよ！'];
+const pkey=p=>String((p.presence&&p.presence.uid)||p.peer).slice(0,40);
 const coopOn=()=>!!(S&&S.coop&&NET);
 function allies(){
   if(!coopOn())return[];
@@ -1778,6 +1795,10 @@ function hud(force){
   $('holdBtn').disabled=!lv('hold');
   $('holdBtn').style.opacity=lv('hold')?1:.35;
   if(S.coop)renderParty();
+  {const co=coopOn();$('emoteBtn').hidden=!co||S.mode==='over';if(!co)$('emoteBar').hidden=true;
+   const canCheer=co&&S.mode==='over'&&anyAllyAlive();$('cheerBtn').hidden=!(canCheer&&S.watching);$('cheerBtn2').hidden=!canCheer;
+   const cd=S.cheerAt&&nowT()-S.cheerAt<6000;$('cheerBtn').disabled=$('cheerBtn2').disabled=!!cd;
+   $('myBub').hidden=!(S.myBubUntil&&nowT()<S.myBubUntil)}
 }
 function renderParty(){
   const al=coopOn()?NET.others.filter(p=>p.presence&&p.presence.e===S.epoch).slice(0,MAXP-1):[];
@@ -1785,7 +1806,7 @@ function renderParty(){
   const list=$('partyList');
   if(NET&&NET.rosterKey!==key){
     NET.rosterKey=key;
-    list.innerHTML=al.length?al.map((p,i)=>`<div class="mate" id="mate${i}"><canvas id="mc${i}"></canvas><div><b id="mg${i}"></b><span id="mn${i}"></span><span id="mh${i}"></span></div></div>`).join(''):'<span class="lbl">待機中</span>';
+    list.innerHTML=al.length?al.map((p,i)=>`<div class="mate" id="mate${i}"><canvas id="mc${i}"></canvas><div><b id="mg${i}"></b><span id="mn${i}"></span><span id="mh${i}"></span><span class="bub" id="mb${i}" hidden></span></div></div>`).join(''):'<span class="lbl">待機中</span>';
     al.forEach((p,i)=>{const cv=$('mc'+i);cv.width=W*PS*DPR;cv.height=H*PS*DPR;cv.style.width=W*PS+'px';cv.style.height=H*PS+'px'});
     for(const k in hc)if(/^m[gnh]\d/.test(k))delete hc[k];
   }
@@ -1795,6 +1816,7 @@ function renderParty(){
     setText('mn'+i,nameOf(p));
     setText('mh'+i,q.a?`${q.hp}/${q.mh}${+q.sh?'+'+(+q.sh):''}`:'ダウン');
     const m=$('mate'+i);if(m)m.classList.toggle('down',!q.a);
+    const bb=$('mb'+i),bu=NET.bubble[pkey(p)];if(bb){const on=!!(bu&&nowT()<bu.until);bb.hidden=!on;if(on&&bb.textContent!==bu.txt)bb.textContent=bu.txt}
   });
 }
 function renderRelics(){
@@ -2027,12 +2049,11 @@ function makeP2P(){
     try{if(JSON.stringify(p).length>6000)return{}}catch(e){return{}}
     return p;
   };
-  return{join(name,isHost){return new Promise((res,rej)=>{
+  return{join(name,asHost){return new Promise((res,rej)=>{
     const hostId='hyokutsu-stack-'+name;
-    let peer;
-    try{peer=isHost?new window.Peer(hostId):new window.Peer()}catch(e){rej({code:'upstream_error'});return}
-    let me=null,settled=false,hostConn=null;
+    let peer=null,me=null,settled=false,hostConn=null,isHost=!!asHost,dead=false,retryT=0,tries=0,recovering=false,hubGone=false,lastRoster=[];
     const others=new Map(),conns=new Map(),handlers=[];const myPres={};
+    const status=s=>{try{api.onStatus&&api.onStatus(s)}catch(e){}};
     const snapshot=()=>{
       const list=[{peer:me,by:null,isMe:true,sameTab:true,kind:'viewer',guest:false,presence:Object.freeze({...myPres}),updatedAt:Date.now()}];
       for(const[id,p]of others)list.push({peer:id,by:null,isMe:false,sameTab:false,kind:'viewer',guest:false,presence:p,updatedAt:Date.now()});
@@ -2051,41 +2072,81 @@ function makeP2P(){
       onPeers(fn){handlers.push(fn);queueEmit();return()=>{const i=handlers.indexOf(fn);if(i>=0)handlers.splice(i,1)}},
       peers(){return snapshot()},
       connected(){return isHost?!!(peer&&!peer.disconnected):!!(hostConn&&hostConn.open)},
-      leave(){try{peer.destroy()}catch(e){}others.clear();return Promise.resolve()},
-      onLost:null,onFull:null
+      leave(){dead=true;clearTimeout(retryT);try{peer&&peer.destroy()}catch(e){}others.clear();return Promise.resolve()},
+      onLost:null,onFull:null,onStatus:null
     };
-    peer.on('open',id=>{
-      me=id;
-      if(isHost){settled=true;res(api);return}
-      hostConn=peer.connect(hostId,{reliable:true});
-      hostConn.on('open',()=>{if(!settled){settled=true;res(api)}try{hostConn.send({t:'p',id:me,p:{...myPres}})}catch(e){}});
-      hostConn.on('data',m=>{
+    // ---- hub ----
+    function startHost(first){
+      if(dead)return;
+      try{peer=new window.Peer(hostId)}catch(e){if(first){settled=true;rej({code:'upstream_error'})}return}
+      peer.on('open',id=>{me=id;isHost=true;tries=0;recovering=false;if(!settled){settled=true;res(api)}else status('host');queueEmit()});
+      peer.on('disconnected',()=>{if(!dead)try{peer.reconnect()}catch(e){}});
+      peer.on('connection',c=>{
+        c.on('open',()=>{
+          if(conns.size>=MAXP-1){try{c.send({t:'full'})}catch(e){}setTimeout(()=>c.close(),300);return}
+          conns.set(c.peer,c);
+          try{c.send({t:'s',list:[[me,{...myPres}],...[...others].map(([id,p])=>[id,p])]})}catch(e){}
+        });
+        c.on('data',m=>{
+          if(!conns.has(c.peer)||!m||m.t!=='p')return;
+          const p=Object.freeze(clean(m.p));others.set(c.peer,p);
+          sendAll({t:'p',id:c.peer,p},c.peer);queueEmit();
+        });
+        c.on('close',()=>{conns.delete(c.peer);if(others.delete(c.peer)){sendAll({t:'x',id:c.peer});queueEmit()}});
+      });
+      peer.on('error',e=>{
+        const t=e&&e.type;
+        if(!settled){settled=true;try{peer.destroy()}catch(_){}rej({code:t==='unavailable-id'?'taken':'upstream_error',message:String(t)});return}
+        // taking over: the old hub's id may still be held for a moment, so retry
+        if(t==='unavailable-id'){try{peer.destroy()}catch(_){}if(++tries<15)retryT=setTimeout(()=>startHost(false),2000);else status('failed')}
+      });
+    }
+    // ---- member ----
+    function startGuest(){
+      try{peer=new window.Peer()}catch(e){settled=true;rej({code:'upstream_error'});return}
+      peer.on('open',id=>{me=id;connectHub()});
+      peer.on('disconnected',()=>{if(!dead)try{peer.reconnect()}catch(e){}});
+      peer.on('error',e=>{
+        const t=e&&e.type;
+        if(!settled){settled=true;try{peer.destroy()}catch(_){}rej({code:t==='peer-unavailable'?'not_found':'upstream_error',message:String(t)});return}
+        if(t==='peer-unavailable')hubGone=true;
+      });
+    }
+    function connectHub(){
+      if(dead)return;
+      const c=peer.connect(hostId,{reliable:true});hostConn=c;
+      c.on('open',()=>{
+        tries=0;clearTimeout(retryT);
+        if(!settled){settled=true;res(api)}else if(recovering)status('ok');
+        recovering=false;
+        try{c.send({t:'p',id:me,p:{...myPres}})}catch(e){}
+      });
+      c.on('data',m=>{
         if(!m||typeof m!=='object')return;
         if(m.t==='full'){api.onFull&&api.onFull();return}
         if(m.t==='s'&&Array.isArray(m.list)){others.clear();for(const e of m.list)if(Array.isArray(e)&&typeof e[0]==='string'&&e[0]!==me)others.set(e[0],Object.freeze(clean(e[1])));queueEmit()}
         else if(m.t==='p'&&typeof m.id==='string'&&m.id!==me){others.set(m.id,Object.freeze(clean(m.p)));queueEmit()}
         else if(m.t==='x'&&typeof m.id==='string'){others.delete(m.id);queueEmit()}
       });
-      hostConn.on('close',()=>{others.clear();queueEmit();api.onLost&&api.onLost()});
-    });
-    if(isHost)peer.on('connection',c=>{
-      c.on('open',()=>{
-        if(conns.size>=MAXP-1){try{c.send({t:'full'})}catch(e){}setTimeout(()=>c.close(),300);return}
-        conns.set(c.peer,c);
-        try{c.send({t:'s',list:[[me,{...myPres}],...[...others].map(([id,p])=>[id,p])]})}catch(e){}
+      c.on('close',()=>{
+        if(dead||hostConn!==c||isHost)return;
+        if(others.size)lastRoster=[...others.keys()];
+        others.clear();queueEmit();api.onLost&&api.onLost();
+        if(!recovering){recovering=true;tries=0;retryT=setTimeout(recoverStep,1500)}
       });
-      c.on('data',m=>{
-        if(!conns.has(c.peer)||!m||m.t!=='p')return;
-        const p=Object.freeze(clean(m.p));others.set(c.peer,p);
-        sendAll({t:'p',id:c.peer,p},c.peer);queueEmit();
-      });
-      c.on('close',()=>{conns.delete(c.peer);if(others.delete(c.peer)){sendAll({t:'x',id:c.peer});queueEmit()}});
-    });
-    peer.on('error',e=>{
-      const t=e&&e.type;
-      if(!settled){settled=true;try{peer.destroy()}catch(_){}rej({code:t==='peer-unavailable'?'not_found':t==='unavailable-id'?'taken':'upstream_error',message:String(t)})}
-    });
-    setTimeout(()=>{if(!settled){settled=true;try{peer.destroy()}catch(_){}rej({code:'timeout'})}},12000);
+    }
+    // reconnect; if the hub is gone, the member with the smallest id takes it over
+    function recoverStep(){
+      if(dead||isHost)return;
+      tries++;
+      const cands=[...lastRoster.filter(id=>id!==hostId),me].sort();
+      if((hubGone||tries>3)&&cands[0]===me){try{peer.destroy()}catch(_){}startHost(false);return}
+      if(tries>25){recovering=false;status('failed');return}
+      status('retry');hubGone=false;connectHub();
+      retryT=setTimeout(()=>{if(!(hostConn&&hostConn.open))recoverStep()},2500);
+    }
+    if(isHost)startHost(true);else startGuest();
+    setTimeout(()=>{if(!settled){settled=true;try{peer&&peer.destroy()}catch(_){}rej({code:'timeout'})}},12000);
   })}};
 }
 (async()=>{
@@ -2120,7 +2181,14 @@ async function enterRoom(code,isHost,tries){
       '接続できませんでした。少し待ってからもう一度試してください。学校や会社のネットワークではつながらないことがあります。');
     $('createBtn').disabled=false;$('joinBtn').disabled=false;return;
   }
-  NET={room:r,code,isHost,myPeer:null,others:[],names:{},seen:{},dmg:{},lastKey:'',lastSent:0,seenEpoch:0,lobby:true,rosterKey:''};
+  NET={room:r,code,isHost,myPeer:null,others:[],names:{},seen:{},dmg:{},bubble:{},lastKey:'',lastSent:0,seenEpoch:0,lobby:true,rosterKey:''};
+  r.onStatus=st=>{
+    if(!NET||NET.room!==r)return;
+    if(st==='host'){NET.isHost=true;NET.lastKey='';toast('部屋を引き継ぎました');if(NET.lobby)renderMembers()}
+    else if(st==='retry'){if(!NET.retryMsg||nowT()-NET.retryMsg>4000){NET.retryMsg=nowT();toast('再接続しています…')}}
+    else if(st==='ok')toast('再接続しました');
+    else if(st==='failed')toast('部屋に戻れませんでした');
+  };
   r.onLost=()=>{if(NET&&NET.room===r){toast('部屋を作った人との接続が切れた');if(NET.lobby){coopMsg('部屋を作った人との接続が切れました。');}}};
   r.onFull=()=>{if(NET&&NET.room===r){try{r.leave()}catch(e){}NET=null;$('coopMenu').hidden=false;$('coopRoom').hidden=true;$('createBtn').disabled=false;$('joinBtn').disabled=false;coopMsg('この部屋は満員です（最大4人）。')}};
   r.onPeers(onPeers,()=>{});
@@ -2173,12 +2241,15 @@ function absorbAllies(){
   for(const p of allies()){
     const q=p.presence;
     if(q.d&&typeof q.d.i==='number'){
-      const cur=NET.dmg[p.peer],v=Math.max(0,+q.d.v||0);
-      if(!cur||cur.i!==q.d.i)NET.dmg[p.peer]={i:q.d.i,v};else if(v>cur.v)cur.v=v;
+      const key=pkey(p),cur=NET.dmg[key],v=Math.max(0,+q.d.v||0);
+      if(!cur||cur.i!==q.d.i)NET.dmg[key]={i:q.d.i,v};else if(v>cur.v)cur.v=v;
     }
     const hcN=+q.hc||0,hrN=+q.hr||0,bcN=+q.bc||0,skN=+q.sk||0;
-    let sn=NET.seen[p.peer];
-    if(!sn){NET.seen[p.peer]={hc:hcN,hr:hrN,bc:bcN,sk:skN};continue}
+    const chN=+q.ch||0,emN=q.em&&+q.em.n||0;
+    let sn=NET.seen[pkey(p)];
+    if(!sn){NET.seen[pkey(p)]={hc:hcN,hr:hrN,bc:bcN,sk:skN,ch:chN,em:emN};continue}
+    if(chN>sn.ch){sn.ch=chN;if(S.mode==='play'){smallShield(4);S.skCharge=Math.min(skNeed(),(S.skCharge||0)+1);toast(`${nameOf(p)}の応援 シールド+4・スキル+1`)}}
+    if(emN>sn.em){sn.em=emN;const i=Math.max(0,Math.min(EMOTES.length-1,+q.em.i|0));NET.bubble[pkey(p)]={txt:EMOTES[i],until:nowT()+2800};toast(`${nameOf(p)}「${EMOTES[i]}」`)}
     if(skN>sn.sk){
       sn.sk=skN;const who=nameOf(p),cs=q.cls;
       const u=String(q.su||'---'),v=q.skv&&typeof q.skv==='object'?q.skv:{};
@@ -2259,7 +2330,8 @@ function netTick(now){
     pres.g=NET.isHost?{ph:S.phase,f:S.floor,t:Math.round(S.timeLeft/100)*100,
       boss:S.boss?{id:S.boss.id,n:S.boss.name,m:S.boss.max}:null}:null;
   }else pres={r:NET.isHost?'host':'guest',l:1,cls:myCls,e:null,g:null};
-  pres.nm=myNick;
+  pres.nm=myNick;pres.uid=MYUID;
+  if(coopOn()){pres.ch=S.cheers||0;pres.em={n:S.emN||0,i:S.emI||0}}
   if(NET.isHost)pres.df=S&&S.coop?S.diff:myDiff;
   const key=JSON.stringify(pres);
   if(key===NET.lastKey)return;
@@ -2285,6 +2357,7 @@ const keymap={ArrowLeft:'left',ArrowRight:'right',ArrowDown:'soft',ArrowUp:'cw',
 addEventListener('keydown',e=>{
   if(e.target&&e.target.tagName==='INPUT')return;
   if(e.key==='p'||e.key==='P'||e.key==='Escape'){S&&S.mode==='pause'?resume():pause();e.preventDefault();return}
+  if(S&&coopOn()&&/^[1-4]$/.test(e.key)){sendEmote(+e.key-1);return}
   const a=keymap[e.key];if(!a||!S||S.mode!=='play')return;
   e.preventDefault();
   if(e.repeat)return;
@@ -2315,6 +2388,12 @@ $('prGarb').onclick=()=>{resume();queueGarbage(2)};
 let pickMode='run';
 $('practiceBtn').onclick=()=>{pickMode='practice';openClassPick()};
 $('codexBtn').onclick=openCodex;
+$('emoteBar').innerHTML=EMOTES.map((t,i)=>`<button type="button" data-i="${i}">${t}</button>`).join('');
+function sendEmote(i){if(!coopOn())return;S.emN=(S.emN||0)+1;S.emI=i;$('myBub').textContent=EMOTES[i];S.myBubUntil=nowT()+2500;$('emoteBar').hidden=true}
+$('emoteBtn').onclick=()=>{$('emoteBar').hidden=!$('emoteBar').hidden};
+$('emoteBar').onclick=e=>{const b=e.target.closest('button');if(b)sendEmote(+b.dataset.i)};
+function sendCheer(){if(!coopOn()||S.mode!=='over'||(S.cheerAt&&nowT()-S.cheerAt<6000))return;S.cheers=(S.cheers||0)+1;S.cheerAt=nowT();toast('応援を送った');sfx('buy')}
+$('cheerBtn').onclick=sendCheer;$('cheerBtn2').onclick=sendCheer;
 $('setBtn').onclick=()=>openSettings('ovTitle');
 $('setBtn2').onclick=()=>openSettings('ovPause');
 $('codexBack').onclick=()=>{hide('ovCodex');show('ovTitle')};
