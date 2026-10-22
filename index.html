@@ -544,7 +544,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='26',UPDATED='2026-10-22 18:15';
+const VERSION='27',UPDATED='2026-10-22 18:21';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
 const SHAPES={
@@ -1023,6 +1023,12 @@ function settleColumns(cols){
     for(let i=0;i<stack.length;i++)S.board[H-stack.length+i][x]=stack[i];
   }
 }
+// remove every garbage cell, then let the blocks above fall into the gaps (no floating blocks)
+function clearGarbageCells(){
+  if(!S.board.some(r=>r.some(v=>v==='G')))return;
+  S.board=S.board.map(r=>r.map(v=>v==='G'?0:v));settleColumns([...Array(W).keys()]);clearFullRows();
+  if(S.cur){let k=0;while(collide(S.cur.m,S.cur.x,S.cur.y)&&k++<4)S.cur.y--}
+}
 function clearFullRows(){
   let n=0;
   for(let y=H-1;y>=0;y--){
@@ -1270,7 +1276,7 @@ function useSkill(){
   S.lastSkAt=nowT();if(NET&&NET.lastAllySk&&nowT()-NET.lastAllySk.t<3000)linkSkill(NET.lastAllySk.who);
   if(S.cls==='tank'){S.immuneUntil=nowT()+wallMs();addShield(wallSh());S.fx.push({k:'block',t:0})}
   else if(S.cls==='heal'){
-    heal(mirHeal());addShield(mirSh());if(su(1)==='A')S.board=S.board.map(r=>r.map(v=>v==='G'?0:v));if(su(2)==='B')S.immuneUntil=Math.max(S.immuneUntil||0,nowT()+3000);
+    heal(mirHeal());addShield(mirSh());if(su(1)==='A')clearGarbageCells();if(su(2)==='B')S.immuneUntil=Math.max(S.immuneUntil||0,nowT()+3000);
     if(lv('d_th'))addShield(8);S.fx.push({k:'heal',t:0});
   }
   else if(S.cls==='buff'){startFreeze(songMs(),songMul(),su(1)==='A');if(su(2)==='B'&&S.boss&&!S.boss.dead){const d=Math.round(S.boss.max*0.05);S.boss.myDmg+=d;dmgNum(d,true,'衝撃')}}
@@ -1577,7 +1583,7 @@ function buy(i){
   else if(it.kind==='heal')heal(15);
   else if(it.kind==='charm')addShield(20);
   else if(it.kind==='clean'){
-    S.board=S.board.map(r=>r.map(v=>v==='G'?0:v));
+    clearGarbageCells();
     settleColumns([...Array(W).keys()]);
     const n=clearFullRows();if(n)S.totalLines+=n;
   }
@@ -1712,7 +1718,7 @@ function runEvent(){
       {g:'知',n:'経験値を得る',d:'石碑を読み解く（経験値+300）',go:()=>{gainXp(300);if(S.pendingLv){S.afterReward='node';openReward(false)}else nodeDone()}}])},
     ()=>openChoice('秘湯','洞窟の奥に、湯気の立つ温泉がある',[
       {g:'湯',n:'HPを全回復する',d:'ゆっくり浸かる',go:()=>{heal(S.maxHp);nodeDone()}},
-      {g:'掃',n:'ゴミ列を全部消し、シールド+20',d:'体を清めて、気を引き締める',go:()=>{S.board=S.board.map(r=>r.map(v=>v==='G'?0:v));settleColumns([...Array(W).keys()]);clearFullRows();addShield(20);nodeDone()}}]),
+      {g:'掃',n:'ゴミ列を全部消し、シールド+20',d:'体を清めて、気を引き締める',go:()=>{clearGarbageCells();addShield(20);nodeDone()}}]),
     ()=>openChoice('呪いの宝箱','黒い霜に覆われた宝箱がある',[
       {g:'呪',n:'開ける',d:'代償つきの遺物を3つから選ぶ',go:()=>openRelicChoice(shuffle(Object.keys(RELICS).filter(k=>RELICS[k].cursed&&!lv(k))).slice(0,3),'呪いの宝箱','代償つきの遺物をひとつ選ぶ',nodeDone)},
       {g:'去',n:'立ち去る',d:'触らぬ神にたたりなし',go:nodeDone}]),
@@ -2477,7 +2483,7 @@ function absorbAllies(){
       if(cs==='heal'){
         if(S.mode==='over'&&S.hp<=0)revive(who);
         else if(S.mode!=='over'){
-          const amt=num(v.hh,18,80),sh=num(v.hs,0,60);heal(amt);addShield(sh);if(u[1]==='A')S.board=S.board.map(r=>r.map(x=>x==='G'?0:x));
+          const amt=num(v.hh,18,80),sh=num(v.hs,0,60);heal(amt);addShield(sh);if(u[1]==='A')clearGarbageCells();
           if(u[2]==='B')S.immuneUntil=Math.max(S.immuneUntil||0,nowT()+3000);
           if(lv('d_th'))addShield(8);S.fx.push({k:'heal',t:0});toast(`${who}の雪解けの奇跡 HP+${amt}`);
         }
