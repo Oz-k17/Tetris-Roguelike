@@ -577,7 +577,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='33',UPDATED='2026-10-22 19:42';
+const VERSION='34',UPDATED='2026-10-22 21:11';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
 const SHAPES={
@@ -1495,6 +1495,19 @@ function relicCardHtml(k,extra){
 }
 
 /* ---------- level-up reward ---------- */
+// filler rewards when every relic is maxed out (late levels), so a choice screen is never empty
+const BOONS=[
+  {k:'b_hp',g:'命',col:'#7ee0a1',n:'雪解けの霊気',d:()=>'最大HP+3、HPを10回復',go:()=>{S.maxHp+=3;heal(10)}},
+  {k:'b_gold',g:'金',col:'#f2d06b',n:'氷の金貨袋',d:()=>`ゴールド+${15+5*S.floor}`,go:()=>{S.gold+=15+5*S.floor}},
+  {k:'b_sh',g:'護',col:'#8fe3ff',n:'凍てつく加護',d:()=>'シールド+15',go:()=>addShield(15)}
+];
+function boonCard(bn,after){
+  const b=document.createElement('button');b.className='card';b.type='button';
+  b.innerHTML=`<span class="g dia" style="color:${bn.col}"><i>${bn.g}</i></span><span class="n">${bn.n}<span class="ct" style="color:var(--muted)">遺物がもう無いときの報酬</span></span><span class="d">${bn.d()}</span>`;
+  b.onclick=()=>{bn.go();hide('ovReward');hud(true);sfx('buy');after()};
+  return b;
+}
+function fillBoons(box,have,after){for(const bn of BOONS.slice(0,Math.max(0,3-have)))box.appendChild(boonCard(bn,after))}
 function openReward(first){
   S.mode='reward';
   const ti=first?-1:SKUP_LV.indexOf(S.level+1);
@@ -1507,7 +1520,7 @@ function openReward(first){
   $('rwLv').innerHTML=first?'':`<small>Lv ${S.level} →</small>Lv ${S.level+1}`;
   $('rwTitle').textContent=first?'最初の遺物':'レベルアップ';
   $('rwSub').textContent=first?`${clsOf(S.cls).n}として洞窟に入る。ひとつだけ持っていける`:
-    (S.afterReward==='shop'&&S.lastBoss?`${S.lastBoss}を倒した。${S.lastEarn}G を手に入れ、HPが${killHeal()}回復。`:'')+'遺物をひとつ選んでください';
+    (S.afterReward==='shop'&&S.lastBoss?`${S.lastBoss}を倒した。${S.lastEarn}G を手に入れ、HPが${killHeal()}回復。`:'')+(keys.length?'遺物をひとつ選んでください':'持てる遺物はすべて集めた。報酬をひとつ選んでください');
   const box=$('cards');box.innerHTML='';
   for(const k of keys){
     const b=document.createElement('button');
@@ -1516,6 +1529,7 @@ function openReward(first){
     b.onclick=()=>pickRelic(k,first);
     box.appendChild(b);
   }
+  if(!first)fillBoons(box,keys.length,()=>levelPicked());
   show('ovReward');
 }
 function applyRelic(k){
@@ -1729,12 +1743,12 @@ function openChoice(title,sub,opts){
   show('ovReward');
 }
 function openRelicChoice(keys,title,sub,done){
-  if(!keys.length){done();return}
   S.mode='reward';
   $('rwLv').innerHTML='';$('rwTitle').textContent=title;$('rwSub').textContent=sub;
   const box=$('cards');box.innerHTML='';
   keys.forEach(k=>{const b=document.createElement('button');b.className='card';b.type='button';b.innerHTML=relicCardHtml(k);
     b.onclick=()=>{applyRelic(k);hide('ovReward');renderRelics();layout();hud(true);S.mode='play';announceTransform();done()};box.appendChild(b)});
+  fillBoons(box,keys.length,()=>{S.mode='play';done()});
   show('ovReward');
 }
 function runEvent(){
