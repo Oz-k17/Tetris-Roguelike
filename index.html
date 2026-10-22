@@ -558,11 +558,12 @@ let C=24,DPR=Math.min(2,window.devicePixelRatio||1);
 let S=null;
 /* Difficulty presets. "easy" is the balance as of 2026-10-21; add harder presets here with the same keys.
    bossHp:[base, per floor]  strike/bossSk/bossAtk:[start ms, minus per floor, minimum ms]  strikeDmg:[base, per floor]
-   cold:[interval ms, base dmg, first floor]  topout: share of max HP lost  xp:[first level, growth] */
+   cold:[interval ms, base dmg, first floor]  topout: share of max HP lost  xp:[first level, growth]  xpEarly: discount for Lv1,2,3...
+*/
 const DIFFS={
   easy:{n:'簡単',d:'いまの標準バランス。初めての人やソロ向け',
     bossHp:[200,120],strike:[40000,3000,20000],strikeDmg:[8,1.5],cold:[60000,6,3],topout:0.35,killHeal:15,
-    xp:[350,1.28],bossSk:[26000,1200,15000],bossAtk:[9000,700,3500],gravity:0.85}
+    xp:[350,1.28],xpEarly:[0.5,0.6,0.7,0.85,0.95],bossSk:[26000,1200,15000],bossAtk:[9000,700,3500],gravity:0.85}
 };
 const DIFF_KEYS=Object.keys(DIFFS);
 let myDiff='easy';
@@ -608,7 +609,8 @@ const until=k=>Math.max(0,(S[k]||0)-nowT());
 const frozen=()=>until('freezeUntil')>0, immune=()=>until('immuneUntil')>0;
 const bossSkMs=()=>{const a=D().bossSk;return Math.max(a[2],a[0]-a[1]*(S.floor-1))};
 const bossRows=()=>S.floor>=4?2:1;
-const xpNeed=l=>Math.round(D().xp[0]*Math.pow(D().xp[1],l-1));
+// the first levels are discounted (xpEarly) so the opening picks come sooner
+const xpNeed=l=>{const e=D().xpEarly||[];return Math.round(D().xp[0]*Math.pow(D().xp[1],l-1)*(l<=e.length?e[l-1]:1))};
 // XP comes from what you cleared, not from score, so deep floors don't snowball levels
 const floorXp=()=>1+0.15*(S.floor-1);
 const bombInterval=()=>14-3*(lv('bomb')-1);
