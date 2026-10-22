@@ -235,6 +235,19 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .cx small{font-size:12px;color:var(--muted);line-height:1.5}
 .cx.locked{opacity:.55}
 .setlist{display:flex;flex-direction:column;gap:14px}
+.seth{font-size:15px;margin:6px 0 0;font-weight:700}
+.ktabs{display:flex;gap:6px}
+.ktabs button{flex:1;height:36px;border-radius:8px;border:1px solid var(--line);background:none;color:var(--muted);font:inherit;font-weight:700;cursor:pointer}
+.ktabs button[aria-selected="true"]{background:var(--ice);color:var(--bg);border-color:var(--ice)}
+.khint{margin:0;font-size:12px;color:var(--muted);line-height:1.5}
+.keylist{display:flex;flex-direction:column;gap:6px}
+.krow{display:grid;grid-template-columns:1fr 100px 100px;gap:6px;align-items:center}
+.krow span{font-size:13px;font-weight:700}
+.krow button{height:34px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ice);font:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px}
+.krow button.empty{color:var(--muted);font-weight:400}
+.krow button.cap{background:var(--ice);color:var(--bg);animation:kblink .8s infinite}
+@keyframes kblink{50%{opacity:.55}}
+.gpfocus{outline:3px solid var(--ice)!important;outline-offset:2px}
 .setrow{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center}
 .setrow label{font-weight:700;font-size:14px}
 .setrow output{font-family:var(--display);font-variant-numeric:tabular-nums;color:var(--ice)}
@@ -366,7 +379,7 @@ i[data-ico]{display:contents}
       <li>ボスを倒すとHPが15回復し、行商人が来る。ゴールドで遺物や薬、護符を買って次の階へ</li>
       <li>天井に届くと最大HPの35%（最低12）を失って盤面リセット。このダメージはシールドや氷壁でも防げない。ほかのダメージはシールドがHPより先に吸収する。HPが尽きたら終わり。地下8階のボスを倒せば踏破</li>
     </ol>
-    <div class="keys">キーボード：←→ 移動 / ↓ ソフト / Space ハード / Z・X(↑) 回転 / C ホールド / A スキル / P 一時停止</div>
+    <div class="keys">キーボード（初期設定）：←→ 移動 / ↓ ソフト / Space ハード / Z・X(↑) 回転 / C ホールド / A スキル / P 一時停止<br>ゲームパッド：十字キー 移動 / ↑ ハード / A・B 回転 / LB・RB ホールド / X スキル / Start 一時停止。設定からどちらも変更できます</div>
     </details>
     <div class="diff"><span class="lbl">マップ</span><div class="diffrow" id="mapRow"></div><span class="dnote" id="mapNote"></span></div>
     <div class="diff"><span class="lbl">難易度</span><div class="diffrow" id="diffRow"></div><span class="dnote" id="diffNote"></span></div>
@@ -481,6 +494,10 @@ i[data-ico]{display:contents}
   <div class="sheet">
     <h2>設定</h2>
     <div class="setlist" id="setList"></div>
+    <h3 class="seth">キー設定</h3>
+    <div class="ktabs" role="tablist"><button type="button" id="ktKey" role="tab">キーボード</button><button type="button" id="ktPad" role="tab">ゲームパッド</button></div>
+    <p class="khint" id="kHint"></p>
+    <div class="keylist" id="keyList"></div>
     <button class="ghostbtn" id="setReset" type="button">初期値に戻す</button>
     <button class="cta" id="setBack" type="button">閉じる</button>
   </div>
@@ -662,9 +679,17 @@ const nextC=$('nextC'),nctx=nextC.getContext('2d');
 let C=24,DPR=Math.min(2,window.devicePixelRatio||1);
 let S=null;
 /* ---------- settings: sound, controls, motion ---------- */
-const SET_DEF={sfx:70,bgm:45,das:170,arr:50,sdf:35,shake:1};
-let SET={...SET_DEF};
-try{Object.assign(SET,JSON.parse(localStorage.getItem('hyokutsu-set')||'{}'))}catch(e){}
+/* Bindings are stored per action, two slots each. Keyboard uses KeyboardEvent.code (layout-independent);
+   gamepad uses "b<index>" for standard-mapping buttons and "sl/sr/su/sd" for left-stick directions. */
+const ACTS=[['left','左に移動'],['right','右に移動'],['soft','ソフトドロップ'],['hard','ハードドロップ'],['cw','右回転'],['ccw','左回転'],['hold','ホールド'],['skill','クラススキル'],['pause','一時停止']];
+const KEY_DEF={left:['ArrowLeft',''],right:['ArrowRight',''],soft:['ArrowDown',''],hard:['Space',''],cw:['ArrowUp','KeyX'],ccw:['KeyZ',''],hold:['KeyC','ShiftLeft'],skill:['KeyA','KeyV'],pause:['KeyP','Escape']};
+const PAD_DEF={left:['b14','sl'],right:['b15','sr'],soft:['b13','sd'],hard:['b12',''],cw:['b1','b3'],ccw:['b0',''],hold:['b4','b5'],skill:['b2','b7'],pause:['b9','']};
+const SET_DEF={sfx:70,bgm:45,das:170,arr:50,sdf:35,shake:1,keys:KEY_DEF,pad:PAD_DEF};
+const cloneSet=()=>JSON.parse(JSON.stringify(SET_DEF));
+let SET=cloneSet();
+try{const sv=JSON.parse(localStorage.getItem('hyokutsu-set')||'{}');
+  for(const k of ['keys','pad'])if(sv[k]){for(const [a] of ACTS)if(Array.isArray(sv[k][a]))SET[k][a]=[sv[k][a][0]||'',sv[k][a][1]||''];delete sv[k]}
+  Object.assign(SET,sv)}catch(e){}
 const saveSet=()=>{try{localStorage.setItem('hyokutsu-set',JSON.stringify(SET))}catch(e){}};
 /* ---------- meta progression: lifetime stats unlock relics ---------- */
 let META={tspin:0,quad:0,pc:0,kills:{},deep:0,tankDeep:0,unlocked:{}};
@@ -1799,7 +1824,7 @@ function bgmTick(){
   }
 }
 function btone(f,d,type,v){const o=AC.createOscillator(),g=AC.createGain(),t=bgmNext;o.type=type;o.frequency.value=f;g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(v,t+0.02);g.gain.exponentialRampToValueAtTime(0.001,t+d);o.connect(g);g.connect(BGMG);o.start(t);o.stop(t+d+0.05)}
-addEventListener('pointerdown',audioInit,{once:true});addEventListener('keydown',audioInit,{once:true});
+addEventListener('pointerdown',audioInit,{once:true});addEventListener('pointerdown',()=>{if(typeof gpSetFocus==='function')gpSetFocus(null)});addEventListener('keydown',audioInit,{once:true});
 /* ---------- juice: callouts, particles, shake ---------- */
 const RM=(()=>{try{return matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){return false}})();
 function pop(lines,color,size){
@@ -1867,8 +1892,35 @@ function renderSettings(){
     `<div class="setrow"><label for="set-shake">画面の揺れ</label><input type="checkbox" id="set-shake" ${SET.shake?'checked':''}></div>`;
   SET_UI.forEach(([k,,u])=>{$('set-'+k).oninput=e=>{SET[k]=+e.target.value;$('out-'+k).textContent=SET[k]+u;saveSet();applyVol();if(k==='sfx')sfx('rotate')}});
   $('set-shake').onchange=e=>{SET.shake=e.target.checked?1:0;saveSet()};
+  CAP=null;renderKeys();
 }
-$('setReset').onclick=()=>{SET={...SET_DEF};saveSet();applyVol();renderSettings()};
+$('setReset').onclick=()=>{SET=cloneSet();saveSet();applyVol();renderSettings()};
+/* ---------- key binding screen ---------- */
+let kTab='key',CAP=null; // CAP={dev:'key'|'pad',a,i} while waiting for an input to bind
+const KNAME={ArrowLeft:'←',ArrowRight:'→',ArrowUp:'↑',ArrowDown:'↓',Space:'Space',ShiftLeft:'左Shift',ShiftRight:'右Shift',ControlLeft:'左Ctrl',ControlRight:'右Ctrl',AltLeft:'左Alt',AltRight:'右Alt',Escape:'Esc',Enter:'Enter',Tab:'Tab',Backspace:'BS',CapsLock:'Caps'};
+const PNAME={b0:'A',b1:'B',b2:'X',b3:'Y',b4:'LB',b5:'RB',b6:'LT',b7:'RT',b8:'Back',b9:'Start',b10:'L押込',b11:'R押込',b12:'十字↑',b13:'十字↓',b14:'十字←',b15:'十字→',b16:'ホーム',sl:'スティック←',sr:'スティック→',su:'スティック↑',sd:'スティック↓'};
+function keyName(c){if(!c)return'';if(KNAME[c])return KNAME[c];if(/^Key./.test(c))return c.slice(3);if(/^Digit./.test(c))return c.slice(5);if(/^Numpad/.test(c))return'テンキー'+c.slice(6);return c}
+const padName=c=>c?(PNAME[c]||c.replace(/^b/,'ボタン')):'';
+function bindName(dev,c){return dev==='key'?keyName(c):padName(c)}
+function renderKeys(){
+  $('ktKey').setAttribute('aria-selected',kTab==='key');$('ktPad').setAttribute('aria-selected',kTab==='pad');
+  const map=SET[kTab==='key'?'keys':'pad'];
+  const pads=gpList();
+  $('kHint').textContent=CAP?(CAP.dev==='key'?'割り当てるキーを押してください（Escで取り消し、BackSpaceで空欄）':'割り当てるボタンかスティックを入力してください（キーボードのEscで取り消し）'):
+    kTab==='key'?'枠を押してからキーを押すと変更できます。ほかの操作と重なったキーは、そちらから外れます。数字の1〜4は協力プレイのスタンプ用です。':
+    (pads.length?`接続中：${pads[0].id.replace(/\s*\(.*$/,'').slice(0,40)}。ボタン名はXbox配置です（Aは下のボタン）。`:'ゲームパッドが見つかりません。つないでから何かボタンを押してください。ボタン名はXbox配置です（Aは下のボタン）。');
+  $('keyList').innerHTML=ACTS.map(([a,n])=>`<div class="krow"><span>${n}</span>${[0,1].map(i=>{const c=map[a][i],cap=CAP&&CAP.a===a&&CAP.i===i;
+    return`<button type="button" data-a="${a}" data-i="${i}" class="${cap?'cap':c?'':'empty'}">${cap?'入力待ち…':c?bindName(kTab,c):'未設定'}</button>`}).join('')}</div>`).join('');
+}
+function assignBind(dev,a,i,code){
+  const map=SET[dev==='key'?'keys':'pad'];
+  if(code)for(const [b] of ACTS)for(const j of [0,1])if(map[b][j]===code)map[b][j]='';
+  map[a][i]=code;saveSet();CAP=null;rebuildKeyLookup();renderKeys();sfx('rotate');
+}
+$('keyList').onclick=e=>{const b=e.target.closest('button');if(!b)return;const a=b.dataset.a,i=+b.dataset.i;
+  CAP=CAP&&CAP.a===a&&CAP.i===i?null:{dev:kTab,a,i,t:performance.now()};renderKeys()};
+$('ktKey').onclick=()=>{kTab='key';CAP=null;renderKeys()};
+$('ktPad').onclick=()=>{kTab='pad';CAP=null;renderKeys()};
 function openClassPick(){
   hide('ovTitle');
   const box=$('classCards');box.innerHTML='';
@@ -2513,19 +2565,108 @@ function startRepeat(a,src){
   held[a]={src,t1:setTimeout(()=>{rep();held[a].t2=setInterval(rep,a==='soft'?SET.sdf:Math.max(16,SET.arr))},a==='soft'?Math.min(90,SET.das):SET.das)};
 }
 function stopRepeat(a){const h=held[a];if(h){clearTimeout(h.t1);clearInterval(h.t2);delete held[a]}}
-const keymap={ArrowLeft:'left',ArrowRight:'right',ArrowDown:'soft',ArrowUp:'cw',x:'cw',X:'cw',z:'ccw',Z:'ccw',' ':'hard',c:'hold',C:'hold',Shift:'hold',a:'skill',A:'skill',v:'skill',V:'skill'};
+let keymap={};
+function rebuildKeyLookup(){keymap={};for(const [a] of ACTS)for(const c of SET.keys[a])if(c)keymap[c]=a}
+rebuildKeyLookup();
 addEventListener('keydown',e=>{
-  if(e.target&&e.target.tagName==='INPUT')return;
-  if(e.key==='p'||e.key==='P'||e.key==='Escape'){S&&S.mode==='pause'?resume():pause();e.preventDefault();return}
-  if(S&&coopOn()&&/^[1-4]$/.test(e.key)){sendEmote(+e.key-1);return}
-  const a=keymap[e.key];if(!a||!S||S.mode!=='play')return;
+  if(CAP&&CAP.dev==='key'){e.preventDefault();e.stopPropagation();
+    if(e.code==='Escape'){CAP=null;renderKeys()}else if(e.code==='Backspace'||e.code==='Delete')assignBind('key',CAP.a,CAP.i,'');else if(e.code)assignBind('key',CAP.a,CAP.i,e.code);return}
+  if(CAP&&CAP.dev==='pad'&&e.code==='Escape'){e.preventDefault();CAP=null;renderKeys();return}
+  if(e.target&&e.target.tagName==='INPUT'&&e.target.type!=='range'&&e.target.type!=='checkbox')return;
+  const a=keymap[e.code];
+  if(a==='pause'){if(!e.repeat)S&&S.mode==='pause'?resume():pause();e.preventDefault();return}
+  if(S&&coopOn()&&/^Digit[1-4]$/.test(e.code)&&!a){sendEmote(+e.code.slice(5)-1);return}
+  if(!a||!S||S.mode!=='play')return;
   e.preventDefault();
   if(e.repeat)return;
   act(a);
   if(a==='left'||a==='right'||a==='soft'){if(a!=='soft')stopRepeat(a==='left'?'right':'left');startRepeat(a,'key')}
 });
-addEventListener('keyup',e=>{const a=keymap[e.key];if(a&&held[a]&&held[a].src==='key')stopRepeat(a)});
+addEventListener('keyup',e=>{const a=keymap[e.code];if(a&&held[a]&&held[a].src==='key')stopRepeat(a)});
 addEventListener('blur',()=>Object.keys(held).forEach(stopRepeat));
+/* ---------- gamepad ---------- */
+// Polled every animation frame. In play, bound buttons drive the same actions (with DAS/ARR via startRepeat 'gp').
+// Outside play, the d-pad / stick moves a focus ring across the open screen's buttons, A presses, B goes back.
+function gpList(){try{return[...(navigator.getGamepads?navigator.getGamepads():[])].filter(g=>g&&g.connected!==false)}catch(e){return[]}}
+let gpPrev={},gpNavT=0,gpNavDir='',gpFocusEl=null;
+function gpRead(){
+  const now={};
+  for(const g of gpList()){
+    g.buttons.forEach((b,i)=>{if(b&&(b.pressed||b.value>0.5))now['b'+i]=1});
+    const x=g.axes[0]||0,y=g.axes[1]||0;
+    if(x<-0.5)now.sl=1;if(x>0.5)now.sr=1;if(y<-0.5)now.su=1;if(y>0.5)now.sd=1;
+  }
+  return now;
+}
+function gpOpenSheet(){
+  const ovs=[...document.querySelectorAll('.ov')].filter(o=>!o.hidden&&o.getClientRects().length);
+  return ovs[ovs.length-1]||null;
+}
+function gpFocusables(root){
+  return[...root.querySelectorAll('button,input[type=range],input[type=checkbox],summary')].filter(el=>!el.disabled&&!el.hidden&&el.getClientRects().length&&getComputedStyle(el).visibility!=='hidden');
+}
+function gpSetFocus(el){
+  if(gpFocusEl)gpFocusEl.classList.remove('gpfocus');
+  gpFocusEl=el;if(!el)return;
+  el.classList.add('gpfocus');try{el.focus({preventScroll:true})}catch(e){}
+  el.scrollIntoView({block:'nearest'});
+}
+// spatial navigation: pick the nearest focusable in the pressed direction
+function gpMove(dir){
+  const ov=gpOpenSheet();if(!ov)return;
+  const list=gpFocusables(ov);if(!list.length)return;
+  if(!gpFocusEl||!list.includes(gpFocusEl)){gpSetFocus(list[0]);return}
+  if(gpFocusEl.type==='range'&&(dir==='l'||dir==='r')){
+    const el=gpFocusEl,st=+el.step||1;el.value=Math.min(+el.max,Math.max(+el.min,+el.value+(dir==='r'?st:-st)));
+    el.dispatchEvent(new Event('input',{bubbles:true}));return}
+  const r0=gpFocusEl.getBoundingClientRect(),cx=r0.left+r0.width/2,cy=r0.top+r0.height/2;
+  let best=null,bd=1e9;
+  for(const el of list){if(el===gpFocusEl)continue;
+    const r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2,dx=x-cx,dy=y-cy;
+    const ok=dir==='u'?dy<-4:dir==='d'?dy>4:dir==='l'?dx<-4:dx>4;if(!ok)continue;
+    const along=dir==='u'||dir==='d'?Math.abs(dy):Math.abs(dx),across=dir==='u'||dir==='d'?Math.abs(dx):Math.abs(dy);
+    const d=along+across*2.5;if(d<bd){bd=d;best=el}}
+  if(!best){const i=list.indexOf(gpFocusEl);best=list[(i+(dir==='u'||dir==='l'?-1:1)+list.length)%list.length]}
+  gpSetFocus(best);sfx('move');
+}
+function gpBack(){
+  const ov=gpOpenSheet();if(!ov)return;
+  if(ov.id==='ovPause'){resume();return}
+  const b=gpFocusables(ov).find(el=>/^(戻る|閉じる|キャンセル|やめる)/.test(el.textContent.trim()));
+  if(b)b.click();
+}
+function gpPoll(){
+  requestAnimationFrame(gpPoll);
+  const now=gpRead(),prev=gpPrev;gpPrev=now;
+  const dn=k=>now[k]&&!prev[k];
+  if(CAP&&CAP.dev==='pad'){
+    if(performance.now()-CAP.t<250)return; // ignore the A press that opened the slot
+    const k=Object.keys(now).find(dn);if(k)assignBind('pad',CAP.a,CAP.i,k);return}
+  const P=SET.pad;
+  const actDown=a=>P[a].some(k=>k&&dn(k)),actHeld=a=>P[a].some(k=>k&&now[k]);
+  if(actDown('pause')&&S&&(S.mode==='play'||S.mode==='pause'||(S.mode==='over'&&S.watching))){S.mode==='pause'?resume():pause();return}
+  if(S&&S.mode==='play'&&!gpOpenSheet()){
+    if(gpFocusEl){gpFocusEl.classList.remove('gpfocus');gpFocusEl=null}
+    for(const [a] of ACTS){if(a==='pause')continue;
+      if(actDown(a)){act(a);if(REPEAT[a]){if(a!=='soft')stopRepeat(a==='left'?'right':'left');startRepeat(a,'gp')}}
+      else if(held[a]&&held[a].src==='gp'&&!actHeld(a))stopRepeat(a);
+    }
+    return;
+  }
+  for(const a in held)if(held[a].src==='gp')stopRepeat(a);
+  if(!Object.keys(now).length&&!Object.keys(prev).length)return;
+  // menus: d-pad or stick, with key-repeat while held
+  const dir=now.b12||now.su?'u':now.b13||now.sd?'d':now.b14||now.sl?'l':now.b15||now.sr?'r':'';
+  const t=performance.now();
+  if(dir&&(dir!==gpNavDir||t>gpNavT)){gpMove(dir);gpNavT=t+(dir!==gpNavDir?380:120)}
+  gpNavDir=dir;
+  if(dn('b0')){const ov=gpOpenSheet();if(ov){if(!gpFocusEl||!ov.contains(gpFocusEl)){gpMove('d');return}gpFocusEl.click()}}
+  if(dn('b1'))gpBack();
+  if(dn('b9')&&S&&S.mode==='pause')resume();
+}
+addEventListener('gamepadconnected',e=>{toast('ゲームパッドを接続しました');if(!$('ovSet').hidden)renderKeys()});
+addEventListener('gamepaddisconnected',()=>{toast('ゲームパッドが外れました');Object.keys(held).forEach(a=>held[a].src==='gp'&&stopRepeat(a));if(!$('ovSet').hidden)renderKeys()});
+requestAnimationFrame(gpPoll);
 const REPEAT={left:1,right:1,soft:1};
 document.querySelectorAll('#pad button').forEach(b=>{
   const a=b.dataset.a;
@@ -2557,7 +2698,7 @@ $('cheerBtn').onclick=sendCheer;$('cheerBtn2').onclick=sendCheer;
 $('setBtn').onclick=()=>openSettings('ovTitle');
 $('setBtn2').onclick=()=>openSettings('ovPause');
 $('codexBack').onclick=()=>{hide('ovCodex');show('ovTitle')};
-$('setBack').onclick=()=>{hide('ovSet');show(setFrom)};
+$('setBack').onclick=()=>{CAP=null;hide('ovSet');show(setFrom)};
 $('startBtn').onclick=()=>{pickMode='run';openClassPick()};
 $('classBack').onclick=()=>{pickMode='run';hide('ovClass');show('ovTitle')};
 $('againBtn').onclick=()=>{if(S&&S.coop){toTitle()}else{hide('ovOver');openClassPick()}};
