@@ -102,6 +102,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
   color:var(--fg);background:rgba(11,19,32,.85);border:1px solid var(--line);padding:6px 12px;border-radius:4px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .2s}
 .toast.show{opacity:1}
 /* overlays */
+#ovTitle .sheet .ver{margin:-4px 0 0;align-self:flex-start;font-size:11px;color:var(--muted);letter-spacing:.04em;font-variant-numeric:tabular-nums}
 .ov{position:fixed;inset:0;background:rgba(6,11,19,.86);display:flex;align-items:center;justify-content:center;z-index:20;
   padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .sheet{width:100%;max-width:420px;max-height:100%;overflow:auto;display:flex;flex-direction:column;gap:14px}
@@ -392,6 +393,7 @@ i[data-ico]{display:contents}
       <button class="ghostbtn" id="codexBtn" type="button">図鑑</button>
       <button class="ghostbtn" id="setBtn" type="button">設定</button>
     </div>
+    <p class="ver" id="verTag"></p>
   </div>
 </div>
 
@@ -541,6 +543,8 @@ i[data-ico]{display:contents}
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 (()=>{
+// bump on every release: shown at the bottom-left of the title screen
+const VERSION='26',UPDATED='2026-10-22 18:15';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
 const SHAPES={
@@ -2712,6 +2716,7 @@ $('emoteBar').onclick=e=>{const b=e.target.closest('button');if(b)sendEmote(+b.d
 function sendCheer(){if(!coopOn()||S.mode!=='over'||(S.cheerAt&&nowT()-S.cheerAt<6000))return;S.cheers=(S.cheers||0)+1;S.cheerAt=nowT();toast('応援を送った');sfx('buy')}
 $('cheerBtn').onclick=sendCheer;$('cheerBtn2').onclick=sendCheer;
 $('setBtn').onclick=()=>openSettings('ovTitle');
+$('verTag').textContent=`ver ${VERSION} ・ ${UPDATED} 更新`;
 $('setBtn2').onclick=()=>openSettings('ovPause');
 $('codexBack').onclick=()=>{hide('ovCodex');show('ovTitle')};
 $('setBack').onclick=()=>{CAP=null;hide('ovSet');show(setFrom)};
