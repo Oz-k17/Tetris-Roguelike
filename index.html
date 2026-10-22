@@ -103,6 +103,28 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .toast.show{opacity:1}
 /* overlays */
 #ovTitle .sheet .ver{margin:-4px 0 0;align-self:flex-start;font-size:11px;color:var(--muted);letter-spacing:.04em;font-variant-numeric:tabular-nums}
+#dbgBtn{position:fixed;right:0;top:42%;z-index:24;width:30px;height:64px;border:1px solid #c58cff;border-right:none;border-radius:8px 0 0 8px;background:#1d1430;color:#c58cff;font:700 11px var(--body);letter-spacing:.05em;writing-mode:vertical-rl;cursor:pointer}
+#dbgPanel{position:fixed;top:0;right:0;bottom:0;width:min(340px,88vw);z-index:30;background:#0e1828;border-left:1px solid #c58cff;overflow:auto;padding:12px 12px calc(16px + env(safe-area-inset-bottom,0px));box-sizing:border-box;display:flex;flex-direction:column;gap:12px;box-shadow:-8px 0 24px rgba(0,0,0,.5)}
+.dbghead{display:flex;align-items:center;gap:8px;flex:none}
+.dbgsec{flex:none}
+.dbghead b{color:#c58cff;font-size:16px}
+.dbghead small{flex:1;color:var(--muted);font-size:11px}
+.dbghead .ghostbtn{height:34px;padding:0 12px}
+.dbgsec h4{margin:0 0 6px;font-size:12px;letter-spacing:.1em;color:var(--muted);font-weight:700}
+.dbgtools{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.dbgsec button.t{height:34px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--fg);font:inherit;font-size:12px;cursor:pointer}
+.dbgsk{display:grid;grid-template-columns:44px 1fr 1fr 1fr;gap:4px;align-items:center;margin-bottom:4px;font-size:12px}
+.dbgsk button{min-height:34px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--fg);font:inherit;font-size:11px;cursor:pointer;padding:2px 4px;line-height:1.25}
+.dbgsk button.on{background:#c58cff;color:#0b1320;border-color:#c58cff;font-weight:700}
+#dbgQ{width:100%;box-sizing:border-box;height:34px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--fg);padding:0 10px;font:inherit;margin-bottom:6px}
+.dbgr{display:grid;grid-template-columns:22px 1fr 30px 26px 30px;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)}
+.dbgr i{font-style:normal;font-weight:700;text-align:center}
+.dbgr span{font-size:12px;line-height:1.35}
+.dbgr span small{display:block;color:var(--muted);font-size:10.5px}
+.dbgr output{text-align:center;font-variant-numeric:tabular-nums;color:var(--ice);font-size:13px}
+.dbgr button{height:30px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--fg);font:700 15px var(--body);cursor:pointer;padding:0}
+.dbgr button:disabled{opacity:.3}
+.dbggrp{margin:8px 0 2px;font-size:11px;color:#c58cff;font-weight:700}
 .ov{position:fixed;inset:0;background:rgba(6,11,19,.86);display:flex;align-items:center;justify-content:center;z-index:20;
   padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .sheet{width:100%;max-width:420px;max-height:100%;overflow:auto;display:flex;flex-direction:column;gap:14px}
@@ -505,6 +527,14 @@ i[data-ico]{display:contents}
   </div>
 </div>
 
+<button type="button" id="dbgBtn" hidden aria-label="デバッグパネルを開く">DBG</button>
+<div id="dbgPanel" role="dialog" hidden aria-label="デバッグパネル">
+  <div class="dbghead"><b>デバッグ</b><small>記録と解放は保存されない</small><button type="button" class="ghostbtn" id="dbgClose">閉じる</button></div>
+  <div class="dbgsec"><h4>ツール</h4><div class="dbgtools" id="dbgTools"></div></div>
+  <div class="dbgsec"><h4>スキル強化</h4><div id="dbgSk"></div></div>
+  <div class="dbgsec"><h4>遺物</h4><input id="dbgQ" type="search" placeholder="名前・効果で絞り込み" autocomplete="off" aria-label="遺物を絞り込む"><div id="dbgRel"></div></div>
+</div>
+
 <div class="ov" id="ovWin" hidden>
   <div class="sheet">
     <h1>踏破</h1>
@@ -544,7 +574,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='27',UPDATED='2026-10-22 18:21';
+const VERSION='28',UPDATED='2026-10-22 18:39';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
 const SHAPES={
@@ -743,8 +773,8 @@ const D=()=>DIFFS[S&&S.diff]||DIFFS.easy;
 const recKey=(k,d)=>d==='easy'?`hyokutsu-${k}`:`hyokutsu-${k}-${d}`;
 const readRec=(k,d)=>{try{return+localStorage.getItem(recKey(k,d))||0}catch(e){return 0}};
 let best=readRec('best',myDiff),deep=readRec('deep',myDiff);
-function saveBest(){const d=S.diff||'easy';if(S.score>readRec('best',d)){try{localStorage.setItem(recKey('best',d),S.score)}catch(e){}}if(d===myDiff)best=Math.max(best,S.score)}
-function noteDeep(){if(!S||S.practice)return;
+function saveBest(){if(S.debug)return;const d=S.diff||'easy';if(S.score>readRec('best',d)){try{localStorage.setItem(recKey('best',d),S.score)}catch(e){}}if(d===myDiff)best=Math.max(best,S.score)}
+function noteDeep(){if(!S||S.practice||S.debug)return;
   if(S.floor>META.deep)META.deep=S.floor;if(S.cls==='tank'&&S.floor>META.tankDeep)META.tankDeep=S.floor;checkUnlocks();const d=S.diff||'easy';if(S.floor>readRec('deep',d)){try{localStorage.setItem(recKey('deep',d),S.floor)}catch(e){}}if(d===myDiff)deep=Math.max(deep,S.floor)}
 function renderTitleInfo(){
   best=readRec('best',myDiff);deep=readRec('deep',myDiff);
@@ -907,7 +937,7 @@ function newRun(coop,epoch,cls,diff,practice,map){
   const c=clsOf(cls);
   const allyN=coop&&NET?Math.min(MAXP-1,NET.others.length):0;
   const mhp=c.hp+(c.hpAlly||0)*allyN;
-  S={board:emptyBoard(),floor:1,hp:mhp,maxHp:mhp,cls:CLASSES[cls]?cls:'atk',diff:DIFFS[diff]?diff:'easy',map:MAPS[map]&&!practice?map:'line',route:[],nodePicked:false,readyNode:0,prevClear:'',
+  S={debug:DBG&&!coop,board:emptyBoard(),floor:1,hp:mhp,maxHp:mhp,cls:CLASSES[cls]?cls:'atk',diff:DIFFS[diff]?diff:'easy',map:MAPS[map]&&!practice?map:'line',route:[],nodePicked:false,readyNode:0,prevClear:'',
      score:0,gold:0,totalGold:0,level:1,xp:0,pendingLv:0,
      timeLeft:STAGE_MS,phase:'play',boss:null,weaken:false,bossKills:0,afterReward:null,readyFloor:0,
      coop:!!coop,epoch:epoch||0,watching:false,
@@ -1135,7 +1165,7 @@ function lockPiece(){
     if(pc){lines.unshift('全消し！');color='#f2d06b';size=1.4}
     if(lines.length)pop(lines,color,size);
     sfx(pc?'pc':ts?'tspin':n===4?'quad':'clear'+Math.min(3,n));
-    if(!S.practice){if(ts)META.tspin++;if(n===4)META.quad++;if(pc)META.pc++;if(ts||n===4||pc)checkUnlocks()}
+    if(!S.practice&&!S.debug){if(ts)META.tspin++;if(n===4)META.quad++;if(pc)META.pc++;if(ts||n===4||pc)checkUnlocks()}
     if(hardClear||pc)shake(pc?7:n===4||ts==='full'?5:3,220);
     if(S.boss&&!S.boss.dead){
       const det=bossDmgDetail(n,ts,b2b,pc),dmg=Math.round(det.d*(dt?1.3:1));
@@ -1376,7 +1406,7 @@ function bossDefeated(){
   if(S.boss.elite){eliteDefeated();return}
   const name=S.boss.name;
   S.bossKills++;
-  SEEN.b[name]=1;saveSeen();if(!S.practice){META.kills[name]=(META.kills[name]||0)+1;checkUnlocks()}
+  SEEN.b[name]=1;saveSeen();if(!S.practice&&!S.debug){META.kills[name]=(META.kills[name]||0)+1;checkUnlocks()}
   S.score+=Math.round(1000*S.floor*mult());
   heal(killHeal()*(tf('癒')?2:1));
   let g=earn(15+4*S.floor);
@@ -2599,6 +2629,8 @@ addEventListener('keydown',e=>{
     if(e.code==='Escape'){CAP=null;renderKeys()}else if(e.code==='Backspace'||e.code==='Delete')assignBind('key',CAP.a,CAP.i,'');else if(e.code)assignBind('key',CAP.a,CAP.i,e.code);return}
   if(CAP&&CAP.dev==='pad'&&e.code==='Escape'){e.preventDefault();CAP=null;renderKeys();return}
   if(e.target&&e.target.tagName==='INPUT'&&e.target.type!=='range'&&e.target.type!=='checkbox')return;
+  if(!$('dbgPanel').hidden&&e.code==='Escape'){e.preventDefault();dbgClose();return}
+  {const tk={ArrowLeft:'L',ArrowRight:'R',KeyB:'B',KeyA:'A'}[e.code];if(!$('ovTitle').hidden&&!e.repeat){if(tk){if(dbgKey(tk)){e.preventDefault();return}}else dbgBuf=[]}}
   const a=keymap[e.code];
   if(a==='pause'){if(!e.repeat)S&&S.mode==='pause'?resume():pause();e.preventDefault();return}
   if(S&&coopOn()&&/^Digit[1-4]$/.test(e.code)&&!a){sendEmote(+e.code.slice(5)-1);return}
@@ -2625,6 +2657,7 @@ function gpRead(){
   return now;
 }
 function gpOpenSheet(){
+  const dp=$('dbgPanel');if(dp&&!dp.hidden)return dp;
   const ovs=[...document.querySelectorAll('.ov')].filter(o=>!o.hidden&&o.getClientRects().length);
   return ovs[ovs.length-1]||null;
 }
@@ -2658,6 +2691,7 @@ function gpMove(dir){
 function gpBack(){
   const ov=gpOpenSheet();if(!ov)return;
   if(ov.id==='ovPause'){resume();return}
+  if(ov.id==='dbgPanel'){dbgClose();return}
   const b=gpFocusables(ov).find(el=>/^(戻る|閉じる|キャンセル|やめる)/.test(el.textContent.trim()));
   if(b)b.click();
 }
@@ -2682,6 +2716,10 @@ function gpPoll(){
   for(const a in held)if(held[a].src==='gp')stopRepeat(a);
   if(!Object.keys(now).length&&!Object.keys(prev).length)return;
   // menus: d-pad or stick, with key-repeat while held
+  if(!$('ovTitle').hidden){
+    for(const [b,tk] of [['b14','L'],['b15','R'],['b1','B'],['b0','A']])if(dn(b)&&dbgKey(tk))return;
+    if(['b12','b13'].some(dn))dbgBuf=[];
+  }
   const dir=now.b12||now.su?'u':now.b13||now.sd?'d':now.b14||now.sl?'l':now.b15||now.sr?'r':'';
   const t=performance.now();
   if(dir&&(dir!==gpNavDir||t>gpNavT)){gpMove(dir);gpNavT=t+(dir!==gpNavDir?380:120)}
@@ -2722,7 +2760,76 @@ $('emoteBar').onclick=e=>{const b=e.target.closest('button');if(b)sendEmote(+b.d
 function sendCheer(){if(!coopOn()||S.mode!=='over'||(S.cheerAt&&nowT()-S.cheerAt<6000))return;S.cheers=(S.cheers||0)+1;S.cheerAt=nowT();toast('応援を送った');sfx('buy')}
 $('cheerBtn').onclick=sendCheer;$('cheerBtn2').onclick=sendCheer;
 $('setBtn').onclick=()=>openSettings('ovTitle');
-$('verTag').textContent=`ver ${VERSION} ・ ${UPDATED} 更新`;
+let DBG=false,dbgBuf=[],dbgPrevMode=null;
+function renderVer(){$('verTag').textContent=`ver ${VERSION} ・ ${UPDATED} 更新`+(DBG?' ・ デバッグモード':'');$('verTag').style.color=DBG?'#c58cff':''}
+renderVer();
+/* ---------- debug mode ----------
+   On the title screen, ← → ← → B A (keyboard or gamepad d-pad + B, A) toggles it for this session.
+   Solo runs started while it is on get a side drawer to add/remove any relic and set skill upgrades.
+   Debug runs never write records, meta stats or unlocks. */
+const DBG_SEQ='LRLRBA';
+function dbgKey(tok){
+  if($('ovTitle').hidden)return false;
+  dbgBuf.push(tok);if(dbgBuf.length>6)dbgBuf.shift();
+  if(dbgBuf.join('')!==DBG_SEQ)return false;
+  dbgBuf=[];DBG=!DBG;renderVer();sfx(DBG?'unlock':'block');toast(DBG?'デバッグモード ON（ひとりで潜る・練習で使える）':'デバッグモード OFF');
+  return true;
+}
+function dbgVisible(){const on=!!(S&&S.debug&&S.mode!=='title'&&S.mode!=='over'),open=!$('dbgPanel').hidden,hb=!on||open;if($('dbgBtn').hidden!==hb)$('dbgBtn').hidden=hb;if(!on&&open)dbgClose()}
+function dbgOpen(){
+  if(!S||!S.debug)return;
+  if(S.mode==='play'){dbgPrevMode='play';S.mode='debug';Object.keys(held).forEach(stopRepeat)}else dbgPrevMode=null;
+  $('dbgPanel').hidden=false;$('dbgBtn').hidden=true;dbgRender();
+}
+function dbgClose(){
+  $('dbgPanel').hidden=true;
+  if(S&&S.mode==='debug'){resumePlay();if(S.pendingLv)openReward(false)}
+  dbgPrevMode=null;dbgVisible();
+}
+function dbgRefresh(){renderRelics();layout();hud(true);announceTransform()}
+const DBG_TOOLS=[
+  ['ゴールド+500',()=>{S.gold+=500}],['HP全回復',()=>{S.hp=S.maxHp}],
+  ['シールド+20',()=>addShield(20)],['スキルゲージ満タン',()=>{S.skCharge=skNeed();if(S.cls!=='atk'&&S.cls!=='tank')S.skillLines=S.cls==='heal'?healNeed()-1:buffNeed()-1}],
+  ['レベル+1',()=>{S.pendingLv++;toast('閉じるとレベルアップ画面が出る')}],['ボスを今すぐ出す',()=>{if(!S.boss&&!S.practice){S.timeLeft=1}}],
+  ['ボスのHPを残り1に',()=>{if(S.boss&&!S.boss.dead)S.boss.myDmg=Math.max(S.boss.myDmg,S.boss.max-1)}],['ボスを第2形態に',()=>{if(S.boss&&!S.boss.dead)S.boss.myDmg=Math.max(S.boss.myDmg,S.boss.max-Math.floor(S.boss.max/2))}],
+  ['盤面を空に',()=>{S.board=emptyBoard();S.incoming=[]}],['ゴミ列+2',()=>queueGarbage(2)],
+  ['Tミノを次に',()=>{S.queue.unshift('T')}],['Iミノを次に',()=>{S.queue.unshift('I')}]
+];
+function dbgRender(){
+  $('dbgTools').innerHTML=DBG_TOOLS.map(([n],i)=>`<button type="button" class="t" data-i="${i}">${n}</button>`).join('');
+  const ups=SKUP[S.cls]||[];
+  $('dbgSk').innerHTML=ups.map((opts,ti)=>`<div class="dbgsk"><b>Lv${SKUP_LV[ti]}</b><button type="button" data-ti="${ti}" data-v="" class="${su(ti)?'':'on'}">なし</button>${opts.map((o,i)=>`<button type="button" data-ti="${ti}" data-v="${'AB'[i]}" class="${su(ti)==='AB'[i]?'on':''}" title="${o.d}">${'AB'[i]} ${o.n}</button>`).join('')}</div>`).join('');
+  dbgRelList();
+}
+function dbgRelList(){
+  const q=$('dbgQ').value.trim();
+  const grp=k=>{const r=RELICS[k];return r.cursed?'呪い（代償つき）':r.duo?'デュオ':r.c?CLASSES[r.c].n+(r.only?'専用':'向け'):'共通'};
+  const order=['共通',...CLS_KEYS.flatMap(c=>[CLASSES[c].n+'専用',CLASSES[c].n+'向け']),'デュオ','呪い（代償つき）'];
+  const keys=Object.keys(RELICS).filter(k=>!q||(RELICS[k].n+RELICS[k].d).includes(q));
+  keys.sort((a,b)=>order.indexOf(grp(a))-order.indexOf(grp(b)));
+  let last='',h='';
+  for(const k of keys){
+    const r=RELICS[k],g=grp(k),L=lv(k);
+    if(g!==last){h+=`<div class="dbggrp">${g}</div>`;last=g}
+    h+=`<div class="dbgr"><i style="color:${relicCol(r)}">${r.g}</i><span>${r.n}<small>${r.d}</small></span><button type="button" data-k="${k}" data-d="-1" ${L?'':'disabled'} aria-label="${r.n}を減らす">−</button><output>${r.once?'':L+'/'+r.max}</output><button type="button" data-k="${k}" data-d="1" ${!r.once&&L>=r.max?'disabled':''} aria-label="${r.n}を増やす">＋</button></div>`;
+  }
+  $('dbgRel').innerHTML=h||'<p class="khint">見つかりません</p>';
+}
+function dbgRemove(k){
+  const L=lv(k);if(!L)return;
+  if(k==='heart'){S.maxHp-=10;S.hp=Math.min(S.hp,S.maxHp)}
+  if(k==='vital'){S.maxHp-=8;S.hp=Math.min(S.hp,S.maxHp)}
+  if(k==='c_glass'){S.maxHp=Math.round(S.maxHp/0.75);}
+  if(L<=1)delete S.relics[k];else S.relics[k]=L-1;
+  for(const t in S.tf)if(tagCount(t)<3)delete S.tf[t];
+}
+$('dbgBtn').onclick=dbgOpen;$('dbgClose').onclick=dbgClose;
+$('dbgTools').onclick=e=>{const b=e.target.closest('button');if(!b)return;DBG_TOOLS[+b.dataset.i][1]();sfx('buy');dbgRefresh();dbgRender()};
+$('dbgSk').onclick=e=>{const b=e.target.closest('button');if(!b)return;S.skUp[+b.dataset.ti]=b.dataset.v;sfx('rotate');dbgRefresh();dbgRender()};
+$('dbgRel').onclick=e=>{const b=e.target.closest('button');if(!b||b.disabled)return;const k=b.dataset.k;
+  if(+b.dataset.d>0){if(RELICS[k].once||lv(k)<RELICS[k].max)applyRelic(k)}else dbgRemove(k);
+  sfx(+b.dataset.d>0?'buy':'move');dbgRefresh();dbgRelList()};
+$('dbgQ').oninput=dbgRelList;
 $('setBtn2').onclick=()=>openSettings('ovPause');
 $('codexBack').onclick=()=>{hide('ovCodex');show('ovTitle')};
 $('setBack').onclick=()=>{CAP=null;hide('ovSet');show(setFrom)};
@@ -2760,6 +2867,7 @@ function demo(){
 let last=performance.now();
 function frame(now){
   const dt=Math.min(50,now-last);last=now;
+  dbgVisible();
   if(S&&S.mode==='play'&&S.cur){
     S.dropAcc+=dt;const g=gravityMs();
     while(S.dropAcc>=g){S.dropAcc-=g;if(!grounded()){S.cur.y++;S.lastRot=false}else{S.dropAcc=0;break}}
