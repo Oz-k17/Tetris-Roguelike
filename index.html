@@ -490,34 +490,36 @@ const RELICS={
   slow:{n:'霜の砂時計',g:'時',d:'落下速度が15%遅くなる',max:5,p:40,t:'技'},
   iwell:{n:'長柱の加護',g:'柱',d:'Iミノが出やすくなる',max:3,p:30,t:'技'},
   sand:{n:'砂の小瓶',g:'粒',d:'一定個数ごとに1マスの砂が出る。穴埋めに',max:3,p:30,t:'技'},
-  drill:{n:'氷のつるはし',g:'鎚',d:'4列同時消しで、さらに最下段2行を砕く',max:1,p:40,t:'爆'},
-  piggy:{n:'雪だるま貯金',g:'貯',d:'ボスを倒すたび、所持金の15%（最大20G）の利子がつく',max:1,p:40,t:'富'},
-  cloak:{n:'毛皮のマント',g:'套',d:'冷気とボスの強撃が来る間隔が20%長くなる',max:2,p:45,t:'盾'},
-  vital:{n:'雪山の恵み',g:'恵',d:'最大HP+8、HPを8回復',max:3,p:40,t:'癒'},
-  focus:{n:'瞑想の石',g:'瞑',d:'クラススキルのチャージに必要な列数が15%減る',max:2,p:45,t:'技'},
-  regen:{n:'温泉の湯気',g:'湯',d:'10秒ごとにHPが1回復する（重ねると回復量アップ）',max:3,p:45,t:'癒'},
+  drill:{n:'氷のつるはし',g:'鎚',d:'4列同時消しで、さらに最下段を2行砕く（重ねると+2行）',max:2,p:40,t:'爆'},
+  piggy:{n:'雪だるま貯金',g:'貯',d:'ボスを倒すたび、所持金の15%（最大20G）の利子がつく（重ねると率と上限が増える）',max:3,p:40,t:'富'},
+  cloak:{n:'毛皮のマント',g:'套',d:'冷気とボスの強撃が来る間隔が20%長くなる',max:3,p:45,t:'盾'},
+  frostmail:{n:'霜の鎖帷子',g:'帷',d:'ライン消しのたび、小さなシールド+1（重ねると+1）。小さなシールドは最大HPの3割まで',max:3,p:40,t:'盾'},
+  tsguard:{n:'回転の氷盾',g:'旋',d:'4列消しかT-SPINのたび、小さなシールド+5（重ねると+5）。小さなシールドは最大HPの3割まで',max:3,p:45,t:'盾'},
+  vital:{n:'雪山の恵み',g:'恵',d:'最大HP+8、HPを8回復',max:5,p:40,t:'癒'},
+  focus:{n:'瞑想の石',g:'瞑',d:'クラススキルのチャージに必要な列数が15%減る',max:3,p:45,t:'技'},
+  regen:{n:'温泉の湯気',g:'湯',d:'10秒ごとにHPが1回復する（重ねると回復量アップ）',max:5,p:45,t:'癒'},
   heart:{n:'凍れる心臓',g:'心',d:'最大HP+10、HPを10回復',max:5,p:55,c:'tank',t:'盾'},
-  ward:{n:'霜の障壁',g:'障',d:'階の始まりとボス出現時に、ダメージを吸収するシールド+10',max:3,p:45,c:'tank',t:'盾'},
-  armor:{n:'氷鱗の鎧',g:'鱗',d:'受けるダメージが2減る（最低1）',max:3,p:50,c:'tank',t:'盾'},
+  ward:{n:'霜の障壁',g:'障',d:'階の始まりとボス出現時に、ダメージを吸収するシールド+10',max:5,p:45,c:'tank',t:'盾'},
+  armor:{n:'氷鱗の鎧',g:'鱗',d:'受けるダメージが2減る（最低1）',max:4,p:50,c:'tank',t:'盾'},
   shield:{n:'氷の盾',g:'壁',d:'ボスのゴミ列の間隔が30%長くなる',max:3,p:40,c:'tank',t:'盾'},
-  thorns:{n:'反撃の棘',g:'棘',d:'ボスのゴミ列を受けるたび、1行につきボスに20ダメージ',max:3,p:45,c:'tank',only:'tank',t:'刃',dk:'+'},
+  thorns:{n:'反撃の棘',g:'棘',d:'ボスのゴミ列を受けるたび、1行につきボスに20ダメージ',max:5,p:45,c:'tank',only:'tank',t:'刃',dk:'+'},
   bulwark:{n:'不動の鎧',g:'鎧',d:'天井に届いても、盤面の下8段は崩れずに残る',max:1,p:50,c:'tank',only:'tank',t:'盾'},
-  fortress:{n:'氷の要塞',g:'塞',d:'強撃を防いだとき、シールド+15',max:2,p:45,c:'tank',only:'tank',t:'盾'},
+  fortress:{n:'氷の要塞',g:'塞',d:'強撃を防いだとき、シールド+15',max:3,p:45,c:'tank',only:'tank',t:'盾'},
   potion:{n:'雪解けの霊水',g:'水',d:'HPを全回復する（使い切り）',max:99,once:true,p:0,c:'heal'},
-  spring:{n:'癒しの泉',g:'泉',d:'回復に必要な列数が2減る',max:3,p:45,c:'heal',only:'heal',t:'癒'},
-  purify:{n:'浄化の光',g:'光',d:'回復のとき、受け取った全員の最下段のゴミ列を1行消す',max:2,p:45,c:'heal',only:'heal',t:'癒'},
-  aegis:{n:'守りの祈り',g:'祈',d:'回復のとき、受け取った全員にシールド+6',max:2,p:45,c:'heal',only:'heal',t:'癒'},
+  spring:{n:'癒しの泉',g:'泉',d:'回復に必要な列数が2減る',max:4,p:45,c:'heal',only:'heal',t:'癒'},
+  purify:{n:'浄化の光',g:'光',d:'回復のとき、受け取った全員の最下段のゴミ列を1行消す',max:3,p:45,c:'heal',only:'heal',t:'癒'},
+  aegis:{n:'守りの祈り',g:'祈',d:'回復のとき、受け取った全員にシールド+6',max:3,p:45,c:'heal',only:'heal',t:'癒'},
   mult:{n:'黄金の杯',g:'杯',d:'獲得スコアが+50%',max:9,p:35,c:'buff',t:'富'},
-  wisdom:{n:'知恵の雪結晶',g:'知',d:'獲得経験値が+30%',max:3,p:40,c:'buff',t:'富'},
-  greed:{n:'強欲の財布',g:'財',d:'獲得ゴールドが+50%',max:3,p:35,c:'buff',t:'富'},
-  drum:{n:'戦太鼓',g:'太',d:'鼓舞の効果時間が5秒延びる',max:3,p:45,c:'buff',only:'buff',t:'刃'},
-  bell:{n:'共鳴の鐘',g:'鐘',d:'鼓舞に必要な列数が2減る',max:2,p:45,c:'buff',only:'buff',t:'刃'},
-  icicle:{n:'鋭い氷柱',g:'刃',d:'列を消したときのボスへのダメージ+10',max:3,p:45,c:'atk',t:'刃',dk:'+'},
+  wisdom:{n:'知恵の雪結晶',g:'知',d:'獲得経験値が+30%',max:5,p:40,c:'buff',t:'富'},
+  greed:{n:'強欲の財布',g:'財',d:'獲得ゴールドが+50%',max:5,p:35,c:'buff',t:'富'},
+  drum:{n:'戦太鼓',g:'太',d:'鼓舞の効果時間が5秒延びる',max:5,p:45,c:'buff',only:'buff',t:'刃'},
+  bell:{n:'共鳴の鐘',g:'鐘',d:'鼓舞に必要な列数が2減る',max:3,p:45,c:'buff',only:'buff',t:'刃'},
+  icicle:{n:'鋭い氷柱',g:'刃',d:'列を消したときのボスへのダメージ+10',max:5,p:45,c:'atk',t:'刃',dk:'+'},
   combo:{n:'連鎖の鎖',g:'鎖',d:'連続消しボーナスが2倍（スコアとゴールド）',max:3,p:40,c:'atk',t:'刃'},
   bomb:{n:'雪玉爆弾',g:'爆',d:'一定個数ごとに爆弾が出る。着地で周囲3×3を吹き飛ばす',max:3,p:50,c:'atk',t:'爆'},
-  lifeice:{n:'生命の氷柱',g:'命',d:'ボス戦中に4列消しするとHP+8（15秒に1回まで）',max:1,p:55,c:'atk',t:'癒'},
+  lifeice:{n:'生命の氷柱',g:'命',d:'ボス戦中に4列消しするとHP+8（重ねると+8。15秒に1回まで）',max:3,p:55,c:'atk',t:'癒'},
   fang:{n:'狂戦士の牙',g:'牙',d:'HPが最大HPの3割以下のとき、ボスへのダメージが2倍',max:1,p:45,c:'atk',only:'atk',t:'刃',dk:'×'},
-  avalanche:{n:'雪崩の種',g:'崩',d:'4列消しかT-SPINのたび、最下段のゴミ列を1段崩す',max:1,p:45,c:'atk',t:'爆'},
+  avalanche:{n:'雪崩の種',g:'崩',d:'4列消しかT-SPINのたび、最下段のゴミ列を1段崩す（重ねると+1段）',max:2,p:45,c:'atk',t:'爆'},
   guard:{n:'受け流しの手甲',g:'甲',d:'ボスの強撃を防ぐ確率が上がる（重ねるほど伸びは緩やか。100%にはならない）',max:5,p:40,c:'tank',t:'盾',dd:()=>`防ぐ確率 ${pct(blockChance())} → ${pct(blockChance(1))}`},
   // duo relics: only in a party that has both classes, and only for one of those two classes
   d_ta:{n:'盾と剣の誓い',g:'誓',d:'自分か仲間の守護者が氷壁を張っている間、ボスへのダメージ×1.5',max:1,p:60,duo:['tank','atk'],dk:'×'},
@@ -526,9 +528,9 @@ const RELICS={
   d_ha:{n:'血と雪の契り',g:'契',d:'4列消しかT-SPINのたび、HP+5',max:1,p:60,duo:['heal','atk']},
   d_hb:{n:'春の調べ',g:'春',d:'鼓舞か凍てつく調べが始まるたび、HP+6',max:1,p:60,duo:['heal','buff']},
   d_ba:{n:'戦場の凱歌',g:'凱',d:'鼓舞が効いている間、ボスへのダメージがさらに×1.25',max:1,p:60,duo:['buff','atk'],dk:'×'},
-  rend:{n:'深淵の氷刃',g:'淵',d:'氷刃乱舞で砕く段数+1',max:2,p:45,c:'atk',only:'atk',t:'刃',dd:()=>`砕く段数 ${ranRows()} → ${ranRows(1)}`},
-  hone:{n:'研ぎ澄ましの砥石',g:'砥',d:'氷刃乱舞のブロック1個あたりのダメージ+2',max:3,p:45,c:'atk',only:'atk',t:'刃',dk:'+',dd:()=>`1個あたり ${ranPer()} → ${ranPer(1)}`},
-  crit:{n:'会心の一撃',g:'会',d:'4列消しのボスへのダメージ+50',max:3,p:45,c:'atk',only:'atk',t:'刃',dk:'+'}
+  rend:{n:'深淵の氷刃',g:'淵',d:'氷刃乱舞で砕く段数+1',max:3,p:45,c:'atk',only:'atk',t:'刃',dd:()=>`砕く段数 ${ranRows()} → ${ranRows(1)}`},
+  hone:{n:'研ぎ澄ましの砥石',g:'砥',d:'氷刃乱舞のブロック1個あたりのダメージ+2',max:5,p:45,c:'atk',only:'atk',t:'刃',dk:'+',dd:()=>`1個あたり ${ranPer()} → ${ranPer(1)}`},
+  crit:{n:'会心の一撃',g:'会',d:'4列消しのボスへのダメージ+50',max:5,p:45,c:'atk',only:'atk',t:'刃',dk:'+'}
 };
 // tag sets: 3 different relics of one tag transform you (once per run)
 const TAGS={
@@ -565,7 +567,7 @@ let S=null;
 const DIFFS={
   easy:{n:'簡単',d:'いまの標準バランス。初めての人やソロ向け',
     bossHp:[200,120],strike:[40000,3000,20000],strikeDmg:[8,1.5],cold:[60000,6,3],topout:0.35,killHeal:15,
-    xp:[350,1.28],xpEarly:[0.5,0.6,0.7,0.85,0.95],bossSk:[26000,1200,15000],bossAtk:[9000,700,3500],gravity:0.85}
+    xp:[280,1.18],xpEarly:[0.5,0.6,0.7,0.85,0.95],bossSk:[26000,1200,15000],bossAtk:[9000,700,3500],gravity:0.85}
 };
 const DIFF_KEYS=Object.keys(DIFFS);
 let myDiff='easy';
@@ -919,7 +921,7 @@ function lockPiece(){
     if(b2b)xp*=1.5;
     gainXp(xp*floorXp());
     earn([0,2,5,9,15][n]+(ts==='full'?4*n:0)+(pc?20:0)+(S.combo>0?S.combo*(1+lv('combo')):0));
-    if(n===4&&lv('drill')){S.board.splice(H-2,2);S.board.unshift(Array(W).fill(0),Array(W).fill(0))}
+    if(n===4&&lv('drill')){const k=2*lv('drill');S.board.splice(H-k,k);for(let i=0;i<k;i++)S.board.unshift(Array(W).fill(0))}
     S.totalLines+=n;
     const clearKind=ts==='full'&&n===2?'tsd':ts==='full'&&n===3?'tst':'other';
     // technique callout
@@ -939,11 +941,13 @@ function lockPiece(){
       S.boss.myDmg+=dmg;S.fx.push({k:'hit',t:0});
       dmgNum(dmg,hardClear||pc,det.f+(dt?' ×1.3':''));
       if(n===4&&lv('lifeice')&&performance.now()-S.lastLeech>=15000&&S.hp<S.maxHp){
-        S.lastLeech=performance.now();heal(8);S.fx.push({k:'heal',t:0});toast('生命の氷柱 HP+8');hud(true);
+        S.lastLeech=performance.now();heal(8*lv('lifeice'));S.fx.push({k:'heal',t:0});toast(`生命の氷柱 HP+${8*lv('lifeice')}`);hud(true);
       }
     }else if(n===4&&lv('drill'))toast('つるはしで2行粉砕');
     if(tf('爆')&&++S.bakuC>=3){S.bakuC=0;purify(1)}
-    if((n===4||ts)&&lv('avalanche'))purify(1);
+    if((n===4||ts)&&lv('avalanche'))purify(lv('avalanche'));
+    if(lv('frostmail'))smallShield(lv('frostmail'));
+    if((n===4||ts)&&lv('tsguard'))smallShield(5*lv('tsguard'));
     if((n===4||ts)&&lv('d_ha'))heal(5);
     classSkill(n);
     S.prevClear=clearKind;
@@ -982,6 +986,8 @@ function wallRiposte(){
 // shield given at floor start and when a boss appears
 function floorShield(){addShield(10*lv('ward')+(tf('盾')?20:0))}
 function addShield(n){if(n>0)S.shield=Math.min(S.maxHp,S.shield+n)}
+// relic-made shields only top up to 30% of max HP, so they help without making you untouchable
+function smallShield(n){const cap=Math.round(S.maxHp*0.3);if(n>0&&S.shield<cap){S.shield=Math.min(cap,S.shield+n);hud(true)}}
 // all incoming damage goes through here: armor first, then shield, then HP. returns true if it killed.
 function applyDamage(n,pierce){
   if(pierce){
@@ -1130,7 +1136,7 @@ function bossDefeated(){
   S.score+=Math.round(1000*S.floor*mult());
   heal(killHeal()*(tf('癒')?2:1));
   let g=earn(15+4*S.floor);
-  if(lv('piggy')){const i=Math.min(20,Math.floor(S.gold*0.15));S.gold+=i;S.totalGold+=i;g+=i}
+  if(lv('piggy')){const i=Math.min(20*lv('piggy'),Math.floor(S.gold*0.15*lv('piggy')));S.gold+=i;S.totalGold+=i;g+=i}
   S.lastEarn=g;S.lastBoss=name;
   hud(true);
   hide('ovPause');
