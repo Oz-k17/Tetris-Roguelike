@@ -644,6 +644,9 @@ const RELICS={
   d_ba:{n:'戦場の凱歌',g:'凱',d:'鼓舞が効いている間、ボスへのダメージがさらに×1.25',max:1,p:60,duo:['buff','atk'],dk:'×'},
   rend:{n:'深淵の氷刃',g:'淵',d:'氷刃乱舞で砕く段数+1',max:3,p:45,c:'atk',only:'atk',t:'刃',dd:()=>`砕く段数 ${ranRows()} → ${ranRows(1)}`},
   hone:{n:'研ぎ澄ましの砥石',g:'砥',d:'氷刃乱舞のブロック1個あたりのダメージ+2',max:5,p:45,c:'atk',only:'atk',t:'刃',dk:'+',dd:()=>`1個あたり ${ranPer()} → ${ranPer(1)}`},
+  icefist:{n:'蓄氷の拳',g:'拳',d:'シールド10ごとにボスへのダメージ×0.1上がる（最大×1.5、重ねると上限+0.5）。出にくい',max:2,p:55,c:'tank',only:'tank',w:0.35,t:'刃',dk:'×',dd:()=>`いまのシールド${S.shield||0}：×${fistMul()} （上限 ×${1+0.5*lv('icefist')} → ×${1+0.5*(lv('icefist')+1)}）`},
+  calmdrum:{n:'凪の太鼓',g:'凪',d:'T-SPINのたび、5秒間、自分と仲間全員が受けるゴミ列が1行減る（重ねると+2.5秒）',max:3,p:45,c:'buff',only:'buff',t:'盾',dd:()=>`効果時間 ${calmMs()/1000}秒 → ${calmMs(1)/1000}秒`},
+  lullaby:{n:'氷原の子守唄',g:'眠',d:'自分と仲間全員のミノの落下速度が12%遅くなる（重ねると+12%）',max:3,p:45,c:'buff',only:'buff',t:'技'},
   crit:{n:'会心の一撃',g:'会',d:'4列消しのボスへのダメージ+50',max:5,p:45,c:'atk',only:'atk',t:'刃',dk:'+'}
 };
 // tag sets: 3 different relics of one tag transform you (once per run)
@@ -756,7 +759,7 @@ function renderTitleInfo(){
 const emptyBoard=()=>Array.from({length:H},()=>Array(W).fill(0));
 const lv=k=>(S.relics&&S.relics[k])||0;
 const buffOn=()=>{const t=performance.now();return!!((S.buffUntil&&t<S.buffUntil)||(S.echoUntil&&t>=S.echoFrom&&t<S.echoUntil))};
-const gravityMs=()=>Math.max(55,850*Math.pow(D().gravity,S.floor-1))*Math.pow(1.15,lv('slow'))*(S.galeUntil&&until('galeUntil')>0?0.4:1)*(lv('c_sand')?1.3:1);
+const gravityMs=()=>Math.max(55,850*Math.pow(D().gravity,S.floor-1))*Math.pow(1.15,lv('slow'))*(S.galeUntil&&until('galeUntil')>0?0.4:1)*(lv('c_sand')?1.3:1)*(1+0.12*lullLv());
 const bossBaseHp=()=>D().bossHp[0]+D().bossHp[1]*(S.floor-1);
 const strikeDmg=()=>Math.round(D().strikeDmg[0]+D().strikeDmg[1]*(S.floor-1));
 const coldDmg=()=>D().cold[1]+Math.max(0,S.floor-D().cold[2])+(lv('c_heart')?3:0);
@@ -905,7 +908,7 @@ function newRun(coop,epoch,cls,diff,practice,map){
      timeLeft:STAGE_MS,phase:'play',boss:null,weaken:false,bossKills:0,afterReward:null,readyFloor:0,
      coop:!!coop,epoch:epoch||0,watching:false,
      skillLines:0,healCount:0,reviveCount:0,buffCount:0,buffUntil:0,hitAcc:0,lastLeech:-1e9,endless:false,
-     blocked:0,hitsTaken:0,shield:0,regenAcc:0,skCharge:0,skUses:0,tf:{},tfNew:null,skUp:['','',''],bakuC:0,incoming:[],offsetTotal:0,lastSkAt:-1e9,lastLinkAt:-1e9,freezeMul:1.3,echoFrom:0,echoUntil:0,rageUntil:0,immuneUntil:0,freezeUntil:0,blindUntil:0,webUntil:0,galeUntil:0,
+     blocked:0,hitsTaken:0,shield:0,regenAcc:0,skCharge:0,skUses:0,tf:{},tfNew:null,skUp:['','',''],bakuC:0,incoming:[],offsetTotal:0,calmUntil:0,calmN:0,lastSkAt:-1e9,lastLinkAt:-1e9,freezeMul:1.3,echoFrom:0,echoUntil:0,rageUntil:0,immuneUntil:0,freezeUntil:0,blindUntil:0,webUntil:0,galeUntil:0,
      totalLines:0,relics:{},bag:[],queue:[],cur:null,hold:null,canHold:true,combo:-1,
      bombC:0,sandC:0,dropAcc:0,lockAcc:0,lockResets:0,mode:'reward',fx:[]};
   refill();renderRelics();
@@ -989,6 +992,7 @@ function dmgMuls(){
   if(lv('d_ba')&&buffOn())m.push(['凱歌',1.25]);
   if(S.rageUntil&&nowT()<S.rageUntil)m.push(['残響',1.3]);
   if(lv('c_glass'))m.push(['ガラス',1.4]);
+  if(fistMul()>1)m.push(['蓄氷',fistMul()]);
   if(S.cls==='tank'&&su(2)==='B'&&immune())m.push(['加護',1.3]);
   return m;
 }
@@ -1081,6 +1085,7 @@ function lockPiece(){
   const full=[];
   for(let y=0;y<H;y++)if(S.board[y].every(v=>v))full.push(y);
   const n=full.length;
+  if(ts==='full'&&lv('calmdrum')){calmStart(calmMs());S.calmN=(S.calmN||0)+1;toast(`凪の太鼓 ${calmMs()/1000}秒間ゴミ列-1`)}
   if(ts&&!n){
     // T-spin with no lines still scores and shows
     S.score+=Math.round((ts==='full'?400:100)*S.floor*mult());gainXp((ts==='full'?40:15)*floorXp());
@@ -1162,7 +1167,7 @@ function addGarbage(n){
   return over;
 }
 const GARBAGE_DELAY=2600;
-function queueGarbage(rows){if(rows>0){S.incoming.push({rows,at:nowT()+GARBAGE_DELAY});sfx('warn')}}
+function queueGarbage(rows){if(rows>0&&calmOn()){rows--;if(!rows){S.fx.push({k:'block',t:0});pop(['凪'],'#f2d06b',.9);sfx('block');return}}if(rows>0){S.incoming.push({rows,at:nowT()+GARBAGE_DELAY});sfx('warn')}}
 function garbageTick(){
   while(S.incoming.length&&nowT()>=S.incoming[0].at){
     const g=S.incoming.shift();
@@ -1189,6 +1194,14 @@ function wallRiposte(){
 function floorShield(){addShield(10*lv('ward')+(tf('盾')?20:0)+(lv('c_heart')?30:0))}
 function addShield(n){if(n>0)S.shield=Math.min(S.maxHp,S.shield+n)}
 // relic-made shields only top up to 30% of max HP, so they help without making you untouchable
+// 蓄氷の拳: +0.1x per 10 shield, capped at 1 + 0.5 per level
+function fistMul(){const L=lv('icefist');if(!L)return 1;return Math.round(Math.min(1+0.5*L,1+0.1*Math.floor((S.shield||0)/10))*100)/100}
+// 凪の太鼓: T-spin opens a short window where every incoming garbage hit is one row lighter, shared with the party
+const calmMs=(x=0)=>{const L=lv('calmdrum')+x;return L?2500+2500*L:0};
+function calmStart(ms){if(nowT()+ms>(S.calmUntil||0))S.calmLen=ms;S.calmUntil=Math.max(S.calmUntil||0,nowT()+ms);S.fx.push({k:'block',t:0})}
+const calmOn=()=>S&&S.calmUntil&&nowT()<S.calmUntil;
+// 氷原の子守唄: the strongest lullaby in the party slows everyone's gravity
+function lullLv(){let L=lv('lullaby');for(const p of allies())L=Math.max(L,Math.min(3,+p.presence.ll||0));return L}
 function smallShield(n){const cap=Math.round(S.maxHp*0.3);if(n>0&&S.shield<cap){S.shield=Math.min(cap,S.shield+n);hud(true)}}
 // all incoming damage goes through here: armor first, then shield, then HP. returns true if it killed.
 function applyDamage(n,pierce){
@@ -1417,7 +1430,7 @@ function pickRelics(n,ok){
   });
   const out=[];
   while(out.length<n&&pool.length){
-    const ws=pool.map(k=>{const r=RELICS[k];if(r.duo)return 3;const c=r.c;return c===S.cls?4:c?0.25:1.5});
+    const ws=pool.map(k=>{const r=RELICS[k];if(r.duo)return 3;const c=r.c;return(c===S.cls?4:c?0.25:1.5)*(r.w||1)});
     let t=ws.reduce((a,b)=>a+b,0),r=Math.random()*t,i=0;
     while(i<ws.length-1&&r>=ws[i]){r-=ws[i];i++}
     out.push(pool.splice(i,1)[0]);
@@ -2087,6 +2100,8 @@ function drawBoard(dt){
   }
   // incoming garbage: red column on the left edge; flashes just before it rises
   {const inc=incomingRows();if(inc){const soon=S.incoming[0].at-nowT()<800;bctx.fillStyle=soon&&(nowT()/120|0)%2?'rgba(255,111,127,1)':'rgba(255,111,127,.7)';const hh=Math.min(H,inc)*s;bctx.fillRect(0,H*s-hh,4,hh)}}
+  // 凪の太鼓 window: gold bar on the right edge, shrinking as it runs out
+  if(calmOn()){const r=Math.min(1,(S.calmUntil-nowT())/(S.calmLen||5000));bctx.fillStyle='rgba(242,208,107,.75)';bctx.fillRect(W*s-4,H*s*(1-r),4,H*s*r)}
   // frozen boss / ice wall tint
   if(S.freezeUntil&&frozen()){bctx.fillStyle='rgba(242,208,107,.06)';bctx.fillRect(0,0,W*s,H*s);bctx.strokeStyle='rgba(242,208,107,.6)';bctx.lineWidth=3;bctx.strokeRect(1.5,1.5,W*s-3,H*s-3)}
   if(S.immuneUntil&&immune()){bctx.strokeStyle='rgba(143,227,255,.85)';bctx.lineWidth=4;bctx.strokeRect(2,2,W*s-4,H*s-4)}
@@ -2443,9 +2458,10 @@ function absorbAllies(){
       if(!cur||cur.i!==q.d.i)NET.dmg[key]={i:q.d.i,v};else if(v>cur.v)cur.v=v;
     }
     const hcN=+q.hc||0,hrN=+q.hr||0,bcN=+q.bc||0,skN=+q.sk||0;
-    const chN=+q.ch||0,emN=q.em&&+q.em.n||0;
+    const chN=+q.ch||0,emN=q.em&&+q.em.n||0,cnN=+q.cn||0;
     let sn=NET.seen[pkey(p)];
-    if(!sn){NET.seen[pkey(p)]={hc:hcN,hr:hrN,bc:bcN,sk:skN,ch:chN,em:emN};continue}
+    if(!sn){NET.seen[pkey(p)]={hc:hcN,hr:hrN,bc:bcN,sk:skN,ch:chN,em:emN,cn:cnN};continue}
+    if(cnN>(sn.cn||0)){sn.cn=cnN;if(S.mode==='play'){const ms=Math.max(1000,Math.min(12000,+q.cm||5000));calmStart(ms);toast(`${nameOf(p)}の凪の太鼓 ${ms/1000}秒間ゴミ列-1`)}}
     if(chN>sn.ch){sn.ch=chN;if(S.mode==='play'){smallShield(4);S.skCharge=Math.min(skNeed(),(S.skCharge||0)+1);toast(`${nameOf(p)}の応援 シールド+4・スキル+1`)}}
     if(emN>sn.em){sn.em=emN;const i=Math.max(0,Math.min(EMOTES.length-1,+q.em.i|0));NET.bubble[pkey(p)]={txt:EMOTES[i],until:nowT()+2800};toast(`${nameOf(p)}「${EMOTES[i]}」`)}
     if(skN>sn.sk){
@@ -2538,7 +2554,7 @@ function netTick(now){
   if(coopOn()){
     pres={r:NET.isHost?'host':'guest',e:S.epoch,cls:S.cls,a:S.mode!=='over'?1:0,hp:S.hp,mh:S.maxHp,lv:S.level,
       b:boardStr(),d:S.boss?{i:S.boss.id,v:S.boss.myDmg}:null,rd:S.readyFloor,
-      hc:S.healCount,hr:S.reviveCount,rn:S.readyNode,sk:S.skUses,su:(su(0)||'-')+(su(1)||'-')+(su(2)||'-'),skv:{ws:wallSh(),hh:mirHeal(),hs:mirSh(),fm:songMs(),fx:songMul()},im:immune()?1:0,cl:lv('purify'),ha:HEAL_AMT,hs:6*lv('aegis'),sh:S.shield,bc:S.buffCount,bd:buffDur(),l:null};
+      hc:S.healCount,hr:S.reviveCount,rn:S.readyNode,sk:S.skUses,su:(su(0)||'-')+(su(1)||'-')+(su(2)||'-'),skv:{ws:wallSh(),hh:mirHeal(),hs:mirSh(),fm:songMs(),fx:songMul()},im:immune()?1:0,cl:lv('purify'),ha:HEAL_AMT,hs:6*lv('aegis'),sh:S.shield,bc:S.buffCount,bd:buffDur(),cn:S.calmN||0,cm:calmMs(),ll:lv('lullaby'),l:null};
     pres.g=NET.isHost?{ph:S.phase,f:S.floor,t:Math.round(S.timeLeft/100)*100,
       boss:S.boss?{id:S.boss.id,n:S.boss.name,m:S.boss.max}:null,node:S.nodePicked?{f:S.floor,k:S.nodeKind}:null}:null;
   }else pres={r:NET.isHost?'host':'guest',l:1,cls:myCls,e:null,g:null};
