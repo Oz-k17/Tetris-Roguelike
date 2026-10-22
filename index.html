@@ -468,7 +468,7 @@ const CLASSES={
   buff:{n:'鼓手',role:'バッファー',g:'鼓',col:'#f2d06b',hp:30,d:'8列消すごとに鼓舞。15秒間、自分と仲間全員のボスへのダメージとスコア・経験値が1.5倍。',
     sk:{n:'凍てつく調べ',need:16,d:'10秒間ボスを凍らせる。強撃・ゴミ列・ボスのスキルが止まり、その間のボスへのダメージが1.3倍。仲間全員に効く。'}},
   atk:{n:'剣士',role:'アタッカー',g:'剣',col:'#ff6f7f',hp:30,d:'ボスへのダメージが1.5倍。連続消し中はさらに+10。',
-    sk:{n:'氷刃乱舞',need:14,d:'盤面の下から3段を砕き、砕いたブロック1個につきボスに5ダメージ（剣士の1.5倍が乗る）。'}}
+    sk:{n:'氷刃乱舞',need:14,d:'盤面の下から2段を砕き、砕いたブロック1個につきボスに3ダメージ（剣士の1.5倍が乗る）。剣士専用の遺物とスキル強化で大きく伸びる。'}}
 };
 const CLS_KEYS=['tank','heal','buff','atk'];
 const BOSSES=['氷牙の狼','雪女','氷柱の大蜘蛛','霜の巨人','氷晶の魔女','吹雪の双頭鷲','氷竜','永久凍土の王'];
@@ -526,6 +526,8 @@ const RELICS={
   d_ha:{n:'血と雪の契り',g:'契',d:'4列消しかT-SPINのたび、HP+5',max:1,p:60,duo:['heal','atk']},
   d_hb:{n:'春の調べ',g:'春',d:'鼓舞か凍てつく調べが始まるたび、HP+6',max:1,p:60,duo:['heal','buff']},
   d_ba:{n:'戦場の凱歌',g:'凱',d:'鼓舞が効いている間、ボスへのダメージがさらに×1.25',max:1,p:60,duo:['buff','atk'],dk:'×'},
+  rend:{n:'深淵の氷刃',g:'淵',d:'氷刃乱舞で砕く段数+1',max:2,p:45,c:'atk',only:'atk',t:'刃',dd:()=>`砕く段数 ${ranRows()} → ${ranRows(1)}`},
+  hone:{n:'研ぎ澄ましの砥石',g:'砥',d:'氷刃乱舞のブロック1個あたりのダメージ+2',max:3,p:45,c:'atk',only:'atk',t:'刃',dk:'+',dd:()=>`1個あたり ${ranPer()} → ${ranPer(1)}`},
   crit:{n:'会心の一撃',g:'会',d:'4列消しのボスへのダメージ+50',max:3,p:45,c:'atk',only:'atk',t:'刃',dk:'+'}
 };
 // tag sets: 3 different relics of one tag transform you (once per run)
@@ -545,7 +547,7 @@ const SKUP={
         [{n:'浄化の奇跡',d:'全員の盤面のゴミブロックをすべて消す'},{n:'速き奇跡',d:'必要な列数が18→12'}]],
   buff:[[{n:'長い調べ',d:'ボスを凍らせる時間が10秒→15秒'},{n:'鋭い調べ',d:'凍結中のダメージ倍率が1.3→1.6'}],
         [{n:'調べの余韻',d:'凍結が終わると、全員に8秒の鼓舞'},{n:'速い調べ',d:'必要な列数が16→11'}]],
-  atk:[[{n:'深い乱舞',d:'砕く段数が3→5'},{n:'鋭い乱舞',d:'ブロック1個あたりのダメージが5→8'}],
+  atk:[[{n:'深い乱舞',d:'砕く段数+2'},{n:'鋭い乱舞',d:'ブロック1個あたりのダメージ+3'}],
        [{n:'乱舞の残響',d:'発動後10秒間、ボスへのダメージ×1.3'},{n:'速い乱舞',d:'必要な列数が14→9'}]]
 };
 const SKUP_LV=[5,10];
@@ -601,6 +603,9 @@ const su=i=>(S&&S.skUp&&S.skUp[i])||'';
 const skBaseNeed=()=>{const b={heal:12,buff:11,atk:9}[S.cls];return su(1)==='B'&&b?b:clsOf(S.cls).sk.need};
 const skNeed=()=>Math.max(6,Math.round(skBaseNeed()*Math.pow(0.85,lv('focus'))*(tf('技')?0.8:1)));
 const nextN=()=>1+lv('next')+(tf('技')?1:0);
+// swordsman skill: weak at first, grown by relics (rend / hone) and the Lv5 upgrade
+const ranRows=x=>2+(su(0)==='A'?2:0)+lv('rend')+(x||0);
+const ranPer=x=>3+(su(0)==='B'?3:0)+2*(lv('hone')+(x||0));
 const tagCount=t=>Object.keys(S.relics||{}).filter(k=>RELICS[k]&&RELICS[k].t===t).length;
 const partyHas=c=>allies().some(p=>p.presence&&p.presence.cls===c);
 const allyWall=()=>allies().some(p=>p.presence&&p.presence.cls==='tank'&&p.presence.a&&+p.presence.im);
@@ -1043,7 +1048,7 @@ function useSkill(){
   }
   else if(S.cls==='buff'){startFreeze(su(0)==='A'?15000:10000,su(0)==='B'?1.6:1.3,su(1)==='A')}
   else{
-    let blocks=0;const rows=su(0)==='A'?5:3,per=su(0)==='B'?8:5;
+    let blocks=0;const rows=ranRows(),per=ranPer();
     if(su(1)==='A')S.rageUntil=nowT()+10000;
     for(let i=0;i<rows;i++){
       const row=S.board[H-1];blocks+=row.filter(v=>v).length;
