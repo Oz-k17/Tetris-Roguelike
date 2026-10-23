@@ -283,6 +283,13 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .cx.locked{opacity:.55}
 .setlist{display:flex;flex-direction:column;gap:14px}
 .seth{font-size:15px;margin:6px 0 0;font-weight:700}
+.musiclist{display:flex;flex-direction:column;gap:6px}
+.mrow{display:grid;grid-template-columns:1fr 150px 34px;gap:6px;align-items:center}
+.mrow label{font-size:13px;font-weight:700}
+.mrow select{height:34px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--fg);font:inherit;font-size:12px;padding:0 6px;min-width:0}
+.mrow button.pv{height:34px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ice);font-size:13px;cursor:pointer}
+.mrow button.pv.on{background:var(--ice);color:var(--bg)}
+.mrow button.pv:disabled{opacity:.3}
 .ktabs{display:flex;gap:6px}
 .ktabs button{flex:1;height:36px;border-radius:8px;border:1px solid var(--line);background:none;color:var(--muted);font:inherit;font-weight:700;cursor:pointer}
 .ktabs button[aria-selected="true"]{background:var(--ice);color:var(--bg);border-color:var(--ice)}
@@ -546,6 +553,9 @@ i[data-ico]{display:contents}
   <div class="sheet">
     <h2>設定</h2>
     <div class="setlist" id="setList"></div>
+    <h3 class="seth">BGM</h3>
+    <p class="khint">場面ごとに流す曲を選べます。▶で試聴。「自動生成」はいつもの音楽です。</p>
+    <div class="musiclist" id="musicList"></div>
     <h3 class="seth">キー設定</h3>
     <div class="ktabs" role="tablist"><button type="button" id="ktKey" role="tab">キーボード</button><button type="button" id="ktPad" role="tab">ゲームパッド</button></div>
     <p class="khint" id="kHint"></p>
@@ -603,7 +613,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='44',UPDATED='2026-10-23 18:20';
+const VERSION='45',UPDATED='2026-10-23 18:27';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -767,10 +777,22 @@ let S=null;
 const ACTS=[['left','左に移動'],['right','右に移動'],['soft','ソフトドロップ'],['hard','ハードドロップ'],['cw','右回転'],['ccw','左回転'],['hold','ホールド'],['skill','クラススキル'],['pause','一時停止']];
 const KEY_DEF={left:['ArrowLeft',''],right:['ArrowRight',''],soft:['ArrowDown',''],hard:['Space',''],cw:['ArrowUp','KeyX'],ccw:['KeyZ',''],hold:['KeyC','ShiftLeft'],skill:['KeyA','KeyV'],pause:['KeyP','Escape']};
 const PAD_DEF={left:['b14','sl'],right:['b15','sr'],soft:['b13','sd'],hard:['b12',''],cw:['b1','b3'],ccw:['b0',''],hold:['b4','b5'],skill:['b2','b7'],pause:['b9','']};
-const SET_DEF={sfx:70,bgm:45,das:170,arr:50,sdf:35,shake:1,keys:KEY_DEF,pad:PAD_DEF};
+/* Music: every scene picks one entry from MUSIC. 'auto' is the generated loop (exploring or boss flavour).
+   Add a recorded track by dropping an mp3 into bgm/ and listing it here. */
+const MUSIC={
+  auto:{n:'自動生成（いつもの）'},
+  steady:{n:'Steady Energy',src:'bgm/steady-energy.mp3'},
+  ska:{n:'Ska Shuffle Groove',src:'bgm/ska-shuffle.mp3'},
+  t1757:{n:'ボス曲（10/23 17:57）',src:'bgm/track-1757.mp3'},
+  t1811:{n:'通常曲（10/23 18:11）',src:'bgm/track-1811.mp3'}
+};
+const MUSIC_SLOTS=[['easy.explore','簡単：探索中'],['easy.boss','簡単：ボス戦'],['normal.explore','普通：探索中'],['normal.boss','普通：ボス戦'],['elite','エリート戦（分岐マップ）']];
+const MUSIC_DEF={'easy.explore':'auto','easy.boss':'auto','normal.explore':'steady','normal.boss':'t1757','elite':'auto'};
+const SET_DEF={sfx:70,bgm:45,das:170,arr:50,sdf:35,shake:1,keys:KEY_DEF,pad:PAD_DEF,music:MUSIC_DEF};
 const cloneSet=()=>JSON.parse(JSON.stringify(SET_DEF));
 let SET=cloneSet();
 try{const sv=JSON.parse(localStorage.getItem('hyokutsu-set')||'{}');
+  if(sv.music&&typeof sv.music==='object'){for(const [k] of MUSIC_SLOTS)if(MUSIC[sv.music[k]])SET.music[k]=sv.music[k];delete sv.music}
   for(const k of ['keys','pad'])if(sv[k]){for(const [a] of ACTS)if(Array.isArray(sv[k][a]))SET[k][a]=[sv[k][a][0]||'',sv[k][a][1]||''];delete sv[k]}
   Object.assign(SET,sv)}catch(e){}
 const saveSet=()=>{try{localStorage.setItem('hyokutsu-set',JSON.stringify(SET))}catch(e){}};
@@ -1947,37 +1969,42 @@ function audioInit(){
   if(AC)return;
   try{AC=new (window.AudioContext||window.webkitAudioContext)();SFXG=AC.createGain();BGMG=AC.createGain();SFXG.connect(AC.destination);BGMG.connect(AC.destination);applyVol();bgmStart()}catch(e){AC=null}
 }
-function applyVol(){for(const k in TRACK.els)TRACK.els[k].volume=Math.min(1,(SET.bgm/100)*TRACK.vol);if(!AC)return;SFXG.gain.value=(SET.sfx/100)*0.5;BGMG.gain.value=(SET.bgm/100)*0.22}
-/* Recorded music for 普通 (mp3 files next to the page): an exploring track and a boss track.
-   They replace the generated loops on that difficulty; elite fights and 簡単 keep the generated music.
-   The exploring track resumes where it left off after a boss; the boss track starts from the top each fight.
-   If a file can't load or play, the generated loop simply carries on. */
-const BGM_TRACKS={normal:{explore:'bgm/explore.mp3',boss:'bgm/boss-normal.mp3'}};
-const TRACK={els:{},cur:'',vol:0.55,failed:{},get on(){return!!this.cur}};
+function applyVol(){for(const k in TRACK.els)TRACK.els[k].volume=Math.min(1,(SET.bgm/100)*TRACK.vol);if(TRACK.preview)TRACK.preview.volume=Math.min(1,(Math.max(SET.bgm,20)/100)*TRACK.vol);if(!AC)return;SFXG.gain.value=(SET.sfx/100)*0.5;BGMG.gain.value=(SET.bgm/100)*0.22}
+/* Recorded music: the scene (difficulty x exploring/boss, or elite) picks a MUSIC entry from SET.music.
+   Exploring tracks resume where they left off; boss/elite tracks start from the top each fight.
+   'auto', or a file that can't load or play, falls back to the generated loop. */
+const TRACK={els:{},cur:'',vol:0.55,failed:{},preview:null,get on(){return!!this.cur}};
 function trackEl(src){
   let el=TRACK.els[src];
   if(!el){el=TRACK.els[src]=new Audio(src);el.loop=true;el.preload='auto';el.volume=Math.min(1,(SET.bgm/100)*TRACK.vol);
     el.addEventListener('error',()=>{TRACK.failed[src]=1;if(TRACK.cur===src)TRACK.cur=''})}
   return el;
 }
+const musicSlot=()=>{const fight=S.boss&&!S.boss.dead;return fight?(S.boss.elite?'elite':`${S.diff}.boss`):`${S.diff}.explore`};
+const slotSrc=k=>{const m=MUSIC[(SET.music||{})[k]]||MUSIC.auto;return m.src||''};
 function wantTrack(){
   if(!S||S.mode==='title'||S.mode==='over'||S.mode==='win'||!SET.bgm)return'';
-  const set=BGM_TRACKS[S.diff];if(!set)return'';
-  const fight=S.boss&&!S.boss.dead;
-  const src=fight?(S.boss.elite?'':set.boss):set.explore;
+  const src=slotSrc(musicSlot());
   return src&&!TRACK.failed[src]?src:'';
 }
 function trackTick(){
   const want=wantTrack();if(want===TRACK.cur)return;
   if(TRACK.cur&&TRACK.els[TRACK.cur])TRACK.els[TRACK.cur].pause();
   TRACK.cur=want;if(!want)return;
-  const el=trackEl(want),set=BGM_TRACKS[S.diff];
-  if(set&&want===set.boss)el.currentTime=0;
+  const el=trackEl(want);
+  if(musicSlot()!==`${S.diff}.explore`)el.currentTime=0;
   applyVol();
   const pr=el.play();if(pr&&pr.catch)pr.catch(()=>{TRACK.failed[want]=1;if(TRACK.cur===want)TRACK.cur=''});
 }
 // warm the files up when a run starts so the music starts on time
-function trackPreload(){const set=S&&BGM_TRACKS[S.diff];if(!set)return;for(const k in set){const src=set[k];if(!TRACK.failed[src]){const el=trackEl(src);try{if(el.readyState===0)el.load()}catch(e){}}}}
+function trackPreload(){if(!S)return;for(const k of [`${S.diff}.explore`,`${S.diff}.boss`,'elite']){const src=slotSrc(k);if(src&&!TRACK.failed[src]){const el=trackEl(src);try{if(el.readyState===0)el.load()}catch(e){}}}}
+// settings screen: listen to a track before picking it
+function previewStop(){if(TRACK.preview){TRACK.preview.pause();TRACK.preview=null}document.querySelectorAll('#musicList button.pv').forEach(b=>{b.textContent='▶';b.classList.remove('on')})}
+function previewPlay(src,btn){
+  const was=TRACK.preview&&TRACK.preview.dataset&&TRACK.preview.dataset.src===src;previewStop();if(was||!src)return;
+  const el=new Audio(src);el.dataset.src=src;el.loop=true;el.volume=Math.min(1,(Math.max(SET.bgm,20)/100)*TRACK.vol);TRACK.preview=el;
+  const pr=el.play();if(pr&&pr.catch)pr.catch(()=>previewStop());btn.textContent='■';btn.classList.add('on');
+}
 function tone(f,d,type,v,slide,at){
   if(!AC||!SET.sfx)return;const t=(at||AC.currentTime);
   const o=AC.createOscillator(),g=AC.createGain();o.type=type||'square';o.frequency.setValueAtTime(f,t);
@@ -2100,8 +2127,14 @@ function renderSettings(){
     `<div class="setrow"><label for="set-shake">画面の揺れ</label><input type="checkbox" id="set-shake" ${SET.shake?'checked':''}></div>`;
   SET_UI.forEach(([k,,u])=>{$('set-'+k).oninput=e=>{SET[k]=+e.target.value;$('out-'+k).textContent=SET[k]+u;saveSet();applyVol();if(k==='sfx')sfx('rotate')}});
   $('set-shake').onchange=e=>{SET.shake=e.target.checked?1:0;saveSet()};
-  CAP=null;renderKeys();
+  CAP=null;renderKeys();renderMusic();
 }
+function renderMusic(){
+  previewStop();
+  $('musicList').innerHTML=MUSIC_SLOTS.map(([k,n])=>`<div class="mrow"><label for="mu-${k.replace('.','-')}">${n}</label><select id="mu-${k.replace('.','-')}" data-k="${k}">${Object.keys(MUSIC).map(m=>`<option value="${m}"${SET.music[k]===m?' selected':''}>${MUSIC[m].n}</option>`).join('')}</select><button type="button" class="pv" data-k="${k}" aria-label="${n}の曲を試聴" ${MUSIC[SET.music[k]].src?'':'disabled'}>▶</button></div>`).join('');
+}
+$('musicList').onchange=e=>{const el=e.target.closest('select');if(!el)return;SET.music[el.dataset.k]=el.value;saveSet();renderMusic();if(S&&S.mode!=='title')trackPreload()};
+$('musicList').onclick=e=>{const b=e.target.closest('button.pv');if(!b)return;previewPlay(slotSrc(b.dataset.k),b)};
 $('setReset').onclick=()=>{SET=cloneSet();saveSet();applyVol();renderSettings()};
 /* ---------- key binding screen ---------- */
 let kTab='key',CAP=null; // CAP={dev:'key'|'pad',a,i} while waiting for an input to bind
@@ -2887,7 +2920,7 @@ function gpOpenSheet(){
   return ovs[ovs.length-1]||null;
 }
 function gpFocusables(root){
-  return[...root.querySelectorAll('button,input[type=range],input[type=checkbox],summary')].filter(el=>!el.disabled&&!el.hidden&&el.getClientRects().length&&getComputedStyle(el).visibility!=='hidden');
+  return[...root.querySelectorAll('button,input[type=range],input[type=checkbox],select,summary')].filter(el=>!el.disabled&&!el.hidden&&el.getClientRects().length&&getComputedStyle(el).visibility!=='hidden');
 }
 function gpSetFocus(el){
   if(gpFocusEl)gpFocusEl.classList.remove('gpfocus');
@@ -2900,6 +2933,9 @@ function gpMove(dir){
   const ov=gpOpenSheet();if(!ov)return;
   const list=gpFocusables(ov);if(!list.length)return;
   if(!gpFocusEl||!list.includes(gpFocusEl)){gpSetFocus(list[0]);return}
+  if(gpFocusEl.tagName==='SELECT'&&(dir==='l'||dir==='r')){
+    const el=gpFocusEl,n=el.options.length;el.selectedIndex=(el.selectedIndex+(dir==='r'?1:-1)+n)%n;
+    el.dispatchEvent(new Event('change',{bubbles:true}));gpSetFocus($(el.id));return}
   if(gpFocusEl.type==='range'&&(dir==='l'||dir==='r')){
     const el=gpFocusEl,st=+el.step||1;el.value=Math.min(+el.max,Math.max(+el.min,+el.value+(dir==='r'?st:-st)));
     el.dispatchEvent(new Event('input',{bubbles:true}));return}
@@ -3061,7 +3097,7 @@ $('dbgEvo').onclick=e=>{const b=e.target.closest('button');if(!b)return;const k=
   sfx('transform');dbgRefresh();dbgRender()};
 $('setBtn2').onclick=()=>openSettings('ovPause');
 $('codexBack').onclick=()=>{hide('ovCodex');show('ovTitle')};
-$('setBack').onclick=()=>{CAP=null;hide('ovSet');show(setFrom)};
+$('setBack').onclick=()=>{CAP=null;previewStop();hide('ovSet');show(setFrom)};
 $('startBtn').onclick=()=>{pickMode='run';openClassPick()};
 $('classBack').onclick=()=>{pickMode='run';hide('ovClass');show('ovTitle')};
 $('againBtn').onclick=()=>{if(S&&S.coop){toTitle()}else{hide('ovOver');openClassPick()}};
