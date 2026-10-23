@@ -589,7 +589,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='36',UPDATED='2026-10-23 16:54';
+const VERSION='37',UPDATED='2026-10-23 16:55';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
 const SHAPES={
@@ -790,7 +790,7 @@ function checkUnlocks(){
 */
 const DIFFS={
   easy:{n:'簡単',d:'いまの標準バランス。初めての人やソロ向け',
-    bossHp:[200,120],strike:[40000,3000,20000],strikeDmg:[8,1.5],cold:[60000,6,3],topout:0.35,killHeal:15,
+    bossHp:[200,120],strike:[40000,3000,20000],strikeDmg:[10,2.2],cold:[60000,6,3],topout:0.35,killHeal:15,
     xp:[280,1.18],xpEarly:[0.5,0.6,0.7,0.85,0.95],bossSk:[26000,1200,15000],bossAtk:[9000,700,3500],gravity:0.85}
 };
 const DIFF_KEYS=Object.keys(DIFFS);
@@ -831,6 +831,8 @@ const strikeDmg=()=>Math.round(D().strikeDmg[0]+D().strikeDmg[1]*(S.floor-1));
 const coldDmg=()=>D().cold[1]+Math.max(0,S.floor-D().cold[2])+(lv('c_heart')?3:0);
 // topping out costs a share of max HP (at least 12) and cannot be blocked
 const topoutDmg=()=>Math.max(12,Math.round(S.maxHp*D().topout));
+// every level-up raises max HP by this much and heals the same amount
+const LV_HP=2;
 const killHeal=()=>D().killHeal,HEAL_AMT=8,REVIVE_HP=15;
 const healAmt=()=>evo('e_spring')?16:HEAL_AMT;
 const buffMul=()=>Math.max(evo('e_drum')?1.8:1.5,Math.min(1.8,S.allyBuffMul||1.5));
@@ -1591,7 +1593,7 @@ function openReward(first){
     const ex=shuffle(Object.keys(RELICS).filter(k=>RELICS[k].only===S.cls));
     keys=['ghost','hold',ex[0]];
   }else keys=pickRelics(3,k=>!(k==='potion'&&S.hp>=S.maxHp));
-  $('rwLv').innerHTML=first?'':`<small>Lv ${S.level} →</small>Lv ${S.level+1}`;
+  $('rwLv').innerHTML=first?'':`<small>Lv ${S.level} →</small>Lv ${S.level+1}<small>　最大HP+${LV_HP}</small>`;
   $('rwTitle').textContent=first?'最初の遺物':'レベルアップ';
   $('rwSub').textContent=first?`${clsOf(S.cls).n}として洞窟に入る。ひとつだけ持っていける`:
     (S.afterReward==='shop'&&S.lastBoss?`${S.lastBoss}を倒した。${S.lastEarn}G を手に入れ、HPが${killHeal()}回復。`:'')+(keys.length?'遺物をひとつ選んでください':'持てる遺物はすべて集めた。報酬をひとつ選んでください');
@@ -1631,7 +1633,7 @@ function announceTransform(){
 }
 function openSkillUp(ti){
   const c=clsOf(S.cls),opts=SKUP[S.cls][ti];
-  $('rwLv').innerHTML=`<small>Lv ${S.level} →</small>Lv ${S.level+1}`;
+  $('rwLv').innerHTML=`<small>Lv ${S.level} →</small>Lv ${S.level+1}<small>　最大HP+${LV_HP}</small>`;
   $('rwTitle').textContent='スキル強化';
   $('rwSub').textContent=`「${c.sk.n}」の強化をひとつ選ぶ。選ばなかった方は、この潜行ではもう取れない`;
   const box=$('cards');box.innerHTML='';
@@ -1650,7 +1652,7 @@ function pickRelic(k,first){
   levelPicked();
 }
 function levelPicked(){
-  S.pendingLv--;S.level++;hud(true);sfx('level');
+  S.pendingLv--;S.level++;S.maxHp+=LV_HP;S.hp=Math.min(S.maxHp,S.hp+LV_HP);hud(true);sfx('level');toast(`Lv ${S.level}　最大HP+${LV_HP}`);
   if(S.pendingLv>0){openReward(false);return}
   if(S.afterReward==='shop'){S.afterReward=null;S.mode='play';afterBoss();return}
   if(S.afterReward==='node'){S.afterReward=null;S.mode='play';nodeDone();return}
