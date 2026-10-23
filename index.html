@@ -589,7 +589,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='37',UPDATED='2026-10-23 16:55';
+const VERSION='38',UPDATED='2026-10-23 16:57';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
 const SHAPES={
@@ -793,6 +793,9 @@ const DIFFS={
     bossHp:[200,120],strike:[40000,3000,20000],strikeDmg:[10,2.2],cold:[60000,6,3],topout:0.35,killHeal:15,
     xp:[280,1.18],xpEarly:[0.5,0.6,0.7,0.85,0.95],bossSk:[26000,1200,15000],bossAtk:[9000,700,3500],gravity:0.85}
 };
+// 普通: same as 簡単 except boss HP and strike damage x1.3 (first pass, tune from play)
+DIFFS.normal={...DIFFS.easy,n:'普通',d:'ボスのHPと強撃のダメージが簡単の1.3倍。慣れてきた人向け',
+  bossHp:DIFFS.easy.bossHp.map(v=>Math.round(v*1.3)),strikeDmg:DIFFS.easy.strikeDmg.map(v=>Math.round(v*1.3*10)/10)};
 const DIFF_KEYS=Object.keys(DIFFS);
 const MAPS={line:{n:'一本道の氷窟',s:'一本道',d:'これまでどおり。階ごとにボスと行商人'},
   branch:{n:'分岐の氷窟',s:'分岐',d:'階の間で道を選ぶ。エリート・イベント・休憩・宝箱・行商人'}};
