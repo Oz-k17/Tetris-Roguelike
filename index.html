@@ -603,7 +603,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='39',UPDATED='2026-10-23 17:01';
+const VERSION='40',UPDATED='2026-10-23 17:37';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -1035,7 +1035,7 @@ function newRun(coop,epoch,cls,diff,practice,map){
     S.mode='play';spawn();pop(['練習モード'],'#8fe3ff',1.1);$('practiceTools').hidden=false;return;
   }
   $('practiceTools').hidden=true;
-  layout();hud(true);
+  layout();hud(true);trackPreload();
   openReward(true);
 }
 
@@ -1947,7 +1947,31 @@ function audioInit(){
   if(AC)return;
   try{AC=new (window.AudioContext||window.webkitAudioContext)();SFXG=AC.createGain();BGMG=AC.createGain();SFXG.connect(AC.destination);BGMG.connect(AC.destination);applyVol();bgmStart()}catch(e){AC=null}
 }
-function applyVol(){if(!AC)return;SFXG.gain.value=(SET.sfx/100)*0.5;BGMG.gain.value=(SET.bgm/100)*0.22}
+function applyVol(){if(TRACK.el)TRACK.el.volume=Math.min(1,(SET.bgm/100)*TRACK.vol);if(!AC)return;SFXG.gain.value=(SET.sfx/100)*0.5;BGMG.gain.value=(SET.bgm/100)*0.22}
+/* Recorded boss music for 普通 (bgm/boss-normal.mp3, a file next to the page). It plays in boss fights on that
+   difficulty and replaces the generated boss loop; elites, exploring and other difficulties keep the generated music.
+   If the file can't load or play, the generated loop simply carries on. */
+const BOSS_TRACKS={normal:'bgm/boss-normal.mp3'};
+const TRACK={el:null,src:'',vol:0.55,failed:{},on:false};
+function wantTrack(){
+  if(!S||S.mode==='title'||S.mode==='over'||S.mode==='win'||!SET.bgm)return'';
+  const src=BOSS_TRACKS[S.diff];if(!src||TRACK.failed[src])return'';
+  return S.boss&&!S.boss.dead&&!S.boss.elite?src:'';
+}
+function trackTick(){
+  const src=wantTrack();
+  if(src&&!TRACK.on){
+    if(!TRACK.el||TRACK.src!==src){
+      if(TRACK.el)TRACK.el.pause();
+      TRACK.el=new Audio(src);TRACK.src=src;TRACK.el.loop=true;TRACK.el.preload='auto';
+      TRACK.el.addEventListener('error',()=>{TRACK.failed[src]=1;TRACK.on=false});
+    }
+    TRACK.el.currentTime=0;applyVol();TRACK.on=true;
+    const pr=TRACK.el.play();if(pr&&pr.catch)pr.catch(()=>{TRACK.failed[src]=1;TRACK.on=false});
+  }else if(!src&&TRACK.on){TRACK.on=false;if(TRACK.el)TRACK.el.pause()}
+}
+// warm the file up when a 普通 run starts so the boss music starts on time
+function trackPreload(){const src=S&&BOSS_TRACKS[S.diff];if(src&&!TRACK.failed[src]&&TRACK.src!==src){TRACK.el=new Audio(src);TRACK.src=src;TRACK.el.loop=true;TRACK.el.preload='auto';TRACK.el.addEventListener('error',()=>{TRACK.failed[src]=1;TRACK.on=false});try{TRACK.el.load()}catch(e){}}}
 function tone(f,d,type,v,slide,at){
   if(!AC||!SET.sfx)return;const t=(at||AC.currentTime);
   const o=AC.createOscillator(),g=AC.createGain();o.type=type||'square';o.frequency.setValueAtTime(f,t);
@@ -1988,7 +2012,8 @@ const BGM_EXP={tempo:0.21,root:[0,0,-3,-5],scale:[0,2,4,7,9,12,14,16]};
 const BGM_BOSS={tempo:0.16,root:[0,-2,-4,-5],scale:[0,3,5,7,10,12,15,17]};
 function bgmStart(){if(bgmTimer)return;bgmNext=AC.currentTime+0.1;bgmTimer=setInterval(bgmTick,60)}
 function bgmTick(){
-  if(!AC||!SET.bgm||!S||S.mode==='title'){bgmNext=AC?AC.currentTime+0.1:0;return}
+  trackTick();
+  if(!AC||!SET.bgm||!S||S.mode==='title'||TRACK.on){bgmNext=AC?AC.currentTime+0.1:0;return}
   const P=S.boss&&!S.boss.dead?BGM_BOSS:BGM_EXP;
   while(bgmNext<AC.currentTime+0.25){
     const bar=(bgmStep>>3)%4,st=bgmStep%8,root=220*Math.pow(2,P.root[bar]/12);
