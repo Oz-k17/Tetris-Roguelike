@@ -68,11 +68,13 @@ header{display:flex;flex-direction:column;gap:5px}
 main{flex:1;min-height:0;display:flex;justify-content:center;gap:10px;overflow:hidden}
 .boardwrap{position:relative;align-self:flex-start}
 #board{display:block;border:1px solid var(--line);border-radius:4px;touch-action:none}
-aside{width:72px;display:flex;flex-direction:column;gap:7px;align-self:flex-start}
+aside{width:72px;display:flex;flex-direction:column;gap:7px;align-self:flex-start;overflow:hidden}
+aside>*{flex:none}
 .lbl{font-size:10px;letter-spacing:.14em;color:var(--muted)}
 .box{background:var(--panel);border:1px solid var(--line);border-radius:4px;display:block}
 .box.off{opacity:.35}
-.relics{display:flex;flex-wrap:wrap;gap:4px}
+.relics{display:flex;flex-wrap:wrap;align-content:flex-start;gap:4px}
+aside>.relics{flex:1 1 auto;min-height:26px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;padding:3px 0 2px 3px}
 .relics span{position:relative;width:22px;height:22px;display:grid;place-items:center;font-family:var(--display);font-size:13px;
   background:var(--panel);border:1px solid var(--line);border-radius:3px;color:var(--ice)}
 .relics span sup{position:absolute;right:-3px;top:-5px;font-size:9px;color:var(--gold)}
@@ -81,8 +83,20 @@ aside{width:72px;display:flex;flex-direction:column;gap:7px;align-self:flex-star
 .mate canvas{flex:none;border:1px solid var(--line);border-radius:2px}
 .mate div{display:flex;flex-direction:column;gap:2px;min-width:0}
 .mate b{font-family:var(--display);font-weight:400;font-size:13px}
-.mate span{font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:36px}
+.mate span{font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46px}
+.mate .mhpt{font-size:10px;color:var(--fg);font-variant-numeric:tabular-nums}
+.mate .mhp{display:block;width:100%;max-width:46px;height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+.mate .mhp b{display:block;height:100%;background:#ff6f7f}
+.mate .mhp b+b{background:var(--ice);margin-top:-4px}
 .mate.down{opacity:.45}
+.party.grid{flex-direction:row;gap:3px}
+.party.grid .mate{flex-direction:column;align-items:center;gap:2px;width:22px}
+.party.grid .mate div{align-items:center;width:22px}
+.party.grid .mate span[id^="mn"]{display:none}
+.party.grid .mate .mhpt{font-size:9px}
+.party.grid .mate .mhp{width:20px}
+.party.grid .mate .bub{position:absolute;z-index:2}
+.party.grid .mate canvas{margin:0 auto}
 .pad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;touch-action:none}
 .pad button{height:54px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--fg);
   font-size:20px;font-family:var(--display);cursor:pointer;touch-action:none}
@@ -362,12 +376,12 @@ i[data-ico]{display:contents}
       <canvas id="holdC" class="box"></canvas>
       <div class="lbl">NEXT</div>
       <canvas id="nextC" class="box"></canvas>
-      <div class="lbl">遺物</div>
-      <div class="relics" id="relics"></div>
       <div class="party" id="partyBox" hidden>
         <div class="lbl">仲間</div>
         <div class="party" id="partyList"></div>
       </div>
+      <div class="lbl">遺物</div>
+      <div class="relics" id="relics"></div>
     </aside>
   </main>
   <div class="pad" id="pad">
@@ -589,8 +603,9 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='38',UPDATED='2026-10-23 16:57';
+const VERSION='39',UPDATED='2026-10-23 17:01';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
+let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
 const SHAPES={
   I:[[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
@@ -2160,21 +2175,31 @@ function hud(force){
    const cd=S.cheerAt&&nowT()-S.cheerAt<6000;$('cheerBtn').disabled=$('cheerBtn2').disabled=!!cd;
    $('myBub').hidden=!(S.myBubUntil&&nowT()<S.myBubUntil)}
 }
-function renderParty(){
+// rebuilds the ally rows when the roster or the size mode changes; returns true when there is nobody to show
+function renderPartyDom(){
   const al=coopOn()?NET.others.filter(p=>p.presence&&p.presence.e===S.epoch).slice(0,MAXP-1):[];
-  const key=al.map(p=>p.peer).join(',');
-  const list=$('partyList');
-  if(NET&&NET.rosterKey!==key){
-    NET.rosterKey=key;
-    list.innerHTML=al.length?al.map((p,i)=>`<div class="mate" id="mate${i}"><canvas id="mc${i}"></canvas><div><b id="mg${i}"></b><span id="mn${i}"></span><span id="mh${i}"></span><span class="bub" id="mb${i}" hidden></span></div></div>`).join(''):'<span class="lbl">待機中</span>';
-    al.forEach((p,i)=>{const cv=$('mc'+i);cv.width=W*PS*DPR;cv.height=H*PS*DPR;cv.style.width=W*PS+'px';cv.style.height=H*PS+'px'});
+  const key=al.map(p=>p.peer).join(',')+'|'+matePS+'|'+mateGrid;
+  const list=$('partyList');list.classList.toggle('grid',mateGrid);
+  if(NET&&NET.rosterKey!==key){    NET.rosterKey=key;
+    list.innerHTML=al.length?al.map((p,i)=>`<div class="mate" id="mate${i}"><canvas id="mc${i}"></canvas><div><b id="mg${i}"></b><span id="mn${i}"></span><span class="mhpt" id="mh${i}"></span><i class="mhp"><b id="mhb${i}"></b><b id="msb${i}"></b></i><span class="bub" id="mb${i}" hidden></span></div></div>`).join(''):'<span class="lbl">待機中</span>';
+    al.forEach((p,i)=>{const cv=$('mc'+i);cv.width=W*matePS*DPR;cv.height=H*matePS*DPR;cv.style.width=W*matePS+'px';cv.style.height=H*matePS+'px'});
     for(const k in hc)if(/^m[gnh]\d/.test(k))delete hc[k];
   }
+  return!al.length;
+}
+function renderParty(){
+  const al=coopOn()?NET.others.filter(p=>p.presence&&p.presence.e===S.epoch).slice(0,MAXP-1):[];
+  if(al.length!==renderParty.n){renderParty.n=al.length;layout()}
+  renderPartyDom();fillParty(al);
+}
+function fillParty(al){
   al.forEach((p,i)=>{
     const q=p.presence,c=clsOf(q.cls);
     const g=$('mg'+i);if(g&&g.dataset.k!==q.cls){g.dataset.k=q.cls;g.innerHTML=clsBadge(q.cls,16,12)}
     setText('mn'+i,nameOf(p));
-    setText('mh'+i,q.a?`${q.hp}/${q.mh}${+q.sh?'+'+(+q.sh):''}`:'ダウン');
+    setText('mh'+i,q.a?(mateGrid?`${q.hp}`:`${q.hp}/${q.mh}${+q.sh?'+'+(+q.sh):''}`):(mateGrid?'×':'ダウン'));
+    {const mh=Math.max(1,+q.mh||1),hp=Math.max(0,+q.hp||0),sh=Math.max(0,+q.sh||0),tot=Math.max(mh,hp+sh),hb=$('mhb'+i),sb=$('msb'+i);
+     if(hb){const w1=q.a?hp/tot*100:0,w2=q.a?sh/tot*100:0;hb.style.width=w1+'%';sb.style.width=w2+'%';sb.style.marginLeft=w1+'%'}}
     const m=$('mate'+i);if(m)m.classList.toggle('down',!q.a);
     const bb=$('mb'+i),bu=NET.bubble[pkey(p)];if(bb){const on=!!(bu&&nowT()<bu.until);bb.hidden=!on;if(on&&bb.textContent!==bu.txt)bb.textContent=bu.txt}
   });
@@ -2365,7 +2390,7 @@ function mini(ctx,t,cx,cy,s,alpha){
 function drawSide(){
   const w=ASIDE,ms=Math.floor(w/5.2);
   hctx.setTransform(DPR,0,0,DPR,0,0);hctx.clearRect(0,0,w,56);
-  const n=nextN(),slot=46;
+  const n=nextN(),slot=nextSlot;
   nctx.setTransform(DPR,0,0,DPR,0,0);nctx.clearRect(0,0,w,n*slot);
   if(S.blindUntil&&until('blindUntil')>0){
     // snow curtain hides HOLD and NEXT
@@ -2376,13 +2401,13 @@ function drawSide(){
     }
   }else{
     if(S.hold)mini(hctx,S.hold,w/2,28,ms,S.canHold?1:.4);
-    for(let i=0;i<n;i++){if(S.queue&&S.queue[i])mini(nctx,S.queue[i],w/2,slot*i+slot/2,i===0?ms:Math.floor(ms*.8))}
+    for(let i=0;i<n;i++){if(S.queue&&S.queue[i])mini(nctx,S.queue[i],w/2,slot*i+slot/2,Math.floor((i===0?ms:ms*.8)*Math.min(1,slot/46)))}
   }
   if(coopOn()){
     allies().slice(0,MAXP-1).forEach((p,i)=>{
       const cv=$('mc'+i);if(!cv)return;
       const ctx=cv.getContext('2d');ctx.setTransform(DPR,0,0,DPR,0,0);
-      gridBg(ctx,PS,'#0e1928');drawStr(ctx,p.presence.b,PS);
+      gridBg(ctx,matePS,'#0e1928');drawStr(ctx,p.presence.b,matePS);
     });
   }
 }
@@ -2398,7 +2423,20 @@ function layout(){
   C=Math.max(12,Math.min(34,Math.floor(Math.min(availW/W,availH/H))));
   sizeCanvas(board,W*C,H*C);
   sizeCanvas(holdC,ASIDE,56);
-  sizeCanvas(nextC,ASIDE,(S&&S.relics?nextN():1)*46);
+  // side rail never grows past the board. Try roomy → compact settings and keep the first that fits
+  // (measured, not estimated); relics take what is left and scroll.
+  const railH=H*C,nN=S&&S.relics?nextN():1;
+  const rail=document.querySelector('main aside');if(rail)rail.style.maxHeight=railH+'px';
+  const steps=[[3,46,false],[2,46,false],[2,36,false],[2,46,true],[2,36,true],[2,30,true],[1,30,true],[1,24,true]];
+  for(const [ps,sl,g] of steps){
+    matePS=ps;nextSlot=sl;mateGrid=g;
+    sizeCanvas(nextC,ASIDE,nN*nextSlot);
+    if(!rail||!S||!S.coop)break;
+    if(renderPartyDom())break; // no allies shown yet
+    fillParty(NET.others.filter(p=>p.presence&&p.presence.e===S.epoch).slice(0,MAXP-1));
+    let used=0;for(const el of Array.from(rail.children||[]))if(el.id!=='relics'&&!el.hidden)used+=el.offsetHeight+7;
+    if(used+26<=railH)break;
+  }
 }
 addEventListener('resize',layout);
 
