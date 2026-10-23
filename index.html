@@ -175,6 +175,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .card .d .dk.add{background:#6f9cf5}.card .d .dk.mul{background:var(--gold)}
 .card .d .dd{font-weight:700;color:var(--fg)}
 .relics .tfb{outline:1px solid currentColor}
+.relics .evob{outline:2px solid currentColor;box-shadow:0 0 8px currentColor}
+.evorec{display:block;margin-bottom:4px;color:var(--fg)}.evorec i{font-style:normal;font-weight:700;margin:0 2px}
+.card.evocard{border-color:#f2d06b;box-shadow:0 0 18px rgba(242,208,107,.35)}
 .card .n .upl{font-size:11px;color:var(--bg);background:var(--ice);padding:0 5px;border-radius:3px;margin-right:4px}
 .card .d{font-size:13px;color:var(--muted);line-height:1.5}
 .card.shopcard{grid-template-columns:48px 1fr auto}
@@ -535,6 +538,7 @@ i[data-ico]{display:contents}
   <div class="dbghead"><b>デバッグ</b><small>記録と解放は保存されない</small><button type="button" class="ghostbtn" id="dbgClose">閉じる</button></div>
   <div class="dbgsec"><h4>ツール</h4><div class="dbgtools" id="dbgTools"></div></div>
   <div class="dbgsec"><h4>スキル強化</h4><div id="dbgSk"></div></div>
+  <div class="dbgsec"><h4>進化</h4><div id="dbgEvo"></div></div>
   <div class="dbgsec"><h4>遺物</h4><input id="dbgQ" type="search" placeholder="名前・効果で絞り込み" autocomplete="off" aria-label="遺物を絞り込む"><div id="dbgRel"></div></div>
 </div>
 
@@ -577,7 +581,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='34',UPDATED='2026-10-22 21:11';
+const VERSION='35',UPDATED='2026-10-23 11:05';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
 const SHAPES={
@@ -686,6 +690,22 @@ const RELICS={
   lullaby:{n:'氷原の子守唄',g:'眠',d:'自分と仲間全員のミノの落下速度が12%遅くなる（重ねると+12%）',max:3,p:45,c:'buff',only:'buff',t:'技'},
   crit:{n:'会心の一撃',g:'会',d:'4列消しのボスへのダメージ+50',max:5,p:45,c:'atk',only:'atk',t:'刃',dk:'+'}
 };
+/* Evolutions (Vampire Survivors style): a base relic at its max level + any level of its catalyst relic.
+   The next boss (or elite) you defeat evolves the base relic; the base keeps working and the evolution adds on top. */
+const EVOS={
+  e_icicle:{n:'氷柱の連弾',g:'弾',col:'#ff8fa0',base:'icicle',cat:'combo',d:'REN中、ボスへのダメージ+15×REN数（最大+150）'},
+  e_bomb:{n:'大雪崩の爆弾',g:'轟',col:'#ff9a5c',base:'bomb',cat:'drill',d:'爆弾の爆発が5×5になり、爆弾が出る間隔が3個短くなる'},
+  e_frost:{n:'永久凍土の鎧',g:'凍',col:'#8fe3ff',base:'frostmail',cat:'cloak',d:'小さなシールドの上限が最大HPの3割→6割。ライン消しのシールドが2倍'},
+  e_regen:{n:'癒しの温泉郷',g:'郷',col:'#7ee0a1',base:'regen',cat:'vital',d:'時間で回復する間隔が10秒→5秒'},
+  e_thorns:{n:'氷茨の要塞',g:'茨',col:'#8fe3ff',base:'thorns',cat:'armor',d:'反撃の棘のダメージが2倍。ボスの強撃を受けても防いでも、ボスに60ダメージ'},
+  e_drum:{n:'天鼓',g:'天',col:'#f2d06b',base:'drum',cat:'bell',d:'鼓舞の倍率が×1.5→×1.8（ダメージ・スコア・経験値。仲間にも届く）'},
+  e_spring:{n:'生命の大樹',g:'樹',col:'#7ee0a1',base:'spring',cat:'aegis',d:'癒しの回復量が8→16（仲間にも）'},
+  e_piggy:{n:'黄金の雪だるま',g:'凰',col:'#f2d06b',base:'piggy',cat:'greed',d:'ボス撃破の利子が所持金の20%になり、上限がなくなる'},
+  e_slow:{n:'時止めの砂時計',g:'刻',col:'#b9a3ff',base:'slow',cat:'next',d:'落下速度がさらに30%遅くなり、ボスのゴミ列の間隔が20%長くなる'}
+};
+const evo=k=>!!(S&&S.evo&&S.evo[k]);
+const evoReady=()=>Object.keys(EVOS).filter(k=>{const e=EVOS[k];return!evo(k)&&lv(e.base)>=RELICS[e.base].max&&lv(e.cat)>0});
+const evoOf=k=>Object.keys(EVOS).find(e=>EVOS[e].base===k&&evo(e));
 // tag sets: 3 different relics of one tag transform you (once per run)
 const TAGS={
   '刃':{col:'#ff8fa0',tf:'氷刃の化身',d:'ボスへのダメージ×1.2'},
@@ -735,8 +755,9 @@ const saveSet=()=>{try{localStorage.setItem('hyokutsu-set',JSON.stringify(SET))}
 let META={tspin:0,quad:0,pc:0,kills:{},deep:0,tankDeep:0,unlocked:{}};
 try{Object.assign(META,JSON.parse(localStorage.getItem('hyokutsu-meta')||'{}'))}catch(e){}
 const saveMeta=()=>{try{localStorage.setItem('hyokutsu-meta',JSON.stringify(META))}catch(e){}};
-let SEEN={r:{},tf:{},b:{}};
+let SEEN={r:{},tf:{},b:{},ev:{}};
 try{Object.assign(SEEN,JSON.parse(localStorage.getItem('hyokutsu-seen')||'{}'))}catch(e){}
+SEEN.ev=SEEN.ev||{};
 const saveSeen=()=>{try{localStorage.setItem('hyokutsu-seen',JSON.stringify(SEEN))}catch(e){}};
 const UNLOCKS=[
   {k:'pcfield',d:'全消しを1回する',ok:()=>META.pc>=1},
@@ -796,13 +817,15 @@ function renderTitleInfo(){
 const emptyBoard=()=>Array.from({length:H},()=>Array(W).fill(0));
 const lv=k=>(S.relics&&S.relics[k])||0;
 const buffOn=()=>{const t=performance.now();return!!((S.buffUntil&&t<S.buffUntil)||(S.echoUntil&&t>=S.echoFrom&&t<S.echoUntil))};
-const gravityMs=()=>Math.max(55,850*Math.pow(D().gravity,S.floor-1))*Math.pow(1.15,lv('slow'))*(S.galeUntil&&until('galeUntil')>0?0.4:1)*(lv('c_sand')?1.3:1)*(1+0.12*lullLv());
+const gravityMs=()=>Math.max(55,850*Math.pow(D().gravity,S.floor-1))*Math.pow(1.15,lv('slow'))*(S.galeUntil&&until('galeUntil')>0?0.4:1)*(lv('c_sand')?1.3:1)*(1+0.12*lullLv())*(evo('e_slow')?1.3:1);
 const bossBaseHp=()=>D().bossHp[0]+D().bossHp[1]*(S.floor-1);
 const strikeDmg=()=>Math.round(D().strikeDmg[0]+D().strikeDmg[1]*(S.floor-1));
 const coldDmg=()=>D().cold[1]+Math.max(0,S.floor-D().cold[2])+(lv('c_heart')?3:0);
 // topping out costs a share of max HP (at least 12) and cannot be blocked
 const topoutDmg=()=>Math.max(12,Math.round(S.maxHp*D().topout));
 const killHeal=()=>D().killHeal,HEAL_AMT=8,REVIVE_HP=15;
+const healAmt=()=>evo('e_spring')?16:HEAL_AMT;
+const buffMul=()=>Math.max(evo('e_drum')?1.8:1.5,Math.min(1.8,S.allyBuffMul||1.5));
 const tf=t=>!!(S&&S.tf&&S.tf[t]);
 const su=i=>(S&&S.skUp&&S.skUp[i])||'';
 const skBaseNeed=()=>{const b={heal:12,buff:11,atk:9}[S.cls];return su(1)==='B'&&b?b:clsOf(S.cls).sk.need};
@@ -831,12 +854,12 @@ const bossRows=()=>S.floor>=4?2:1;
 const xpNeed=l=>{const e=D().xpEarly||[];return Math.round(D().xp[0]*Math.pow(D().xp[1],l-1)*(l<=e.length?e[l-1]:1))};
 // XP comes from what you cleared, not from score, so deep floors don't snowball levels
 const floorXp=()=>1+0.15*(S.floor-1);
-const bombInterval=()=>14-3*(lv('bomb')-1);
+const bombInterval=()=>14-3*(lv('bomb')-1)-(evo('e_bomb')?3:0);
 const sandInterval=()=>10-2*(lv('sand')-1);
 const healNeed=()=>Math.max(4,12-2*lv('spring'));
 const buffNeed=()=>Math.max(4,8-2*lv('bell'));
 const buffDur=()=>15000+5000*lv('drum');
-const mult=()=>(1+0.5*lv('mult'))*(buffOn()?1.5:1);
+const mult=()=>(1+0.5*lv('mult'))*(buffOn()?buffMul():1);
 const goldMult=()=>1+0.5*lv('greed');
 const earn=g=>{const v=Math.round(g*goldMult()*(tf('富')?1.3:1)*(lv('c_ring')?2:1));S.gold+=v;S.totalGold+=v;return v};
 const priceMul=()=>tf('富')?0.9:1;
@@ -945,7 +968,7 @@ function newRun(coop,epoch,cls,diff,practice,map){
      timeLeft:STAGE_MS,phase:'play',boss:null,weaken:false,bossKills:0,afterReward:null,readyFloor:0,
      coop:!!coop,epoch:epoch||0,watching:false,
      skillLines:0,healCount:0,reviveCount:0,buffCount:0,buffUntil:0,hitAcc:0,lastLeech:-1e9,endless:false,
-     blocked:0,hitsTaken:0,shield:0,regenAcc:0,skCharge:0,skUses:0,tf:{},tfNew:null,skUp:['','',''],bakuC:0,incoming:[],offsetTotal:0,calmUntil:0,calmN:0,lastSkAt:-1e9,lastLinkAt:-1e9,freezeMul:1.3,echoFrom:0,echoUntil:0,rageUntil:0,immuneUntil:0,freezeUntil:0,blindUntil:0,webUntil:0,galeUntil:0,
+     blocked:0,hitsTaken:0,shield:0,regenAcc:0,skCharge:0,skUses:0,tf:{},tfNew:null,skUp:['','',''],bakuC:0,incoming:[],offsetTotal:0,evo:{},allyBuffMul:1.5,calmUntil:0,calmN:0,lastSkAt:-1e9,lastLinkAt:-1e9,freezeMul:1.3,echoFrom:0,echoUntil:0,rageUntil:0,immuneUntil:0,freezeUntil:0,blindUntil:0,webUntil:0,galeUntil:0,
      totalLines:0,relics:{},bag:[],queue:[],cur:null,hold:null,canHold:true,combo:-1,
      bombC:0,sandC:0,dropAcc:0,lockAcc:0,lockResets:0,mode:'reward',fx:[]};
   refill();renderRelics();
@@ -1014,7 +1037,7 @@ function act(a){
 /* ---------- rules ---------- */
 function gainXp(raw){
   if(S.practice)return;
-  S.xp+=Math.round(raw*(1+0.3*lv('wisdom'))*(buffOn()?1.5:1)*(lv('c_eye')?1.5:1));
+  S.xp+=Math.round(raw*(1+0.3*lv('wisdom'))*(buffOn()?buffMul():1)*(lv('c_eye')?1.5:1));
   while(S.xp>=xpNeed(S.level+S.pendingLv)){S.xp-=xpNeed(S.level+S.pendingLv);S.pendingLv++}
 }
 // Every boss hit is: (base + all "+" bonuses) x every "x" multiplier. Additions always come first.
@@ -1022,7 +1045,7 @@ function dmgMuls(){
   const m=[];
   if(S.cls==='atk')m.push(['剣士',1.5]);
   if(lv('fang')&&S.hp<=S.maxHp*0.3)m.push(['牙',2]);
-  if(buffOn())m.push(['鼓舞',1.5]);
+  if(buffOn())m.push([evo('e_drum')||buffMul()>1.5?'天鼓':'鼓舞',buffMul()]);
   if(frozen())m.push(['凍結',S.freezeMul||1.3]);
   if(tf('刃'))m.push(['化身',1.2]);
   if(lv('d_ta')&&(immune()||allyWall()))m.push(['誓い',1.5]);
@@ -1038,6 +1061,7 @@ function bossDmgDetail(n,ts,b2b,pc){
   const add=[];
   if(lv('icicle'))add.push(['氷柱',10*lv('icicle')]);
   if(S.combo>0)add.push(['REN',S.cls==='atk'?20:10]);
+  if(evo('e_icicle')&&S.combo>0)add.push(['連弾',Math.min(150,15*S.combo)]);
   if(n===4&&lv('crit'))add.push(['会心',50*lv('crit')]);
   if(ts&&lv('tcharm'))add.push(['護符',30*lv('tcharm')]);
   if(pc)add.push(['全消し',100]);
@@ -1081,10 +1105,10 @@ function classSkill(n){
     S.skillLines+=n;
     while(S.skillLines>=healNeed()){
       S.skillLines-=healNeed();S.healCount++;
-      heal(HEAL_AMT);addShield(6*lv('aegis'));
+      heal(healAmt());addShield(6*lv('aegis'));
       if(lv('purify'))purify(lv('purify'));
       S.fx.push({k:'heal',t:0});
-      toast(S.coop&&allies().length?`癒し：全員HP+${HEAL_AMT}`:`癒し：HP+${HEAL_AMT}`);
+      toast(S.coop&&allies().length?`癒し：全員HP+${healAmt()}`:`癒し：HP+${healAmt()}`);
     }
   }else if(S.cls==='buff'){
     S.skillLines+=n;
@@ -1117,12 +1141,13 @@ function lockPiece(){
   S.fx.push({k:'lock',cells:placed,t:0});sfx('lock');
   if(p.t==='B'&&!over){
     let n=0;
-    for(let y=p.y-1;y<=p.y+1;y++)for(let x=p.x-1;x<=p.x+1;x++){
+    const br=evo('e_bomb')?2:1;
+    for(let y=p.y-br;y<=p.y+br;y++)for(let x=p.x-br;x<=p.x+br;x++){
       if(y>=0&&y<H&&x>=0&&x<W&&S.board[y][x]){S.board[y][x]=0;n++}
     }
     S.score+=Math.round(n*20*S.floor*mult());gainXp(n*2*floorXp());
     S.fx.push({k:'boom',x:p.x,y:p.y,t:0});
-    settleColumns([p.x-1,p.x,p.x+1]);
+    settleColumns(Array.from({length:2*br+1},(_,i)=>p.x-br+i));
   }
   if(over){topOut();return}
   const full=[];
@@ -1185,7 +1210,7 @@ function lockPiece(){
     if(pc&&lv('pcfield')){S.skCharge=skNeed();if(lv('pcfield')>=2)addShield(20)}
     if(tf('爆')&&++S.bakuC>=3){S.bakuC=0;purify(1)}
     if((n===4||ts)&&lv('avalanche'))purify(lv('avalanche'));
-    if(lv('frostmail'))smallShield(lv('frostmail'));
+    if(lv('frostmail'))smallShield(lv('frostmail')*(evo('e_frost')?2:1));
     if((n===4||ts)&&lv('tsguard'))smallShield(5*lv('tsguard'));
     if((n===4||ts)&&lv('d_ha'))heal(5);
     classSkill(n);
@@ -1228,6 +1253,7 @@ function bossAtkMs(){
     else if(tankAlive())m*=1.4;
   }
   if(S.boss&&S.boss.p2)m*=0.75;
+  if(evo('e_slow'))m*=1.2;
   return m;
 }
 function heal(n){if(lv('c_crown'))n=Math.floor(n/2);if(n>0)S.hp=Math.min(S.maxHp,S.hp+n)}
@@ -1246,7 +1272,7 @@ function calmStart(ms){if(nowT()+ms>(S.calmUntil||0))S.calmLen=ms;S.calmUntil=Ma
 const calmOn=()=>S&&S.calmUntil&&nowT()<S.calmUntil;
 // 氷原の子守唄: the strongest lullaby in the party slows everyone's gravity
 function lullLv(){let L=lv('lullaby');for(const p of allies())L=Math.max(L,Math.min(3,+p.presence.ll||0));return L}
-function smallShield(n){const cap=Math.round(S.maxHp*0.3);if(n>0&&S.shield<cap){S.shield=Math.min(cap,S.shield+n);hud(true)}}
+function smallShield(n){const cap=Math.round(S.maxHp*(evo('e_frost')?0.6:0.3));if(n>0&&S.shield<cap){S.shield=Math.min(cap,S.shield+n);hud(true)}}
 // all incoming damage goes through here: armor first, then shield, then HP. returns true if it killed.
 function applyDamage(n,pierce){
   if(pierce){
@@ -1282,7 +1308,7 @@ function takeHit(n,why){
 }
 function hpTick(dt){
   if(S.mode!=='play'||S.practice)return;
-  if(lv('regen')||tf('癒')){S.regenAcc+=dt;if(S.regenAcc>=10000){S.regenAcc-=10000;heal(lv('regen')+(tf('癒')?1:0))}}
+  if(lv('regen')||tf('癒')){const ri=evo('e_regen')?5000:10000;S.regenAcc+=dt;if(S.regenAcc>=ri){S.regenAcc-=ri;heal(lv('regen')+(tf('癒')?1:0))}}
   const b=S.boss&&!S.boss.dead?S.boss:null;
   if(b){
     if(taunted()){S.hitAcc=0;return}
@@ -1295,6 +1321,7 @@ function hpTick(dt){
   }
 }
 function strikeHit(mul,why){
+  if(evo('e_thorns')&&S.boss&&!S.boss.dead){S.boss.myDmg+=60;S.fx.push({k:'hit',t:0});dmgNum(60,false,'氷茨')}
   if(Math.random()<blockChance()){
     S.blocked++;S.fx.push({k:'block',t:0});
     addShield(15*lv('fortress'));
@@ -1414,7 +1441,7 @@ function bossDefeated(){
   S.score+=Math.round(1000*S.floor*mult());
   heal(killHeal()*(tf('癒')?2:1));
   let g=earn(15+4*S.floor);
-  if(lv('piggy')){const i=Math.min(20*lv('piggy'),Math.floor(S.gold*0.15*lv('piggy')));S.gold+=i;S.totalGold+=i;g+=i}
+  if(lv('piggy')){const i=evo('e_piggy')?Math.floor(S.gold*0.2):Math.min(20*lv('piggy'),Math.floor(S.gold*0.15*lv('piggy')));S.gold+=i;S.totalGold+=i;g+=i}
   S.lastEarn=g;S.lastBoss=name;
   hud(true);
   hide('ovPause');
@@ -1439,8 +1466,22 @@ function finishBoss(){
 }
 function afterBoss(){
   if(S.mode==='reward'){S.afterReward='shop';return}
+  if(evoReady().length){openEvolve(evoReady()[0],afterBoss);return}
   if(!S.altarDone&&unlocked('altar')&&!S.practice){S.altarDone=true;const offer=shuffle(Object.keys(RELICS).filter(k=>RELICS[k].cursed&&!lv(k))).slice(0,3);if(offer.length){openAltar(offer);return}}
   if(S.pendingLv){S.afterReward='shop';openReward(false)}else openShop();
+}
+function openEvolve(k,next){
+  const e=EVOS[k],b=RELICS[e.base],c=RELICS[e.cat];
+  S.mode='reward';
+  $('rwLv').innerHTML='';$('rwTitle').textContent='遺物の進化';
+  $('rwSub').textContent=`${b.n}（最大）と${c.n}が共鳴している`;
+  const box=$('cards');box.innerHTML='';
+  const btn=document.createElement('button');btn.className='card evocard';btn.type='button';
+  btn.innerHTML=`<span class="g dia" style="color:${e.col}"><i>${e.g}</i></span><span class="n">${e.n}<span class="ct" style="color:${e.col}">進化</span></span><span class="d"><b class="evorec"><i style="color:${relicCol(b)}">${b.g}</i>${b.n}＋<i style="color:${relicCol(c)}">${c.g}</i>${c.n}</b>${e.d}<br><small>${b.n}の効果はそのまま残る</small></span>`;
+  btn.onclick=()=>{S.evo[k]=1;SEEN.ev[k]=1;saveSeen();hide('ovReward');S.mode='play';renderRelics();layout();hud(true);
+    pop(['進化！',e.n],e.col,1.35);shake(6,320);sfx('transform');toast(e.d);next()};
+  box.appendChild(btn);
+  sfx('unlock');show('ovReward');
 }
 function openAltar(keys){
   S.mode='reward';
@@ -1490,7 +1531,9 @@ function relicCardHtml(k,extra){
   if(r.t){const have=tagCount(r.t),owned=lv(k)>0;tg=`<span class="tg" style="--tc:${TAGS[r.t].col}">${r.t}${tf(r.t)?' 変身済み':` ${have}${owned?'':'→'+(have+1)}/3`}</span>`}
   const dkc=r.dk?`<span class="dk ${r.dk==='+'?'add':'mul'}">${r.dk==='+'?'＋ダメージ':'×ダメージ'}</span>`:'';
   const dd=r.dd?`<br><b class="dd">${r.dd()}</b>`:'';
-  const hint=r.t&&!tf(r.t)&&!lv(k)&&tagCount(r.t)===2?`<br><b class="dd" style="color:${TAGS[r.t].col}">取ると「${TAGS[r.t].tf}」に変身：${TAGS[r.t].d}</b>`:'';
+  const evh=Object.keys(EVOS).filter(e=>!evo(e)&&(EVOS[e].base===k||EVOS[e].cat===k)).map(e=>{const v=EVOS[e],bm=lv(v.base)>=RELICS[v.base].max,ch=lv(v.cat)>0;
+    return`<br><b class="dd" style="color:${v.col}">進化：${RELICS[v.base].n}（最大）${bm?'✓':''}＋${RELICS[v.cat].n}${ch?'✓':''} → ${v.n}</b>`}).join('');
+  const hint=evh+(r.t&&!tf(r.t)&&!lv(k)&&tagCount(r.t)===2?`<br><b class="dd" style="color:${TAGS[r.t].col}">取ると「${TAGS[r.t].tf}」に変身：${TAGS[r.t].d}</b>`:'');
   return `<span class="g dia" style="color:${relicCol(r)}"><i>${r.g}</i></span><span class="n">${r.n}${lvTxt?`<em>${lvTxt}</em>`:''}${ct}</span>${extra||''}<span class="d">${tg}${dkc}${r.d}${dd}${hint}</span>`;
 }
 
@@ -1724,6 +1767,7 @@ function eliteDefeated(){
   setTimeout(()=>{if(S&&S.mode==='cele'){S.mode='play';eliteLoot()}},900);
 }
 function eliteLoot(){
+  if(evoReady().length){openEvolve(evoReady()[0],eliteLoot);return}
   const keys=pickRelics(3,x=>x!=='potion'&&(!RELICS[x].c||RELICS[x].c===S.cls));
   openRelicChoice(keys,'精鋭の戦利品',`${S.eliteGold||0}G を手に入れた。遺物をひとつ選ぶ`,()=>{if(S.pendingLv){S.afterReward='node';openReward(false)}else nodeDone()});
 }
@@ -1840,6 +1884,8 @@ function pause(){
   $('rlist').innerHTML=`<div>${clsBadge(S.cls,18,12)}<span>${c.n}（${c.role}）：${c.d} スキル「${c.sk.n}」：${c.sk.d}${ups.length?'<br>強化：'+ups.map(o=>`${o.n}（${o.d}）`).join('、'):''}</span></div>`+
     `<div><b>算</b><span>ボスへのダメージ＝（基本値＋「＋ダメージ」）×「×ダメージ」。いまの掛け算：${muls}</span></div>`+
     `<div><b>集</b><span>タグ（同じタグ3つで変身）：${tagLine}</span></div>`+tfs+
+    Object.keys(EVOS).filter(k=>evo(k)||lv(EVOS[k].base)||lv(EVOS[k].cat)).map(k=>{const e=EVOS[k],b=RELICS[e.base],c=RELICS[e.cat];
+      return`<div><b style="color:${e.col}">${evo(k)?e.g:'進'}</b><span>${evo(k)?`<b style="color:${e.col}">${e.n}</b>：${e.d}`:`進化まで：${b.n} Lv${lv(e.base)}/${b.max}${lv(e.base)>=b.max?'✓':''}＋${c.n}${lv(e.cat)?'✓':'（未所持）'} → ${e.n}${evoReady().includes(k)?'（次のボスを倒すと進化）':''}`}</span></div>`}).join('')+
     (keys.length?keys.map(k=>`<div><b style="color:${relicCol(RELICS[k])}">${RELICS[k].g}</b><span>${RELICS[k].n}${S.relics[k]>1?' ×'+S.relics[k]:''}：${RELICS[k].d}</span></div>`).join(''):'<div><b>-</b><span>まだ遺物はない</span></div>');
   show('ovPause');
 }
@@ -1941,18 +1987,19 @@ function toTitle(){
 let codexTab='relic';
 function openCodex(){hide('ovTitle');renderCodex();show('ovCodex')}
 function renderCodex(){
-  const tabs=[['relic','遺物'],['tf','変身'],['boss','ボス'],['duo','デュオ'],['cursed','代償つき']];
+  const tabs=[['relic','遺物'],['evo','進化'],['tf','変身'],['boss','ボス'],['duo','デュオ'],['cursed','代償つき']];
   $('codexTabs').innerHTML=tabs.map(([k,n])=>`<button type="button" data-k="${k}" class="${k===codexTab?'on':''}">${n}</button>`).join('');
   $('codexTabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{codexTab=b.dataset.k;renderCodex()});
   const lockOf=k=>UNLOCKS.find(u=>u.k===k&&!META.unlocked[k]);
   let rows=[];
-  if(codexTab==='tf')rows=Object.keys(TAGS).map(t=>({seen:!!SEEN.tf[t],g:t,col:TAGS[t].col,n:TAGS[t].tf,d:`${t}タグの遺物を3つ集める：${TAGS[t].d}`}));
+  if(codexTab==='evo')rows=Object.keys(EVOS).map(k=>{const e=EVOS[k],b=RELICS[e.base],c=RELICS[e.cat];return{seen:true,g:SEEN.ev[k]?e.g:'？',col:e.col,n:SEEN.ev[k]?e.n:'？？？（まだ進化させていない）',d:`${b.n}（最大Lv${b.max}）＋${c.n}`+(SEEN.ev[k]?`：${e.d}`:'')}});
+  else if(codexTab==='tf')rows=Object.keys(TAGS).map(t=>({seen:!!SEEN.tf[t],g:t,col:TAGS[t].col,n:TAGS[t].tf,d:`${t}タグの遺物を3つ集める：${TAGS[t].d}`}));
   else if(codexTab==='boss')rows=BOSSES.map((n,i)=>{const k=BOSS_SK[i];return{seen:!!SEEN.b[n],g:`B${i+1}`,col:'#ff6f7f',n,d:k==='king'?'すべてのスキルを順に使う':`スキル「${BSK[k].n}」：${BSK[k].d}`}});
   else{
     const keys=Object.keys(RELICS).filter(k=>k!=='potion'&&(codexTab==='duo'?RELICS[k].duo:codexTab==='cursed'?RELICS[k].cursed:!RELICS[k].duo&&!RELICS[k].cursed));
     rows=keys.map(k=>{const r=RELICS[k],l=lockOf(k);return{seen:!!SEEN.r[k],g:r.g,col:relicCol(r),n:r.n,d:(l?`【未解放：${l.d}】`:'')+r.d+(r.t?`（${r.t}）`:''),locked:!!l}});
   }
-  const seenN=rows.filter(r=>r.seen).length;
+  const seenN=codexTab==='evo'?Object.keys(EVOS).filter(k=>SEEN.ev[k]).length:rows.filter(r=>r.seen).length;
   $('codexSum').textContent=`見つけた数 ${seenN} / ${rows.length}。解放した遺物 ${Object.keys(META.unlocked).length} / ${UNLOCKS.length}`;
   $('codexList').innerHTML=rows.map(r=>r.seen?`<div class="cx${r.locked?' locked':''}"><b style="color:${r.col}">${esc(r.g)}</b><span>${esc(r.n)}</span><small>${esc(r.d)}</small></div>`
     :`<div class="cx locked"><b>？</b><span>？？？</span><small>${r.locked?esc(r.d.match(/【.*?】/)?.[0]||'まだ見つけていない'):'まだ見つけていない'}</small></div>`).join('');
@@ -2097,7 +2144,8 @@ function renderParty(){
   });
 }
 function renderRelics(){
-  $('relics').innerHTML=(S&&S.tf?Object.keys(S.tf).map(t=>`<span class="dia tfb" title="${TAGS[t].tf}：${TAGS[t].d}" style="color:${TAGS[t].col}"><i>${t}</i></span>`).join(''):'')+(S&&S.relics?Object.keys(S.relics).map(k=>{const r=RELICS[k];return`<span class="dia" title="${r.n}：${r.d}" style="color:${relicCol(r)}"><i>${r.g}</i>${S.relics[k]>1?`<sup>${S.relics[k]}</sup>`:''}</span>`}).join(''):'');
+  $('relics').innerHTML=(S&&S.tf?Object.keys(S.tf).map(t=>`<span class="dia tfb" title="${TAGS[t].tf}：${TAGS[t].d}" style="color:${TAGS[t].col}"><i>${t}</i></span>`).join(''):'')+(S&&S.relics?Object.keys(S.relics).map(k=>{const r=RELICS[k],ev=evoOf(k);if(ev){const e=EVOS[ev];return`<span class="dia evob" title="${e.n}（${r.n}の進化）：${e.d}" style="color:${e.col}"><i>${e.g}</i></span>`}
+  return`<span class="dia" title="${r.n}：${r.d}" style="color:${relicCol(r)}"><i>${r.g}</i>${S.relics[k]>1?`<sup>${S.relics[k]}</sup>`:''}</span>`}).join(''):'');
 }
 
 /* ---------- drawing ---------- */
@@ -2562,7 +2610,7 @@ function absorbAllies(){
     if(hrN>sn.hr){sn.hr=hrN;if(S.mode==='over'&&S.hp<=0)revive(nameOf(p))}
     if(bcN>sn.bc){
       sn.bc=bcN;
-      S.buffUntil=performance.now()+Math.min(40000,Math.max(1000,+q.bd||15000));
+      S.buffUntil=performance.now()+Math.min(40000,Math.max(1000,+q.bd||15000));S.allyBuffMul=Math.min(1.8,Math.max(1.5,+q.bm||1.5));
       toast(`${nameOf(p)}の鼓舞`);
     }
   }
@@ -2620,7 +2668,7 @@ function netTick(now){
   if(coopOn()){
     pres={r:NET.isHost?'host':'guest',e:S.epoch,cls:S.cls,a:S.mode!=='over'?1:0,hp:S.hp,mh:S.maxHp,lv:S.level,
       b:boardStr(),d:S.boss?{i:S.boss.id,v:S.boss.myDmg}:null,rd:S.readyFloor,
-      hc:S.healCount,hr:S.reviveCount,rn:S.readyNode,sk:S.skUses,su:(su(0)||'-')+(su(1)||'-')+(su(2)||'-'),skv:{ws:wallSh(),hh:mirHeal(),hs:mirSh(),fm:songMs(),fx:songMul()},im:immune()?1:0,cl:lv('purify'),ha:HEAL_AMT,hs:6*lv('aegis'),sh:S.shield,bc:S.buffCount,bd:buffDur(),cn:S.calmN||0,cm:calmMs(),ll:lv('lullaby'),l:null};
+      hc:S.healCount,hr:S.reviveCount,rn:S.readyNode,sk:S.skUses,su:(su(0)||'-')+(su(1)||'-')+(su(2)||'-'),skv:{ws:wallSh(),hh:mirHeal(),hs:mirSh(),fm:songMs(),fx:songMul()},im:immune()?1:0,cl:lv('purify'),ha:healAmt(),bm:evo('e_drum')?1.8:1.5,hs:6*lv('aegis'),sh:S.shield,bc:S.buffCount,bd:buffDur(),cn:S.calmN||0,cm:calmMs(),ll:lv('lullaby'),l:null};
     pres.g=NET.isHost?{ph:S.phase,f:S.floor,t:Math.round(S.timeLeft/100)*100,
       boss:S.boss?{id:S.boss.id,n:S.boss.name,m:S.boss.max}:null,node:S.nodePicked?{f:S.floor,k:S.nodeKind}:null}:null;
   }else pres={r:NET.isHost?'host':'guest',l:1,cls:myCls,e:null,g:null};
@@ -2825,6 +2873,7 @@ function dbgRender(){
   $('dbgTools').innerHTML=DBG_TOOLS.map(([n],i)=>`<button type="button" class="t" data-i="${i}">${n}</button>`).join('');
   const ups=SKUP[S.cls]||[];
   $('dbgSk').innerHTML=ups.map((opts,ti)=>`<div class="dbgsk"><b>Lv${SKUP_LV[ti]}</b><button type="button" data-ti="${ti}" data-v="" class="${su(ti)?'':'on'}">なし</button>${opts.map((o,i)=>`<button type="button" data-ti="${ti}" data-v="${'AB'[i]}" class="${su(ti)==='AB'[i]?'on':''}" title="${o.d}">${'AB'[i]} ${o.n}</button>`).join('')}</div>`).join('');
+  $('dbgEvo').innerHTML=Object.keys(EVOS).map(k=>{const e=EVOS[k];return`<div class="dbgr"><i style="color:${e.col}">${e.g}</i><span>${e.n}<small>${RELICS[e.base].n}＋${RELICS[e.cat].n}：${e.d}</small></span><span></span><output>${evo(k)?'済':''}</output><button type="button" data-ev="${k}" aria-label="${e.n}を切り替える">${evo(k)?'−':'＋'}</button></div>`}).join('');
   dbgRelList();
 }
 function dbgRelList(){
@@ -2856,6 +2905,9 @@ $('dbgRel').onclick=e=>{const b=e.target.closest('button');if(!b||b.disabled)ret
   if(+b.dataset.d>0){if(RELICS[k].once||lv(k)<RELICS[k].max)applyRelic(k)}else dbgRemove(k);
   sfx(+b.dataset.d>0?'buy':'move');dbgRefresh();dbgRelList()};
 $('dbgQ').oninput=dbgRelList;
+$('dbgEvo').onclick=e=>{const b=e.target.closest('button');if(!b)return;const k=b.dataset.ev,v=EVOS[k];
+  if(evo(k))delete S.evo[k];else{S.relics[v.base]=RELICS[v.base].max;if(!lv(v.cat))S.relics[v.cat]=1;S.evo[k]=1}
+  sfx('transform');dbgRefresh();dbgRender()};
 $('setBtn2').onclick=()=>openSettings('ovPause');
 $('codexBack').onclick=()=>{hide('ovCodex');show('ovTitle')};
 $('setBack').onclick=()=>{CAP=null;hide('ovSet');show(setFrom)};
@@ -2909,7 +2961,7 @@ function frame(now){
       if(b.atk>=bossAtkMs()){
         b.atk=0;
         const rows=bossRows();
-        if(lv('thorns')){b.myDmg+=20*lv('thorns')*rows;S.fx.push({k:'hit',t:0})}
+        if(lv('thorns')){b.myDmg+=20*lv('thorns')*rows*(evo('e_thorns')?2:1);S.fx.push({k:'hit',t:0})}
         queueGarbage(rows);
       }
       b.skAcc+=dt;
