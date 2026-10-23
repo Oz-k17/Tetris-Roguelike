@@ -603,7 +603,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='42',UPDATED='2026-10-23 17:59';
+const VERSION='43',UPDATED='2026-10-23 18:14';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -1948,11 +1948,11 @@ function audioInit(){
   try{AC=new (window.AudioContext||window.webkitAudioContext)();SFXG=AC.createGain();BGMG=AC.createGain();SFXG.connect(AC.destination);BGMG.connect(AC.destination);applyVol();bgmStart()}catch(e){AC=null}
 }
 function applyVol(){for(const k in TRACK.els)TRACK.els[k].volume=Math.min(1,(SET.bgm/100)*TRACK.vol);if(!AC)return;SFXG.gain.value=(SET.sfx/100)*0.5;BGMG.gain.value=(SET.bgm/100)*0.22}
-/* Recorded music for 普通 (mp3 files next to the page): an exploring track and a boss track.
-   They replace the generated loops on that difficulty; elite fights and other difficulties keep the generated music.
+/* Recorded music (mp3 files next to the page): one exploring track for every difficulty, plus a boss track on 普通.
+   They replace the generated loops; elite fights, and boss fights on 簡単, keep the generated music.
    The exploring track resumes where it left off after a boss; the boss track starts from the top each fight.
    If a file can't load or play, the generated loop simply carries on. */
-const BGM_TRACKS={normal:{explore:'bgm/explore-normal.mp3',boss:'bgm/boss-normal.mp3'}};
+const BGM_TRACKS={easy:{explore:'bgm/explore.mp3'},normal:{explore:'bgm/explore.mp3',boss:'bgm/boss-normal.mp3'}};
 const TRACK={els:{},cur:'',vol:0.55,failed:{},get on(){return!!this.cur}};
 function trackEl(src){
   let el=TRACK.els[src];
@@ -1976,7 +1976,7 @@ function trackTick(){
   applyVol();
   const pr=el.play();if(pr&&pr.catch)pr.catch(()=>{TRACK.failed[want]=1;if(TRACK.cur===want)TRACK.cur=''});
 }
-// warm the files up when a 普通 run starts so the music starts on time
+// warm the files up when a run starts so the music starts on time
 function trackPreload(){const set=S&&BGM_TRACKS[S.diff];if(!set)return;for(const k in set){const src=set[k];if(!TRACK.failed[src]){const el=trackEl(src);try{if(el.readyState===0)el.load()}catch(e){}}}}
 function tone(f,d,type,v,slide,at){
   if(!AC||!SET.sfx)return;const t=(at||AC.currentTime);
