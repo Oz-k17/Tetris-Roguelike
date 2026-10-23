@@ -613,7 +613,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='45',UPDATED='2026-10-23 18:27';
+const VERSION='46',UPDATED='2026-10-23 18:30';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -781,13 +781,11 @@ const PAD_DEF={left:['b14','sl'],right:['b15','sr'],soft:['b13','sd'],hard:['b12
    Add a recorded track by dropping an mp3 into bgm/ and listing it here. */
 const MUSIC={
   auto:{n:'自動生成（いつもの）'},
-  steady:{n:'Steady Energy',src:'bgm/steady-energy.mp3'},
-  ska:{n:'Ska Shuffle Groove',src:'bgm/ska-shuffle.mp3'},
   t1757:{n:'ボス曲（10/23 17:57）',src:'bgm/track-1757.mp3'},
   t1811:{n:'通常曲（10/23 18:11）',src:'bgm/track-1811.mp3'}
 };
 const MUSIC_SLOTS=[['easy.explore','簡単：探索中'],['easy.boss','簡単：ボス戦'],['normal.explore','普通：探索中'],['normal.boss','普通：ボス戦'],['elite','エリート戦（分岐マップ）']];
-const MUSIC_DEF={'easy.explore':'auto','easy.boss':'auto','normal.explore':'steady','normal.boss':'t1757','elite':'auto'};
+const MUSIC_DEF={'easy.explore':'auto','easy.boss':'auto','normal.explore':'auto','normal.boss':'t1757','elite':'auto'};
 const SET_DEF={sfx:70,bgm:45,das:170,arr:50,sdf:35,shake:1,keys:KEY_DEF,pad:PAD_DEF,music:MUSIC_DEF};
 const cloneSet=()=>JSON.parse(JSON.stringify(SET_DEF));
 let SET=cloneSet();
