@@ -327,6 +327,25 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .scorecard small{font-size:11px;letter-spacing:.16em;color:#c9b064}
 .scorecard strong{font-family:var(--display);font-weight:400;font-size:34px;color:var(--gold);font-variant-numeric:tabular-nums}
 .newbest{padding:4px 10px;border-radius:4px;background:var(--gold);color:var(--bg);font-size:12px;font-weight:700}
+.gift{position:fixed;z-index:15;width:14px;height:14px;border-radius:50%;background:currentColor;box-shadow:0 0 14px 5px currentColor;pointer-events:none;transition:transform .6s cubic-bezier(.3,.6,.4,1)}
+.giftlbl{position:fixed;z-index:15;font-weight:700;font-size:13px;white-space:nowrap;text-shadow:0 0 4px #000,0 0 8px #000;pointer-events:none;transform:translate(-50%,0);animation:giftup 1.2s ease-out forwards}
+@keyframes giftup{0%{opacity:0;transform:translate(-50%,6px)}15%{opacity:1}100%{opacity:0;transform:translate(-50%,-28px)}}
+.mate.got{animation:gotflash .9s ease-out}
+@keyframes gotflash{0%{box-shadow:0 0 0 2px var(--gc,#8fe3ff),0 0 14px var(--gc,#8fe3ff);border-radius:4px}100%{box-shadow:0 0 0 0 transparent}}
+.results{display:flex;flex-direction:column;gap:8px}
+.rcard{border:1px solid #1a2b3e;border-radius:10px;padding:10px 12px;background:#0d1826;display:flex;flex-direction:column;gap:8px}
+.rcard.me{border-color:#2c4a66}
+.rcard.down{opacity:.8}
+.rhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rhead b{font-size:14px}
+.rhead small{color:var(--muted);font-size:11px}
+.awards{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
+.award{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:#2a2410;color:var(--gold);border:1px solid #5a4a22;white-space:nowrap}
+.rgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 10px;margin:0}
+.rgrid div{display:flex;flex-direction:column;gap:1px;min-width:0}
+.rgrid dt{font-size:10px;color:var(--muted);white-space:nowrap}
+.rgrid dd{margin:0;font-family:var(--display);font-size:16px;font-variant-numeric:tabular-nums}
+.rgrid dd.top{color:var(--gold)}
 .stats2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0}
 .stats2 div{display:flex;flex-direction:column;gap:3px;padding:9px 12px;border:1px solid #1a2b3e;border-radius:8px;background:#0d1826;min-width:0}
 .stats2 dt{font-size:11px;color:var(--muted)}
@@ -579,6 +598,8 @@ i[data-ico]{display:contents}
     <h1>踏破</h1>
     <p id="winNote">氷窟の最下層にたどり着いた。</p>
     <dl class="stats2" id="winStats"></dl>
+    <div class="lbl" id="winResLbl">この潜行の活躍</div>
+    <div class="results" id="winRes"></div>
     <button class="cta" id="deeperBtn">さらに深く潜る</button>
     <button class="ghostbtn" id="winTitleBtn">タイトルに戻る</button>
   </div>
@@ -601,6 +622,8 @@ i[data-ico]{display:contents}
       <div><dt>稼いだゴールド</dt><dd id="goGold">-</dd></div>
       <div><dt>ベスト</dt><dd id="goBest">-</dd></div>
     </dl>
+    <div class="lbl" id="goResLbl">この潜行の活躍</div>
+    <div class="results" id="goRes"></div>
     <div class="lbl" id="goRelLbl"></div>
     <div class="relrow" id="goRelics"></div>
     <button class="ghostbtn" id="watchBtn" hidden>仲間を観戦する</button>
@@ -613,7 +636,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='47',UPDATED='2026-10-23 18:37';
+const VERSION='48',UPDATED='2026-10-24 23:25';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -1038,7 +1061,7 @@ function newRun(coop,epoch,cls,diff,practice,map){
      score:0,gold:0,totalGold:0,level:1,xp:0,pendingLv:0,
      timeLeft:STAGE_MS,phase:'play',boss:null,weaken:false,bossKills:0,afterReward:null,readyFloor:0,
      coop:!!coop,epoch:epoch||0,watching:false,
-     skillLines:0,healCount:0,reviveCount:0,buffCount:0,buffUntil:0,hitAcc:0,lastLeech:-1e9,endless:false,
+     st:{d:0,t:0,r:0,h:0,s:0,f:0,v:0},dmgBossId:-1,dmgSeen:0,skillLines:0,healCount:0,reviveCount:0,buffCount:0,buffUntil:0,hitAcc:0,lastLeech:-1e9,endless:false,
      blocked:0,hitsTaken:0,shield:0,regenAcc:0,skCharge:0,skUses:0,tf:{},tfNew:null,skUp:['','',''],bakuC:0,incoming:[],offsetTotal:0,evo:{},allyBuffMul:1.5,calmUntil:0,calmN:0,lastSkAt:-1e9,lastLinkAt:-1e9,freezeMul:1.3,echoFrom:0,echoUntil:0,rageUntil:0,immuneUntil:0,freezeUntil:0,blindUntil:0,webUntil:0,galeUntil:0,
      totalLines:0,relics:{},bag:[],queue:[],cur:null,hold:null,canHold:true,combo:-1,
      bombC:0,sandC:0,dropAcc:0,lockAcc:0,lockResets:0,mode:'reward',fx:[]};
@@ -1176,17 +1199,17 @@ function classSkill(n){
     S.skillLines+=n;
     while(S.skillLines>=healNeed()){
       S.skillLines-=healNeed();S.healCount++;
-      heal(healAmt());addShield(6*lv('aegis'));
+      heal(healAmt());addShield(6*lv('aegis'));{const n=1+aliveAllies().length;S.st.h+=healAmt()*n;S.st.s+=6*lv('aegis')*n}
       if(lv('purify'))purify(lv('purify'));
       S.fx.push({k:'heal',t:0});
-      toast(S.coop&&allies().length?`癒し：全員HP+${healAmt()}`:`癒し：HP+${healAmt()}`);
+      toast(S.coop&&allies().length?`癒し：全員HP+${healAmt()}`:`癒し：HP+${healAmt()}`);giftOut(`HP+${healAmt()}`);
     }
   }else if(S.cls==='buff'){
     S.skillLines+=n;
     while(S.skillLines>=buffNeed()){
-      S.skillLines-=buffNeed();S.buffCount++;
+      S.skillLines-=buffNeed();S.buffCount++;S.st.f++;
       S.buffUntil=performance.now()+buffDur();
-      toast(`鼓舞 ${buffDur()/1000}秒`);
+      toast(`鼓舞 ${buffDur()/1000}秒`);giftOut('鼓舞');
     }
   }
 }
@@ -1226,6 +1249,7 @@ function lockPiece(){
   const n=full.length;
   if(ts==='full'&&lv('calmdrum')){calmStart(calmMs());S.calmN=(S.calmN||0)+1;toast(`凪の太鼓 ${calmMs()/1000}秒間ゴミ列-1`)}
   if(ts&&!n){
+    S.st.t++;
     // T-spin with no lines still scores and shows
     S.score+=Math.round((ts==='full'?400:100)*S.floor*mult());gainXp((ts==='full'?40:15)*floorXp());
     pop([ts==='full'?'T-SPIN':'T-SPIN MINI'],'#b48cf0',1);
@@ -1238,7 +1262,7 @@ function lockPiece(){
     const hardClear=n===4||!!ts;
     const b2b=hardClear&&S.b2b;
     S.b2b=hardClear;
-    S.combo++;
+    S.combo++;S.st.r=Math.max(S.st.r,S.combo);
     const pc=S.board.every(r=>r.every(v=>!v));
     let raw=ts?(ts==='full'?[0,800,1200,1600]:[0,200,400,400])[n]*S.floor:[0,100,300,500,800][n]*S.floor;
     if(b2b)raw*=1.5;
@@ -1265,6 +1289,7 @@ function lockPiece(){
     if(lines.length)pop(lines,color,size);
     sfx(pc?'pc':ts?'tspin':n===4?'quad':'clear'+Math.min(3,n));
     if(S.combo>0)renSfx(S.combo);
+    if(ts)S.st.t++;
     if(!S.practice&&!S.debug){if(ts)META.tspin++;if(n===4)META.quad++;if(pc)META.pc++;if(ts||n===4||pc)checkUnlocks()}
     if(hardClear||pc)shake(pc?7:n===4||ts==='full'?5:3,220);
     if(S.boss&&!S.boss.dead){
@@ -1406,12 +1431,15 @@ function useSkill(){
   S.skCharge=0;S.skUses++;
   pop([c.sk.n],c.col,1.25);shake(4,200);sfx('skill');
   S.lastSkAt=nowT();if(NET&&NET.lastAllySk&&nowT()-NET.lastAllySk.t<3000)linkSkill(NET.lastAllySk.who);
-  if(S.cls==='tank'){S.immuneUntil=nowT()+wallMs();addShield(wallSh());S.fx.push({k:'block',t:0})}
+  const party=1+aliveAllies().length;
+  if(S.cls==='tank'){S.immuneUntil=nowT()+wallMs();addShield(wallSh());S.fx.push({k:'block',t:0});S.st.s+=wallSh()*party;giftOut(`盾+${wallSh()}`)}
   else if(S.cls==='heal'){
+    S.st.h+=mirHeal()*party;S.st.s+=mirSh()*party;S.st.v+=allies().filter(p=>!p.presence.a).length;
+    if(coopOn()){const c=clsOf(S.cls).col;allies().slice(0,MAXP-1).forEach((p,i)=>flyGift($('board'),$('mate'+i),c,p.presence.a?`HP+${mirHeal()}`:'蘇生'))}
     heal(mirHeal());addShield(mirSh());if(su(1)==='A')clearGarbageCells();if(su(2)==='B')S.immuneUntil=Math.max(S.immuneUntil||0,nowT()+3000);
     if(lv('d_th'))addShield(8);S.fx.push({k:'heal',t:0});
   }
-  else if(S.cls==='buff'){startFreeze(songMs(),songMul(),su(1)==='A');if(su(2)==='B'&&S.boss&&!S.boss.dead){const d=Math.round(S.boss.max*0.05);S.boss.myDmg+=d;dmgNum(d,true,'衝撃')}}
+  else if(S.cls==='buff'){S.st.f++;giftOut('凍結');startFreeze(songMs(),songMul(),su(1)==='A');if(su(2)==='B'&&S.boss&&!S.boss.dead){const d=Math.round(S.boss.max*0.05);S.boss.myDmg+=d;dmgNum(d,true,'衝撃')}}
   else{
     let blocks=0;const rows=ranRows(),per=ranPer();
     if(su(1)==='A')S.rageUntil=nowT()+10000;
@@ -1490,6 +1518,9 @@ function spawnBoss(){
 }
 function bossHpTick(){
   const b=S.boss;if(!b)return;
+  {const md=Math.min(b.myDmg,b.max); // overkill past the boss's HP is not counted
+   if(b.id!==S.dmgBossId){S.dmgBossId=b.id;S.dmgSeen=md}
+   if(md>S.dmgSeen){S.st.d+=md-S.dmgSeen;S.dmgSeen=md}}
   let other=0;
   if(NET&&NET.dmg)for(const k in NET.dmg){const d=NET.dmg[k];if(d.i===b.id)other+=d.v}
   b.hp=Math.max(0,b.max-b.myDmg-other);
@@ -1572,6 +1603,7 @@ function showWin(){
   $('winStats').innerHTML=[['クラス',`${clsBadge(S.cls,20,12)}${c.n}`],['レベル','Lv '+S.level],['消した列',S.totalLines],
     ['受けたダメージ',S.hitsTaken],...(S.cls==='tank'?[['防いだ強撃',S.blocked]]:[]),['稼いだゴールド',S.totalGold+'G'],['スコア',S.score.toLocaleString()]]
     .map(([k,v])=>`<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+  renderResults('winRes');
   show('ovWin');
 }
 
@@ -1913,11 +1945,37 @@ function gameOver(){
   hide('ovReward');hide('ovShop');hide('ovWait');hide('ovWin');
   hud(true);showOver();
 }
+/* ---------- results: everyone's part in the run ---------- */
+// each stat: key in the presence `st` object, label, and the award it can win (best in the party)
+const RES_STATS=[
+  ['d','与えたダメージ','火力王'],['l','消した列','列消し職人'],['t','T-SPIN','技巧派'],['r','最大REN','連鎖王'],
+  ['h','回復した量','癒しの要'],['s','張ったシールド','守りの盾'],['f','鼓舞・調べ','盛り上げ役'],['b','防いだ強撃','鉄壁'],
+  ['k','受けたダメージ','体を張った'],['v','蘇生','救世主']
+];
+const CORE_STATS=['d','l','t','r'];
+function myResult(){return{me:true,nm:myNick||'あなた',cls:S.cls,a:S.mode!=='over',st:{...S.st,l:S.totalLines,k:S.hitsTaken||0,b:S.blocked||0,lv:S.level}}}
+function partyResults(){
+  const list=[myResult()];
+  for(const p of allies())list.push({me:false,nm:nameOf(p),cls:p.presence.cls,a:!!p.presence.a,st:p.presence.st&&typeof p.presence.st==='object'?p.presence.st:{}});
+  return list;
+}
+function renderResults(boxId){
+  const list=partyResults(),multi=list.length>1;
+  const num=(r,k)=>Math.max(0,Math.round(+r.st[k]||0));
+  const best={};for(const [k] of RES_STATS)best[k]=Math.max(0,...list.map(r=>num(r,k)));
+  $(boxId).innerHTML=list.map(r=>{
+    const aw=multi?RES_STATS.filter(([k])=>best[k]>0&&num(r,k)===best[k]).slice(0,3).map(([,,a])=>`<span class="award">${a}</span>`).join(''):'';
+    const keys=RES_STATS.filter(([k])=>CORE_STATS.includes(k)||num(r,k)>0);
+    const cells=keys.map(([k,n])=>`<div><dt>${n}</dt><dd class="${multi&&best[k]>0&&num(r,k)===best[k]?'top':''}">${num(r,k).toLocaleString()}</dd></div>`).join('');
+    return`<div class="rcard${r.me?' me':''}${r.a?'':' down'}"><div class="rhead">${clsBadge(r.cls,20,12)}<b>${esc(r.nm)}</b><small>${clsOf(r.cls).n}${r.st.lv?' · Lv '+r.st.lv:''}${r.me&&multi?' · あなた':''}${multi&&!r.a?' · ダウン':''}</small><span class="awards">${aw}</span></div><dl class="rgrid">${cells}</dl></div>`;
+  }).join('');
+  $(boxId==='goRes'?'goResLbl':'winResLbl').textContent=multi?'パーティの活躍':'この潜行の活躍';
+}
 function showOver(){
   const allDead=!coopOn()||!anyAllyAlive();
   $('goTitle').textContent=coopOn()?(allDead?'全員力尽きた':'力尽きた'):'力尽きた';
   $('goNote').hidden=!coopOn();
-  $('goNote').textContent=coopOn()?(allDead?'ここまでの潜行の記録です。':'仲間はまだ戦っている。癒し手の4列消しで蘇生できる。'):'';
+  $('goNote').textContent=coopOn()?(allDead?'ここまでの潜行の記録です。':'仲間はまだ戦っている。癒し手の「雪解けの奇跡」で蘇生できる。'):'';
   const c=clsOf(S.cls);
   $('goKick').textContent=`RUN OVER · 地下${S.floor}階`;
   $('goCause').textContent=S.cause?`${S.cause}。HPが尽きた。`:'';
@@ -1937,6 +1995,7 @@ function showOver(){
   $('watchBtn').hidden=!(coopOn()&&!allDead);
   $('againBtn').textContent=coopOn()?'タイトルに戻る':'もう一度潜る';
   S.overAllDead=allDead;
+  renderResults('goRes');
   show('ovOver');
 }
 function pause(){
@@ -2725,6 +2784,25 @@ function boardStr(){
   }
   return a.join('');
 }
+/* ---------- help between players: a glowing orb flies between my board and an ally's mini board ---------- */
+// giftIn: an ally helped me (orb from their card to my board, label over my board)
+// giftOut: I helped the party (orbs from my board to every living ally's card, label on each card)
+function mateEl(p){const i=allies().slice(0,MAXP-1).indexOf(p);return i>=0?$('mate'+i):null}
+function flyGift(from,to,col,label){
+  if(!from||!to)return;
+  const a=from.getBoundingClientRect(),b=to.getBoundingClientRect();if(!a.width||!b.width)return;
+  const x0=a.left+a.width/2,y0=a.top+a.height/2,x1=b.left+b.width/2,y1=b.top+Math.min(b.height/2,90);
+  const done=()=>{const t=document.createElement('div');t.className='giftlbl';t.style.color=col;t.textContent=label;t.style.left=x1+'px';t.style.top=(y1-10)+'px';
+    document.body.appendChild(t);setTimeout(()=>t.remove(),1200);
+    if(to.classList.contains('mate')){to.classList.remove('got');void to.offsetWidth;to.classList.add('got');to.style.setProperty('--gc',col)}};
+  if(RM){done();return}
+  const o=document.createElement('div');o.className='gift';o.style.color=col;o.style.left=(x0-7)+'px';o.style.top=(y0-7)+'px';
+  document.body.appendChild(o);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{o.style.transform=`translate(${x1-x0}px,${y1-y0}px) scale(1.3)`}));
+  setTimeout(()=>{o.remove();done()},620);
+}
+function giftIn(p,label){if(!coopOn())return;flyGift(mateEl(p),$('board'),clsOf(p.presence&&p.presence.cls).col,`${nameOf(p)} ${label}`)}
+function giftOut(label){if(!coopOn())return;const c=clsOf(S.cls).col;allies().slice(0,MAXP-1).forEach((p,i)=>{if(p.presence.a||label==='蘇生')flyGift($('board'),$('mate'+i),c,label)})}
 function absorbAllies(){
   for(const p of allies()){
     const q=p.presence;seenHb(p);
@@ -2736,8 +2814,8 @@ function absorbAllies(){
     const chN=+q.ch||0,emN=q.em&&+q.em.n||0,cnN=+q.cn||0;
     let sn=NET.seen[pkey(p)];
     if(!sn){NET.seen[pkey(p)]={hc:hcN,hr:hrN,bc:bcN,sk:skN,ch:chN,em:emN,cn:cnN};continue}
-    if(cnN>(sn.cn||0)){sn.cn=cnN;if(S.mode==='play'){const ms=Math.max(1000,Math.min(12000,+q.cm||5000));calmStart(ms);toast(`${nameOf(p)}の凪の太鼓 ${ms/1000}秒間ゴミ列-1`)}}
-    if(chN>sn.ch){sn.ch=chN;if(S.mode==='play'){smallShield(4);S.skCharge=Math.min(skNeed(),(S.skCharge||0)+1);toast(`${nameOf(p)}の応援 シールド+4・スキル+1`)}}
+    if(cnN>(sn.cn||0)){sn.cn=cnN;if(S.mode==='play'){const ms=Math.max(1000,Math.min(12000,+q.cm||5000));calmStart(ms);toast(`${nameOf(p)}の凪の太鼓 ${ms/1000}秒間ゴミ列-1`);giftIn(p,'凪')}}
+    if(chN>sn.ch){sn.ch=chN;if(S.mode==='play'){smallShield(4);S.skCharge=Math.min(skNeed(),(S.skCharge||0)+1);toast(`${nameOf(p)}の応援 シールド+4・スキル+1`);giftIn(p,'応援')}}
     if(emN>sn.em){sn.em=emN;const i=Math.max(0,Math.min(EMOTES.length-1,+q.em.i|0));NET.bubble[pkey(p)]={txt:EMOTES[i],until:nowT()+2800};toast(`${nameOf(p)}「${EMOTES[i]}」`)}
     if(skN>sn.sk){
       sn.sk=skN;const who=nameOf(p),cs=q.cls;
@@ -2746,16 +2824,16 @@ function absorbAllies(){
       NET.lastAllySk={t:nowT(),who:`${who}の${clsOf(cs).sk.n}`};
       if(S.mode==='play'&&nowT()-S.lastSkAt<3000)linkSkill(`${who}の${clsOf(cs).sk.n}`);
       if(cs==='heal'){
-        if(S.mode==='over'&&S.hp<=0)revive(who);
+        if(S.mode==='over'&&S.hp<=0){revive(who);giftIn(p,'蘇生')}
         else if(S.mode!=='over'){
           const amt=num(v.hh,18,80),sh=num(v.hs,0,60);heal(amt);addShield(sh);if(u[1]==='A')clearGarbageCells();
           if(u[2]==='B')S.immuneUntil=Math.max(S.immuneUntil||0,nowT()+3000);
-          if(lv('d_th'))addShield(8);S.fx.push({k:'heal',t:0});toast(`${who}の雪解けの奇跡 HP+${amt}`);
+          if(lv('d_th'))addShield(8);S.fx.push({k:'heal',t:0});toast(`${who}の雪解けの奇跡 HP+${amt}`);giftIn(p,`HP+${amt}`);
         }
       }
       else if(S.mode!=='over'){
-        if(cs==='tank'){const sh=num(v.ws,10,80);addShield(sh);if(u[1]==='A')S.immuneUntil=Math.max(S.immuneUntil||0,nowT()+4000);S.fx.push({k:'block',t:0});toast(`${who}の氷壁 シールド+${sh}${u[1]==='A'?'・無敵4秒':''}`)}
-        else if(cs==='buff'){startFreeze(num(v.fm,6000,25000),Math.max(1,Math.min(3,+v.fx||1.25)),u[1]==='A');toast(`${who}の凍てつく調べ ボスが凍った`)}
+        if(cs==='tank'){const sh=num(v.ws,10,80);addShield(sh);if(u[1]==='A')S.immuneUntil=Math.max(S.immuneUntil||0,nowT()+4000);S.fx.push({k:'block',t:0});toast(`${who}の氷壁 シールド+${sh}${u[1]==='A'?'・無敵4秒':''}`);giftIn(p,`盾+${sh}`)}
+        else if(cs==='buff'){startFreeze(num(v.fm,6000,25000),Math.max(1,Math.min(3,+v.fx||1.25)),u[1]==='A');toast(`${who}の凍てつく調べ ボスが凍った`);giftIn(p,'凍結')}
       }
       hud(true);
     }
@@ -2765,14 +2843,14 @@ function absorbAllies(){
         const amt=k*Math.min(30,Math.max(0,+q.ha||HEAL_AMT)),sh=k*Math.min(12,Math.max(0,+q.hs||0));
         heal(amt);addShield(sh+(lv('d_th')?8:0));
         if(q.cl)purify(k*Math.min(2,+q.cl||0));
-        S.fx.push({k:'heal',t:0});toast(`${nameOf(p)}の癒し HP+${amt}${sh?`・シールド+${sh}`:''}`);hud(true);
+        S.fx.push({k:'heal',t:0});toast(`${nameOf(p)}の癒し HP+${amt}${sh?`・シールド+${sh}`:''}`);giftIn(p,`HP+${amt}`);hud(true);
       }
     }
     if(hrN>sn.hr){sn.hr=hrN;if(S.mode==='over'&&S.hp<=0)revive(nameOf(p))}
     if(bcN>sn.bc){
       sn.bc=bcN;
       S.buffUntil=performance.now()+Math.min(40000,Math.max(1000,+q.bd||15000));S.allyBuffMul=Math.min(1.8,Math.max(1.5,+q.bm||1.5));
-      toast(`${nameOf(p)}の鼓舞`);
+      toast(`${nameOf(p)}の鼓舞`);giftIn(p,'鼓舞');
     }
   }
 }
@@ -2866,6 +2944,7 @@ function netTick(now){
       }
     }
     if(S.mode==='wait')renderWait();
+    if(now-(NET.resAt||0)>1000){NET.resAt=now;if(!$('ovOver').hidden)renderResults('goRes');if(!$('ovWin').hidden)renderResults('winRes')}
     if(S.mode==='over'){
       if(!S.overAllDead&&!anyAllyAlive()){S.watching=false;hide('ovOver');showOver()}
     }
@@ -2875,7 +2954,7 @@ function netTick(now){
   if(coopOn()){
     pres={r:NET.isHost?'host':'guest',e:S.epoch,cls:S.cls,a:S.mode!=='over'?1:0,hp:S.hp,mh:S.maxHp,lv:S.level,
       b:boardStr(),d:S.boss?{i:S.boss.id,v:S.boss.myDmg}:null,rd:S.readyFloor,
-      hc:S.healCount,hr:S.reviveCount,rn:S.readyNode,sk:S.skUses,su:(su(0)||'-')+(su(1)||'-')+(su(2)||'-'),skv:{ws:wallSh(),hh:mirHeal(),hs:mirSh(),fm:songMs(),fx:songMul()},im:immune()?1:0,cl:lv('purify'),ha:healAmt(),bm:evo('e_drum')?1.8:1.5,hs:6*lv('aegis'),sh:S.shield,bc:S.buffCount,bd:buffDur(),cn:S.calmN||0,cm:calmMs(),ll:lv('lullaby'),kv:S.kickVote||'',hb:Math.floor(now/3000),l:null};
+      hc:S.healCount,hr:S.reviveCount,rn:S.readyNode,sk:S.skUses,su:(su(0)||'-')+(su(1)||'-')+(su(2)||'-'),skv:{ws:wallSh(),hh:mirHeal(),hs:mirSh(),fm:songMs(),fx:songMul()},im:immune()?1:0,cl:lv('purify'),ha:healAmt(),bm:evo('e_drum')?1.8:1.5,hs:6*lv('aegis'),sh:S.shield,bc:S.buffCount,bd:buffDur(),cn:S.calmN||0,cm:calmMs(),ll:lv('lullaby'),kv:S.kickVote||'',hb:Math.floor(now/3000),st:{...S.st,l:S.totalLines,k:S.hitsTaken||0,b:S.blocked||0,lv:S.level},l:null};
     pres.g=NET.isHost?{ph:S.phase,f:S.floor,t:Math.round(S.timeLeft/100)*100,
       boss:S.boss?{id:S.boss.id,n:S.boss.name,m:S.boss.max}:null,node:S.nodePicked?{f:S.floor,k:S.nodeKind}:null}:null;
   }else pres={r:NET.isHost?'host':'guest',l:1,cls:myCls,e:null,g:null};
