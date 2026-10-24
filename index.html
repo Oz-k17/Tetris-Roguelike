@@ -636,7 +636,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='49',UPDATED='2026-10-24 23:42';
+const VERSION='50',UPDATED='2026-10-25 00:05';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -674,6 +674,7 @@ const nextBossSk=b=>b.sk==='king'?KING_CYCLE[b.skN%KING_CYCLE.length]:(b.p2&&b.s
 const curSkMs=b=>bossSkMs()*(BSK_SLOW[nextBossSk(b)]||1)*(b.p2?0.8:1);
 const KING_CYCLE=['quake','blind','breath','web','curse','gale','bite'];
 // c: class it leans toward. For that class it is 4x as likely as a neutral relic is 1.5x; other classes' relics drop to 0.25x. only: exclusive to that class.
+const RARE_FLOOR=5,COIN_STEP=20,COIN_PER=0.02,COIN_MAX=1.5,OVERHEAL_K=30,MIRROR_K=4;
 const RELICS={
   ghost:{n:'ゴーストの灯',g:'灯',d:'ミノの落下位置が見えるようになる',max:1,p:45,t:'技'},
   hold:{n:'保管庫の鍵',g:'鍵',d:'ホールドが使えるようになる',max:1,p:55,t:'技'},
@@ -744,6 +745,10 @@ const RELICS={
   icefist:{n:'蓄氷の拳',g:'拳',d:'シールド10ごとにボスへのダメージ×0.1上がる（最大×1.5、重ねると上限+0.5）。出にくい',max:2,p:55,c:'tank',only:'tank',w:0.35,t:'刃',dk:'×',dd:()=>`いまのシールド${S.shield||0}：×${fistMul()} （上限 ×${1+0.5*lv('icefist')} → ×${1+0.5*(lv('icefist')+1)}）`},
   calmdrum:{n:'凪の太鼓',g:'凪',d:'T-SPINのたび、5秒間、自分と仲間全員が受けるゴミ列が1行減る（重ねると+2.5秒）',max:3,p:45,c:'buff',only:'buff',t:'盾',dd:()=>`効果時間 ${calmMs()/1000}秒 → ${calmMs(1)/1000}秒`},
   lullaby:{n:'氷原の子守唄',g:'眠',d:'自分と仲間全員のミノの落下速度が12%遅くなる（重ねると+12%）',max:3,p:45,c:'buff',only:'buff',t:'技'},
+  // deep rare relics: one per support class, offered only from floor RARE_FLOOR on and seldom (w)
+  coinbeat:{n:'黄金の拍子',g:'拍',d:`持っているゴールドが多いほど、ボスへのダメージが上がる（${COIN_STEP}Gごとに+${Math.round(COIN_PER*100)}%、最大×${COIN_MAX}）。地下${RARE_FLOOR}階から、まれに出る`,max:1,p:60,c:'buff',only:'buff',w:0.35,deep:true,t:'富',dk:'×',dd:()=>`いまの所持金${S.gold}G：×${coinMul(true)}`},
+  overheal:{n:'溢れる生命',g:'溢',d:`HPが満タンを超えてあふれた回復量の${OVERHEAL_K}倍を、ボスへのダメージにする。地下${RARE_FLOOR}階から、まれに出る`,max:1,p:60,c:'heal',only:'heal',w:0.35,deep:true,t:'癒',dk:'+'},
+  mirror:{n:'氷鏡の盾',g:'鏡',d:`ボスの攻撃を受けたとき、そのとき持っていたシールドの${MIRROR_K}倍のダメージをボスに返す。地下${RARE_FLOOR}階から、まれに出る`,max:1,p:60,c:'tank',only:'tank',w:0.35,deep:true,t:'盾',dk:'+',dd:()=>`いまのシールド${S.shield||0}：反射${(S.shield||0)*MIRROR_K}`},
   crit:{n:'会心の一撃',g:'会',d:'4列消しのボスへのダメージ+50',max:5,p:45,c:'atk',only:'atk',t:'刃',dk:'+'}
 };
 /* Evolutions (Vampire Survivors style): a base relic at its max level + any level of its catalyst relic.
@@ -846,21 +851,25 @@ function checkUnlocks(){
    bossHp:[base, per floor]  strike/bossSk/bossAtk:[start ms, minus per floor, minimum ms]  strikeDmg:[base, per floor]
    cold:[interval ms, base dmg, first floor]  topout: share of max HP lost  xp:[first level, growth]  xpEarly: discount for Lv1,2,3...
 */
+// DIFF_BASE = the balance saved as 簡単 on 2026-10-21 (+ the strike raise of 10-23). 普通 and 難しい are built from it,
+// so retuning 簡単 never moves them.
+const DIFF_BASE={bossHp:[200,120],strike:[40000,3000,20000],strikeDmg:[10,2.2],cold:[60000,6,3],topout:0.35,killHeal:15,
+  xp:[280,1.18],xpEarly:[0.5,0.6,0.7,0.85,0.95],bossSk:[26000,1200,15000],bossAtk:[9000,700,3500],gravity:0.85};
+const scaleMs=(arr,k)=>arr.map(v=>Math.round(v*k));
+// 簡単 (2026-10-24): softened across the board so a first-time player can get deep, measured with the balance bot
+const EASY_TUNE={bossHp:[140,85],strikeDmg:[5,1.2],strike:[46000,3000,24000],bossSk:[30000,1200,18000],bossAtk:[15000,800,6500],
+  cold:[60000,4,4],killHeal:20,topout:0.2};
 const DIFFS={
-  easy:{n:'簡単',d:'いまの標準バランス。初めての人やソロ向け',
-    bossHp:[200,120],strike:[40000,3000,20000],strikeDmg:[10,2.2],cold:[60000,6,3],topout:0.35,killHeal:15,
-    xp:[280,1.18],xpEarly:[0.5,0.6,0.7,0.85,0.95],bossSk:[26000,1200,15000],bossAtk:[9000,700,3500],gravity:0.85}
+  easy:{...DIFF_BASE,...EASY_TUNE,n:'簡単',d:'初めての人やソロ向け。ボスがやさしい'},
+  // 普通: the old 簡単 with boss HP and strike damage x1.3
+  normal:{...DIFF_BASE,n:'普通',d:'ボスのHPと強撃のダメージが前の簡単の1.3倍。慣れてきた人向け',
+    bossHp:DIFF_BASE.bossHp.map(v=>Math.round(v*1.3)),strikeDmg:DIFF_BASE.strikeDmg.map(v=>Math.round(v*1.3*10)/10)},
+  // 難しい: boss HP x1.6 and strike x1.5, the boss acts faster, cold from floor 2, kills heal less, topping out hurts more
+  hard:{...DIFF_BASE,n:'難しい',d:'ボスが硬く痛く、攻撃もゴミ列も速い。冷気は地下2階から。普通に勝てる人向け',
+    bossHp:DIFF_BASE.bossHp.map(v=>Math.round(v*1.6)),strikeDmg:DIFF_BASE.strikeDmg.map(v=>Math.round(v*1.5*10)/10),
+    strike:scaleMs(DIFF_BASE.strike,0.85),bossSk:scaleMs(DIFF_BASE.bossSk,0.85),bossAtk:scaleMs(DIFF_BASE.bossAtk,0.8),
+    cold:[DIFF_BASE.cold[0],DIFF_BASE.cold[1],2],killHeal:10,topout:0.45}
 };
-// 普通: same as 簡単 except boss HP and strike damage x1.3 (first pass, tune from play)
-DIFFS.normal={...DIFFS.easy,n:'普通',d:'ボスのHPと強撃のダメージが簡単の1.3倍。慣れてきた人向け',
-  bossHp:DIFFS.easy.bossHp.map(v=>Math.round(v*1.3)),strikeDmg:DIFFS.easy.strikeDmg.map(v=>Math.round(v*1.3*10)/10)};
-// 難しい: boss HP x1.6 and strike x1.5, and the boss also acts faster (strikes, skills, garbage),
-// the cold arrives from floor 2, a boss kill heals less and topping out hurts more
-const scaleMs=(arr,k)=>arr.map((v,i)=>i===1?Math.round(v*k):Math.round(v*k));
-DIFFS.hard={...DIFFS.easy,n:'難しい',d:'ボスが硬く痛く、攻撃もゴミ列も速い。冷気は地下2階から。普通に勝てる人向け',
-  bossHp:DIFFS.easy.bossHp.map(v=>Math.round(v*1.6)),strikeDmg:DIFFS.easy.strikeDmg.map(v=>Math.round(v*1.5*10)/10),
-  strike:scaleMs(DIFFS.easy.strike,0.85),bossSk:scaleMs(DIFFS.easy.bossSk,0.85),bossAtk:scaleMs(DIFFS.easy.bossAtk,0.8),
-  cold:[DIFFS.easy.cold[0],DIFFS.easy.cold[1],2],killHeal:10,topout:0.45};
 const DIFF_KEYS=Object.keys(DIFFS);
 const MAPS={line:{n:'一本道の氷窟',s:'一本道',d:'これまでどおり。階ごとにボスと行商人'},
   branch:{n:'分岐の氷窟',s:'分岐',d:'階の間で道を選ぶ。エリート・イベント・休憩・宝箱・行商人'}};
@@ -1154,6 +1163,7 @@ function dmgMuls(){
   if(S.rageUntil&&nowT()<S.rageUntil)m.push(['残響',1.3]);
   if(lv('c_glass'))m.push(['ガラス',1.4]);
   if(fistMul()>1)m.push(['蓄氷',fistMul()]);
+  if(lv('coinbeat')&&coinMul()>1)m.push(['黄金',coinMul()]);
   if(S.cls==='tank'&&su(2)==='B'&&immune())m.push(['加護',1.3]);
   return m;
 }
@@ -1359,7 +1369,10 @@ function bossAtkMs(){
   if(evo('e_slow'))m*=1.2;
   return m;
 }
-function heal(n){if(lv('c_crown'))n=Math.floor(n/2);if(n>0)S.hp=Math.min(S.maxHp,S.hp+n)}
+function heal(n){if(lv('c_crown'))n=Math.floor(n/2);if(n<=0)return;
+  const over=Math.max(0,S.hp+n-S.maxHp);S.hp=Math.min(S.maxHp,S.hp+n);
+  // 溢れる生命: healing past full HP turns into boss damage
+  if(over&&lv('overheal')&&S.boss&&!S.boss.dead&&S.mode!=='over'){const d=over*OVERHEAL_K;S.boss.myDmg+=d;S.fx.push({k:'hit',t:0});dmgNum(d,false,'溢れる生命')}}
 function wallRiposte(){
   if(S.cls==='tank'&&su(1)==='B'&&S.boss&&!S.boss.dead){S.boss.myDmg+=30;S.fx.push({k:'hit',t:0});dmgNum(30,false,'反撃')}
 }
@@ -1368,6 +1381,7 @@ function floorShield(){addShield(10*lv('ward')+(tf('盾')?20:0)+(lv('c_heart')?3
 function addShield(n){if(n>0)S.shield=Math.min(S.maxHp,S.shield+n)}
 // relic-made shields only top up to 30% of max HP, so they help without making you untouchable
 // 蓄氷の拳: +0.1x per 10 shield, capped at 1 + 0.5 per level
+function coinMul(){const k=Math.min(COIN_MAX,1+COIN_PER*Math.floor((S.gold||0)/COIN_STEP));return Math.round(k*100)/100}
 function fistMul(){const L=lv('icefist');if(!L)return 1;return Math.round(Math.min(1+0.5*L,1+0.1*Math.floor((S.shield||0)/10))*100)/100}
 // 凪の太鼓: T-spin opens a short window where every incoming garbage hit is one row lighter, shared with the party
 const calmMs=(x=0)=>{const L=lv('calmdrum')+x;return L?2500+2500*L:0};
@@ -1405,6 +1419,9 @@ function topOut(){
   spawn();
 }
 function takeHit(n,why){
+  // 氷鏡の盾: a boss hit returns damage based on the shield held at that moment
+  const sh0=S.shield||0;
+  if(lv('mirror')&&sh0>0&&S.boss&&!S.boss.dead&&why!=='冷気で凍えた'){const d=sh0*MIRROR_K;S.boss.myDmg+=d;S.fx.push({k:'hit',t:0});dmgNum(d,false,'氷鏡')}
   const r=applyDamage(n);
   if(r.dead){S.cause=why;gameOver();return}
   toast(r.taken?`${why} HP-${r.taken}`:`${why}　シールドで吸収`);
@@ -1620,6 +1637,7 @@ function pickRelics(n,ok){
     const r=RELICS[k];
     if(r.only&&r.only!==S.cls)return false;
     if(r.cursed||!unlocked(k))return false;
+    if(r.deep&&S.floor<RARE_FLOOR)return false;
     if(r.duo){if(!S.coop||!r.duo.includes(S.cls)||!partyHas(r.duo.find(c=>c!==S.cls)))return false}
     return lv(k)<r.max&&ok(k);
   });
