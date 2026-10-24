@@ -1,0 +1,10 @@
+const {runOne}=require('./balance-bot.js');
+const [cls,k,runs,skill]=[process.argv[2],process.argv[3],+process.argv[4],process.argv[5]||'average'];
+const opt={...({beginner:{think:1250,err:0.5},average:{think:830,err:0.3},skilled:{think:500,err:0.1}})[skill]};
+if(k!=='none')opt.grant={floor:5,k};
+const rs=[];for(let i=0;i<runs;i++)rs.push(runOne(cls,process.argv[6]||'easy',opt));
+const late=rs.flatMap(r=>(r.bossTF||[]).filter(x=>x[0]>=5));
+const avg=late.length?Math.round(late.reduce((a,x)=>a+x[1],0)/late.length):null;
+const gold=late.length?Math.round(late.reduce((a,x)=>a+x[2],0)/late.length):null;
+const reached5=rs.filter(r=>r.floor>=5||r.win).length;
+console.log(JSON.stringify({cls,relic:k,skill,runs,reached5,clear:rs.filter(r=>r.win).length,lateBossSec:avg,lateFights:late.length,goldAtKill:gold}));
