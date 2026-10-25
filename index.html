@@ -196,6 +196,17 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .card .d{font-size:13px;color:var(--muted);line-height:1.5}
 .card.shopcard{grid-template-columns:48px 1fr auto}
 .card.shopcard .d{grid-column:2 / 4}
+/* shop: 2 columns of compact cards (glyph + name / price, then the full description underneath) */
+#shItems{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex-direction:initial}
+#shItems .shsec{grid-column:1 / -1;font-size:11px;letter-spacing:.16em;color:var(--muted);margin:2px 0 -2px}
+#shItems .card.shopcard{grid-template-columns:34px 1fr;gap:2px 8px;padding:10px;align-items:start;align-content:start;min-width:0}
+#shItems .card.shopcard .g{width:34px;height:34px;font-size:15px;grid-row:span 2}
+#shItems .card.shopcard .g.round svg{width:20px;height:20px}
+#shItems .card.shopcard .n{font-size:13px;line-height:1.3;min-width:0;overflow-wrap:anywhere}
+#shItems .card.shopcard .n em,#shItems .card.shopcard .n .ct{display:block;margin-left:0;font-size:10.5px}
+#shItems .card.shopcard .price{grid-column:2;font-size:15px;line-height:1.2}
+#shItems .card.shopcard .d{grid-column:1 / -1;font-size:11.5px;line-height:1.45;margin-top:4px}
+#shItems .card.shopcard .d .tg,#shItems .card.shopcard .d .dk{font-size:10px;line-height:15px;margin-bottom:2px}
 .card.clscard .g{border-color:currentColor}
 .price{font-family:var(--display);font-size:16px;color:var(--gold);white-space:nowrap}
 .price.poor{color:var(--danger)}
@@ -636,7 +647,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='50',UPDATED='2026-10-25 00:05';
+const VERSION='51',UPDATED='2026-10-25 17:11';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -1781,7 +1792,11 @@ function renderShop(){
   $('shHp').innerHTML=ico('hp','#ff6f7f','#ffd0d6')+`${S.hp}/${S.maxHp}`+(S.shield?ico('shield','#8fe3ff','#e4f9ff')+S.shield:'');
   const box=$('shItems');box.innerHTML='';
   const hasG=S.board.some(r=>r.some(v=>v==='G'));
-  S.shop.items.forEach((it,i)=>{
+  // two sections in a 2-column grid: relics (incl. polish) first, then consumables
+  const isRel=it=>it.kind==='relic'||it.kind==='up';
+  const order=S.shop.items.map((it,i)=>({it,i}));
+  const sec=n=>{const h=document.createElement('div');h.className='shsec';h.textContent=n;box.appendChild(h)};
+  [['遺物',order.filter(o=>isRel(o.it))],['道具',order.filter(o=>!isRel(o.it))]].forEach(([title,list])=>{if(!list.length)return;sec(title);list.forEach(({it,i})=>{
     const useless=(it.kind==='heal'&&S.hp>=S.maxHp)?'満タン':(it.kind==='clean'&&!hasG)?'不要':'';
     const poor=S.gold<it.price;
     const priceHtml=`<span class="price${poor&&!it.sold&&!useless?' poor':''}">${it.sold?'購入済':useless||it.price+'G'}</span>`;
@@ -1791,7 +1806,7 @@ function renderShop(){
       `<span class="g round" style="color:${ITEM_COL[it.kind]}">${ico(it.kind==='heal'?'heal_item':it.kind,ITEM_COL[it.kind],'#e4eff8',24)}</span><span class="n">${it.n}</span>${priceHtml}<span class="d">${it.d}</span>`;
     b.onclick=()=>buy(i);
     box.appendChild(b);
-  });
+  })});
   const rc=rerollCost();
   $('rerollBtn').textContent=`遺物の品ぞろえを入れ替える（${rc}G）`;
   $('rerollBtn').disabled=S.gold<rc;
