@@ -695,7 +695,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='56',UPDATED='2026-10-28 16:02';
+const VERSION='57',UPDATED='2026-10-28 16:22';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -812,6 +812,7 @@ const RELICS={
   amp:{n:'氷晶の増幅器',g:'増',d:'ボスへのダメージ×1.25（重ねると掛け算で伸びる）。地下4階から出る',max:3,p:70,w:0.8,from:4,t:'刃',dk:'×'},
   reso:{n:'共鳴の結晶',g:'響',d:'核と同じタグの遺物1つにつき、ボスへのダメージ×1.1。地下4階から出る',max:1,p:65,w:0.8,from:4,t:'技',dk:'×',dd:()=>S.core?`いま ×${resoMul(true)}`:'核をまだ選んでいない'},
   frenzy:{n:'熱狂の鼓動',g:'熱',d:'ボス戦中、列を消すたびにそのボス戦の間ダメージ×0.03ずつ伸びる。地下4階から出る',max:1,p:65,w:0.8,from:4,t:'刃',dk:'×'},
+  dig:{n:'霜の掘削機',g:'掘',d:'列消し8回ごとに、自分の盤面の下へ穴が1つのゴミ列が1段せり上がる。ゴミ列を消すと1段につきボスへのダメージ+40（重ねると間隔が2回短くなり、ダメージ+40）',max:3,p:45,t:'爆',dk:'+',dd:()=>`${digEvery()}回ごと・1段+${40*lv('dig')} → ${digEvery(1)}回ごと・1段+${40*(lv('dig')+1)}`},
   crit:{n:'会心の一撃',g:'会',d:'4列消しのボスへのダメージ+50',max:5,p:45,c:'atk',only:'atk',t:'刃',dk:'+'}
 };
 /* Evolutions (Vampire Survivors style): a base relic at its max level + any level of its catalyst relic.
@@ -1191,7 +1192,7 @@ function newRun(coop,epoch,cls,diff,practice,map,rank){
      timeLeft:STAGE_MS,phase:'play',boss:null,weaken:false,bossKills:0,afterReward:null,readyFloor:0,
      coop:!!coop,epoch:epoch||0,watching:false,
      st:{d:0,t:0,r:0,h:0,s:0,f:0,v:0},dmgBossId:-1,dmgSeen:0,skillLines:0,healCount:0,reviveCount:0,buffCount:0,buffUntil:0,hitAcc:0,lastLeech:-1e9,endless:false,
-     blocked:0,hitsTaken:0,shield:0,regenAcc:0,skCharge:0,skUses:0,tf:{},tfNew:null,skUp:['','',''],bakuC:0,incoming:[],offsetTotal:0,evo:{},core:'',coreN:0,coreAcc:0,frenzyN:0,allyBuffMul:1.5,calmUntil:0,calmN:0,lastSkAt:-1e9,lastLinkAt:-1e9,freezeMul:1.3,echoFrom:0,echoUntil:0,rageUntil:0,immuneUntil:0,freezeUntil:0,blindUntil:0,webUntil:0,galeUntil:0,
+     blocked:0,hitsTaken:0,shield:0,regenAcc:0,skCharge:0,skUses:0,tf:{},tfNew:null,skUp:['','',''],bakuC:0,incoming:[],offsetTotal:0,digC:0,digRows:0,evo:{},core:'',coreN:0,coreAcc:0,frenzyN:0,allyBuffMul:1.5,calmUntil:0,calmN:0,lastSkAt:-1e9,lastLinkAt:-1e9,freezeMul:1.3,echoFrom:0,echoUntil:0,rageUntil:0,immuneUntil:0,freezeUntil:0,blindUntil:0,webUntil:0,galeUntil:0,
      totalLines:0,relics:{},bag:[],queue:[],cur:null,hold:null,canHold:true,combo:-1,
      bombC:0,sandC:0,dropAcc:0,lockAcc:0,lockResets:0,mode:'reward',fx:[]};
   refill();renderRelics();
@@ -1300,6 +1301,7 @@ function bossDmgDetail(n,ts,b2b,pc){
   if(evo('e_icicle')&&S.combo>0)add.push(['連弾',Math.min(150,15*S.combo)]);
   if(n===4&&lv('crit'))add.push(['会心',50*lv('crit')]);
   if(ts&&lv('tcharm'))add.push(['護符',30*lv('tcharm')]);
+  if(lv('dig')&&S.digRows)add.push(['掘削',40*lv('dig')*S.digRows]);
   if(pc)add.push(['全消し',100]);
   const muls=dmgMuls();if(b2b)muls.unshift(['B2B',1.2]);
   if(core('k_tspin'))muls.unshift(ts?['極意',3]:['極意',0.8]);
@@ -1393,6 +1395,7 @@ function lockPiece(){
   if(over){topOut();return}
   const full=[];
   for(let y=0;y<H;y++)if(S.board[y].every(v=>v))full.push(y);
+  S.digRows=full.filter(y=>S.board[y].includes('G')).length;
   const n=full.length,n4=Math.min(n,4),xtra=Math.max(0,n-4);
   if(ts&&n>3)ts=null; // a T-spin can't clear 4+; this came from bombs settling the stack
   if(ts==='full'&&lv('calmdrum')){calmStart(calmMs());S.calmN=(S.calmN||0)+1;toast(`凪の太鼓 ${calmMs()/1000}秒間ゴミ列-1`)}
@@ -1469,10 +1472,19 @@ function lockPiece(){
     S.prevClear=clearKind;
   }else S.combo=-1;
   if((lv('bomb')||core('k_bomb'))&&++S.bombC>=bombInterval()){S.bombC=0;S.queue.splice(1,0,'B')}
+  if(n&&lv('dig')&&++S.digC>=digEvery()){S.digC=0;if(riseDig()){topOut();if(S.mode==='over')return}}
   if(lv('sand')&&++S.sandC>=sandInterval()){S.sandC=0;S.queue.splice(1,0,'D')}
   spawn();
   if(S.mode==='over')return;
   if(S.pendingLv)openReward(false);
+}
+// 霜の掘削機: self-made garbage (always one hole) that pays out when you dig through it
+const digEvery=(x=0)=>Math.max(4,8-2*(lv('dig')+x-1));
+function riseDig(){
+  let over=S.board[0].some(v=>v);
+  S.board.shift();const row=Array(W).fill('G');row[Math.floor(Math.random()*W)]=0;S.board.push(row);
+  if(S.cur){let k=0;while(collide(S.cur.m,S.cur.x,S.cur.y)&&k++<4)S.cur.y--;if(collide(S.cur.m,S.cur.x,S.cur.y))over=true}
+  S.fx.push({k:'atk',t:0});sfx('warn');return over;
 }
 function addGarbage(n){
   let over=false;
