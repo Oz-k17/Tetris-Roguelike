@@ -695,7 +695,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='57',UPDATED='2026-10-28 16:22';
+const VERSION='58',UPDATED='2026-10-28 16:23';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -1454,7 +1454,8 @@ function lockPiece(){
       const det=bossDmgDetail(n,ts,b2b,pc),dmg=Math.round(det.d*(dt?1.3:1));
       S.boss.myDmg+=dmg;S.fx.push({k:'hit',t:0});
       dmgNum(dmg,hardClear||pc,det.f+(dt?' ×1.3':''));
-      if(hardClear||pc||det.muls.length>=3||dmg>=300)calcFx(det,dt,dmg);
+      // the math panel shows while a REN is going, or for a hit worth 10%+ of the boss's HP
+      if(S.combo>0||dmg>=S.boss.max*0.1)calcFx(det,dt,dmg);
       if(n===4&&lv('lifeice')&&performance.now()-S.lastLeech>=15000&&S.hp<S.maxHp){
         S.lastLeech=performance.now();heal(8*lv('lifeice'));S.fx.push({k:'heal',t:0});toast(`生命の氷柱 HP+${8*lv('lifeice')}`);hud(true);
       }
