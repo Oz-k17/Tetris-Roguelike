@@ -464,7 +464,7 @@ i[data-ico]{display:contents}
       <li>ボスを倒すとHPが15回復し、行商人が来る。ゴールドで遺物や薬、護符を買って次の階へ</li>
       <li>天井に届くと最大HPの35%（最低12）を失って盤面リセット。このダメージはシールドや氷壁でも防げない。ほかのダメージはシールドがHPより先に吸収する。HPが尽きたら終わり。地下8階のボスを倒せば踏破</li>
     </ol>
-    <div class="keys">キーボード（初期設定）：←→ 移動 / ↓ ソフト / Space ハード / Z・X(↑) 回転 / C ホールド / A スキル / P 一時停止<br>ゲームパッド：十字キー 移動 / ↑ ハード / A・B 回転 / LB・RB ホールド / X スキル / Start 一時停止。設定からどちらも変更できます</div>
+    <div class="keys">キーボード（初期設定）：←→ 移動 / ↓ ソフト / Space ハード / Z・X(↑) 回転 / S 180度回転 / C ホールド / A スキル / P 一時停止<br>スマホ：盤面を左右になぞって移動・下になぞってソフト・下にはじいてハード・タップで回転・上にはじいてホールド<br>ゲームパッド：十字キー 移動 / ↑ ハード / A・B 回転 / LB・RB ホールド / X スキル / Start 一時停止。設定からどちらも変更できます</div>
     </details>
     <div class="diff"><span class="lbl">マップ</span><div class="diffrow" id="mapRow"></div><span class="dnote" id="mapNote"></span></div>
     <div class="diff"><span class="lbl">難易度</span><div class="diffrow" id="diffRow"></div><span class="dnote" id="diffNote"></span></div>
@@ -647,7 +647,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='51',UPDATED='2026-10-25 17:11';
+const VERSION='52',UPDATED='2026-10-28 12:29';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -813,9 +813,9 @@ let S=null;
 /* ---------- settings: sound, controls, motion ---------- */
 /* Bindings are stored per action, two slots each. Keyboard uses KeyboardEvent.code (layout-independent);
    gamepad uses "b<index>" for standard-mapping buttons and "sl/sr/su/sd" for left-stick directions. */
-const ACTS=[['left','左に移動'],['right','右に移動'],['soft','ソフトドロップ'],['hard','ハードドロップ'],['cw','右回転'],['ccw','左回転'],['hold','ホールド'],['skill','クラススキル'],['pause','一時停止']];
-const KEY_DEF={left:['ArrowLeft',''],right:['ArrowRight',''],soft:['ArrowDown',''],hard:['Space',''],cw:['ArrowUp','KeyX'],ccw:['KeyZ',''],hold:['KeyC','ShiftLeft'],skill:['KeyA','KeyV'],pause:['KeyP','Escape']};
-const PAD_DEF={left:['b14','sl'],right:['b15','sr'],soft:['b13','sd'],hard:['b12',''],cw:['b1','b3'],ccw:['b0',''],hold:['b4','b5'],skill:['b2','b7'],pause:['b9','']};
+const ACTS=[['left','左に移動'],['right','右に移動'],['soft','ソフトドロップ'],['hard','ハードドロップ'],['cw','右回転'],['ccw','左回転'],['r180','180度回転'],['hold','ホールド'],['skill','クラススキル'],['pause','一時停止']];
+const KEY_DEF={left:['ArrowLeft',''],right:['ArrowRight',''],soft:['ArrowDown',''],hard:['Space',''],cw:['ArrowUp','KeyX'],ccw:['KeyZ',''],r180:['KeyS',''],hold:['KeyC','ShiftLeft'],skill:['KeyA','KeyV'],pause:['KeyP','Escape']};
+const PAD_DEF={left:['b14','sl'],right:['b15','sr'],soft:['b13','sd'],hard:['b12',''],cw:['b1','b3'],ccw:['b0',''],r180:['',''],hold:['b4','b5'],skill:['b2','b7'],pause:['b9','']};
 /* Music: every scene picks one entry from MUSIC. 'auto' is the generated loop (exploring or boss flavour).
    Add a recorded track by dropping an mp3 into bgm/ and listing it here. */
 const MUSIC={
@@ -825,7 +825,7 @@ const MUSIC={
 };
 const MUSIC_SLOTS=[['easy.explore','簡単：探索中'],['easy.boss','簡単：ボス戦'],['normal.explore','普通：探索中'],['normal.boss','普通：ボス戦'],['hard.explore','難しい：探索中'],['hard.boss','難しい：ボス戦'],['elite','エリート戦（分岐マップ）']];
 const MUSIC_DEF={'easy.explore':'auto','easy.boss':'auto','normal.explore':'auto','normal.boss':'t1757','hard.explore':'auto','hard.boss':'t1757','elite':'auto'};
-const SET_DEF={sfx:70,bgm:45,das:170,arr:50,sdf:35,shake:1,keys:KEY_DEF,pad:PAD_DEF,music:MUSIC_DEF};
+const SET_DEF={sfx:70,bgm:45,das:150,arr:33,sdf:25,shake:1,ghost:1,swipe:1,haptic:1,keys:KEY_DEF,pad:PAD_DEF,music:MUSIC_DEF};
 const cloneSet=()=>JSON.parse(JSON.stringify(SET_DEF));
 let SET=cloneSet();
 try{const sv=JSON.parse(localStorage.getItem('hyokutsu-set')||'{}');
@@ -1128,6 +1128,12 @@ function rotate(dir){
   const to=(p.r+dir+4)%4,kicks=(p.t==='I'?SRS_I:SRS_JLSTZ)[p.r+''+to];
   for(let i=0;i<kicks.length;i++){const[kx,ky]=kicks[i];if(!collide(nm,p.x+kx,p.y+ky)){p.m=nm;p.x+=kx;p.y+=ky;p.r=to;S.lastRot=true;S.lastKick=i;moveReset();sfx('rotate');return}}
 }
+// 180-degree turn: no SRS table for it, so try in place, then a few small nudges
+function rotate180(){
+  const p=S.cur;if(p.t==='O'||p.m.length===1)return;
+  const nm=rot(rot(p.m,1),1);
+  for(const [kx,ky] of [[0,0],[0,-1],[1,0],[-1,0],[0,1]]){if(!collide(nm,p.x+kx,p.y+ky)){p.m=nm;p.x+=kx;p.y+=ky;p.r=(p.r+2)%4;S.lastRot=true;S.lastKick=0;moveReset();sfx('rotate');return}}
+}
 function soft(){if(!grounded()){S.cur.y++;S.score+=1;S.dropAcc=0;S.lastRot=false}}
 function hard(){
   if(until('webUntil')>0){if(!S.webMsg||nowT()-S.webMsg>1200){S.webMsg=nowT();toast('蜘蛛の糸でハードドロップできない')}return}
@@ -1152,7 +1158,7 @@ function hold(){
 }
 function act(a){
   if(!S||S.mode!=='play')return;
-  ({left:()=>move(-1),right:()=>move(1),cw:()=>rotate(1),ccw:()=>rotate(-1),soft,hard,hold,skill:useSkill})[a]();
+  ({left:()=>move(-1),right:()=>move(1),cw:()=>rotate(1),ccw:()=>rotate(-1),r180:rotate180,soft,hard,hold,skill:useSkill})[a]();
 }
 
 /* ---------- rules ---------- */
@@ -1260,7 +1266,7 @@ function lockPiece(){
     const nx=p.x+c,ny=p.y+r;
     if(ny<0)over=true;else{S.board[ny][nx]=p.t;placed.push([nx,ny])}
   }
-  S.fx.push({k:'lock',cells:placed,t:0});sfx('lock');
+  S.fx.push({k:'lock',cells:placed,t:0});sfx('lock');buzz(6);
   if(p.t==='B'&&!over){
     let n=0;
     const br=evo('e_bomb')?2:1;
@@ -1315,7 +1321,7 @@ function lockPiece(){
     if(S.combo>0)lines.push(`${S.combo} REN`);
     if(pc){lines.unshift('全消し！');color='#f2d06b';size=1.4}
     if(lines.length)pop(lines,color,size);
-    sfx(pc?'pc':ts?'tspin':n===4?'quad':'clear'+Math.min(3,n));
+    sfx(pc?'pc':ts?'tspin':n===4?'quad':'clear'+Math.min(3,n));buzz(n>=4||ts||pc?[20,30,20]:15);
     if(S.combo>0)renSfx(S.combo);
     if(ts)S.st.t++;
     if(!S.practice&&!S.debug){if(ts)META.tspin++;if(n===4)META.quad++;if(pc)META.pc++;if(ts||n===4||pc)checkUnlocks()}
@@ -1412,7 +1418,7 @@ function applyDamage(n,pierce){
   const ab=Math.min(S.shield,n);S.shield-=ab;n-=ab;
   S.hp-=n;S.hitsTaken+=n;
   S.fx.push({k:ab&&!n?'block':'hurt',t:0});
-  if(n){shake(Math.min(7,3+n/4),260);sfx('hurt')}else sfx('block');
+  if(n){shake(Math.min(7,3+n/4),260);sfx('hurt');buzz(45)}else sfx('block');
   hud(true);
   return{dead:S.hp<=0,taken:n,absorbed:ab};
 }
@@ -1647,6 +1653,7 @@ function pickRelics(n,ok){
   const pool=Object.keys(RELICS).filter(k=>{
     const r=RELICS[k];
     if(r.only&&r.only!==S.cls)return false;
+    if(k==='ghost')return false; // the ghost is always on now (settings), so the relic is never offered
     if(r.cursed||!unlocked(k))return false;
     if(r.deep&&S.floor<RARE_FLOOR)return false;
     if(r.duo){if(!S.coop||!r.duo.includes(S.cls)||!partyHas(r.duo.find(c=>c!==S.cls)))return false}
@@ -1697,7 +1704,7 @@ function openReward(first){
   let keys;
   if(first){
     const ex=shuffle(Object.keys(RELICS).filter(k=>RELICS[k].only===S.cls));
-    keys=['ghost','hold',ex[0]];
+    keys=['hold',ex[0],pickRelics(1,k=>k!=='hold'&&k!=='potion'&&!RELICS[k].c)[0]].filter(Boolean);
   }else keys=pickRelics(3,k=>!(k==='potion'&&S.hp>=S.maxHp));
   $('rwLv').innerHTML=first?'':`<small>Lv ${S.level} →</small>Lv ${S.level+1}<small>　最大HP+${LV_HP}</small>`;
   $('rwTitle').textContent=first?'最初の遺物':'レベルアップ';
@@ -2168,6 +2175,7 @@ const SFX={
   unlock:()=>[784,1047,1568].forEach((f,i)=>tone(f,0.2,'triangle',0.16,1,AC&&AC.currentTime+i*0.09)),
   link:()=>[523,784,1047,1568].forEach((f,i)=>tone(f,0.15,'square',0.14,1,AC&&AC.currentTime+i*0.04))
 };
+function buzz(ms){if(SET.haptic&&navigator.vibrate)try{navigator.vibrate(ms)}catch(e){}}
 function sfx(k){try{if(AC&&SFX[k])SFX[k]()}catch(e){}}
 // REN chime: starts on the line-clear note (G5, same square tone) and climbs the major scale one step per combo, tops out two octaves up and stays there
 const REN_STEPS=[0,2,4,5,7,9,11,12,14,16,17,19,21,23,24];
@@ -2243,12 +2251,13 @@ const SET_UI=[
   ['arr','移動の連射の間隔','ms',0,100,5,'0にすると押しっぱなしで壁まで一気に動く（ARR）'],
   ['sdf','ソフトドロップの速さ','ms',10,80,5,'小さいほど速く落ちる']
 ];
+const SET_FLAGS=[['ghost','ゴースト（落下位置）を表示'],['swipe','盤面のスワイプ操作（スマホ）'],['haptic','振動（対応するスマホのみ）'],['shake','画面の揺れ']];
 function openSettings(from){setFrom=from;hide(from);renderSettings();show('ovSet')}
 function renderSettings(){
   $('setList').innerHTML=SET_UI.map(([k,n,u,mn,mx,st,d])=>`<div class="setrow"><label for="set-${k}">${n}</label><output id="out-${k}">${SET[k]}${u}</output><input type="range" id="set-${k}" min="${mn}" max="${mx}" step="${st}" value="${SET[k]}">${d?`<small>${d}</small>`:''}</div>`).join('')+
-    `<div class="setrow"><label for="set-shake">画面の揺れ</label><input type="checkbox" id="set-shake" ${SET.shake?'checked':''}></div>`;
+    SET_FLAGS.map(([k,n])=>`<div class="setrow"><label for="set-${k}">${n}</label><input type="checkbox" id="set-${k}" ${SET[k]?'checked':''}></div>`).join('');
   SET_UI.forEach(([k,,u])=>{$('set-'+k).oninput=e=>{SET[k]=+e.target.value;$('out-'+k).textContent=SET[k]+u;saveSet();applyVol();if(k==='sfx')sfx('rotate')}});
-  $('set-shake').onchange=e=>{SET.shake=e.target.checked?1:0;saveSet()};
+  SET_FLAGS.forEach(([k])=>{$('set-'+k).onchange=e=>{SET[k]=e.target.checked?1:0;saveSet();if(k==='haptic'&&SET[k])buzz(20)}});
   CAP=null;renderKeys();renderMusic();
 }
 function renderMusic(){
@@ -2444,7 +2453,7 @@ function drawBoard(dt){
   for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(S.board[y][x])cell(bctx,x,y,s,S.board[y][x]);
   const p=S.cur;
   if(p&&S.mode!=='over'){
-    if(lv('ghost')&&!(S.blindUntil&&until('blindUntil')>0)){
+    if(SET.ghost&&!(S.blindUntil&&until('blindUntil')>0)){
       let gy=p.y;while(!collide(p.m,p.x,gy+1))gy++;
       bctx.strokeStyle=COL[p.t];bctx.globalAlpha=.55;bctx.lineWidth=1.5;
       for(let r=0;r<p.m.length;r++)for(let c=0;c<p.m[r].length;c++)
@@ -3135,6 +3144,37 @@ addEventListener('gamepadconnected',e=>{toast('ゲームパッドを接続しま
 addEventListener('gamepaddisconnected',()=>{toast('ゲームパッドが外れました');Object.keys(held).forEach(a=>held[a].src==='gp'&&stopRepeat(a));if(!$('ovSet').hidden)renderKeys()});
 requestAnimationFrame(gpPoll);
 const REPEAT={left:1,right:1,soft:1};
+/* ---------- touch gestures on the board ----------
+   drag sideways = move one cell per cell width · drag down = soft drop · quick flick down = hard drop
+   tap = rotate (right half clockwise, left half counter-clockwise) · flick up = hold.
+   The first ~10px decide the axis so a downward flick doesn't also slide sideways. */
+const TG={id:null};
+board.addEventListener('pointerdown',e=>{
+  if(!SET.swipe||e.pointerType==='mouse'||!S||S.mode!=='play')return;
+  e.preventDefault();
+  Object.assign(TG,{id:e.pointerId,x0:e.clientX,y0:e.clientY,lx:e.clientX,ly:e.clientY,t0:performance.now(),axis:'',moved:false});
+  try{board.setPointerCapture(e.pointerId)}catch(_){}
+});
+board.addEventListener('pointermove',e=>{
+  if(TG.id!==e.pointerId||!S||S.mode!=='play')return;
+  const step=Math.max(14,C*0.9),dx=e.clientX-TG.x0,dy=e.clientY-TG.y0;
+  if(!TG.axis&&Math.hypot(dx,dy)>10)TG.axis=Math.abs(dx)>Math.abs(dy)?'x':'y';
+  if(TG.axis==='x'){
+    while(e.clientX-TG.lx>=step){act('right');TG.lx+=step;TG.moved=true}
+    while(TG.lx-e.clientX>=step){act('left');TG.lx-=step;TG.moved=true}
+  }else if(TG.axis==='y'){
+    while(e.clientY-TG.ly>=step){act('soft');TG.ly+=step;TG.moved=true}
+  }
+});
+function tgEnd(e){
+  if(TG.id!==e.pointerId)return;TG.id=null;
+  if(!S||S.mode!=='play')return;
+  const dt=performance.now()-TG.t0,dx=e.clientX-TG.x0,dy=e.clientY-TG.y0,dist=Math.hypot(dx,dy);
+  if(TG.axis==='y'&&dy>C*2&&dt<260){act('hard');return}
+  if(TG.axis==='y'&&dy<-C*1.5&&dt<350){act('hold');return}
+  if(!TG.moved&&dist<12&&dt<350){const r=board.getBoundingClientRect();act(e.clientX<r.left+r.width/2?'ccw':'cw')}
+}
+board.addEventListener('pointerup',tgEnd);board.addEventListener('pointercancel',e=>{if(TG.id===e.pointerId)TG.id=null});
 document.querySelectorAll('#pad button').forEach(b=>{
   const a=b.dataset.a;
   const stop=()=>{stopRepeat(a);b.classList.remove('down')};
