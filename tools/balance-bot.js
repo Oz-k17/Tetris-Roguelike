@@ -91,12 +91,13 @@ function runOne(cls,diff,opt){
     for(let i=timers.length-1;i>=0;i--)if(timers[i].at<=t){const f=timers[i].f;timers.splice(i,1);try{f()}catch(e){}}
     if(opt.grant&&!S.granted&&S.floor>=opt.grant.floor&&S.mode==='play'){S.granted=1;S.relics[opt.grant.k]=1}
     raf(t);act(opt);if(opt.debug&&(t-t0)%10000<16)console.log(Math.round((t-t0)/1000),S.mode,S.floor,S.hp,S.boss&&S.boss.hp,S.cur&&S.cur.t);
-    if(S.boss&&S.boss!==curBoss){curBoss=S.boss;bossStart=t}
+    if(S.boss&&S.boss===curBoss){const d=S.boss.myDmg-(curBoss.lastSeen||0);if(d>0){res.maxHit=Math.max(res.maxHit||0,d);if(S.floor>=6)res.lateHit=Math.max(res.lateHit||0,d)}curBoss.lastSeen=S.boss.myDmg}
+    if(S.boss&&S.boss!==curBoss){curBoss=S.boss;bossStart=t;curBoss.lastSeen=S.boss.myDmg}
     if(curBoss&&curBoss.dead&&!curBoss.counted){curBoss.counted=true;res.bossT.push(Math.round((t-bossStart)/1000));(res.bossTF=res.bossTF||[]).push([S.floor,Math.round((t-bossStart)/1000),S.gold])}
     if(S.mode==='over'){res.cause=S.cause||'?';break}
     if(S.mode==='win'){res.win=true;break}
   }
-  res.floor=S.floor;res.kills=S.bossKills;res.lv=S.level;res.gameT=Math.round((t-t0)/1000);res.hpMax=S.maxHp;res.relics=Object.keys(S.relics).length;
+  res.core=S.core;res.coreN=S.coreN;res.floor=S.floor;res.kills=S.bossKills;res.lv=S.level;res.gameT=Math.round((t-t0)/1000);res.hpMax=S.maxHp;res.relics=Object.keys(S.relics).length;
   return res;
 }
 module.exports={runOne,G};
