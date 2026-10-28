@@ -347,16 +347,23 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .scorecard small{font-size:11px;letter-spacing:.16em;color:#c9b064}
 .scorecard strong{font-family:var(--display);font-weight:400;font-size:34px;color:var(--gold);font-variant-numeric:tabular-nums}
 .newbest{padding:4px 10px;border-radius:4px;background:var(--gold);color:var(--bg);font-size:12px;font-weight:700}
-.calc{position:fixed;z-index:26;transform:translateX(-50%);display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-end;gap:4px 6px;max-width:min(92vw,420px);pointer-events:none;transition:opacity .3s}
-.calc.out{opacity:0}
-.calc .ct{display:flex;flex-direction:column;align-items:center;padding:3px 7px;border-radius:6px;background:rgba(8,14,24,.88);border:1px solid var(--line);opacity:0;animation:calcin .22s cubic-bezier(.2,.9,.3,1.4) forwards}
-.calc .ct b{font-family:var(--display);font-size:18px;font-weight:400;line-height:1.1;font-variant-numeric:tabular-nums}
-.calc .ct small{font-size:9px;color:var(--muted);white-space:nowrap}
-.calc .ct.a b{color:#8fb6ff}.calc .ct.m b{color:var(--gold)}
-.calc .ct.tot{border-color:var(--gold);background:#2a2410;padding:4px 10px}
-.calc .ct.tot b{font-size:26px;color:var(--gold)}
-@keyframes calcin{from{opacity:0;transform:translateY(8px) scale(.7)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.calc .ct{animation:none;opacity:1}}
+.calc{position:fixed;z-index:26;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:8px;width:min(94vw,440px);padding:12px 10px 14px;border-radius:14px;
+  background:radial-gradient(ellipse at center,rgba(42,36,16,.96),rgba(8,14,24,.94));border:2px solid var(--gold);box-shadow:0 0 0 1px rgba(0,0,0,.6),0 0 32px rgba(242,208,107,.45);pointer-events:none;transition:opacity .35s,transform .35s;animation:calcbox .2s ease-out}
+.calc.dim{opacity:.45}
+.calc.out{opacity:0;transform:translate(-50%,-60%)}
+.calc .terms{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-end;gap:6px 8px}
+.calc .ct{display:flex;flex-direction:column;align-items:center;padding:4px 9px;border-radius:8px;background:rgba(8,14,24,.9);border:1px solid #2c4a66;opacity:0;animation:calcin .24s cubic-bezier(.2,.9,.3,1.5) forwards}
+.calc .ct b{font-family:var(--display);font-size:clamp(20px,6.4vw,28px);font-weight:400;line-height:1.05;font-variant-numeric:tabular-nums}
+.calc .ct small{font-size:11px;color:#a9bccd;white-space:nowrap;font-weight:700}
+.calc .ct.a b{color:#9cc2ff}.calc .ct.m b{color:var(--gold)}
+.calc .tot{display:flex;flex-direction:column;align-items:center;opacity:0;animation:calctot .42s cubic-bezier(.2,.9,.25,1.3) forwards}
+.calc .tot b{font-family:var(--display);font-weight:400;font-size:clamp(40px,14vw,64px);line-height:1;color:var(--gold);text-shadow:0 0 18px rgba(242,208,107,.85),0 2px 0 #000;font-variant-numeric:tabular-nums}
+.calc .tot.huge b{color:#ffb35c;text-shadow:0 0 22px rgba(255,140,60,.95),0 2px 0 #000}
+.calc .tot small{font-size:12px;color:#e8d9a8;font-weight:700;letter-spacing:.2em}
+@keyframes calcbox{from{opacity:0;transform:translate(-50%,-50%) scale(.85)}to{opacity:1;transform:translate(-50%,-50%)}}
+@keyframes calcin{from{opacity:0;transform:translateY(10px) scale(.6)}to{opacity:1;transform:none}}
+@keyframes calctot{0%{opacity:0;transform:scale(2.4);filter:blur(4px)}60%{opacity:1;transform:scale(.92);filter:none}100%{opacity:1;transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.calc,.calc .ct,.calc .tot{animation:none;opacity:1}}
 .gift{position:fixed;z-index:15;width:14px;height:14px;border-radius:50%;background:currentColor;box-shadow:0 0 14px 5px currentColor;pointer-events:none;transition:transform .6s cubic-bezier(.3,.6,.4,1)}
 .giftlbl{position:fixed;z-index:15;font-weight:700;font-size:13px;white-space:nowrap;text-shadow:0 0 4px #000,0 0 8px #000;pointer-events:none;transform:translate(-50%,0);animation:giftup 1.2s ease-out forwards}
 @keyframes giftup{0%{opacity:0;transform:translate(-50%,6px)}15%{opacity:1}100%{opacity:0;transform:translate(-50%,-28px)}}
@@ -679,7 +686,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='53',UPDATED='2026-10-28 15:02';
+const VERSION='54',UPDATED='2026-10-28 15:39';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -2342,12 +2349,18 @@ function calcFx(det,dt,total){
   if(typeof board.getBoundingClientRect!=="function")return;const r=board.getBoundingClientRect();if(!r.width)return;
   if(calcEl)calcEl.remove();clearTimeout(calcT);
   const terms=[[String(det.base),'b','基本'],...det.add.map(([n,v])=>['+'+v,'a',n]),...det.muls.map(([n,v])=>['×'+v,'m',n]),...(dt?[['×1.3','m','DT砲']]:[])];
-  const el=document.createElement('div');el.className='calc';el.style.left=(r.left+r.width/2)+'px';el.style.top=(r.top+r.height*0.18)+'px';
-  el.innerHTML=terms.map(([v,k,n],i)=>`<span class="ct ${k}" style="animation-delay:${RM?0:i*90}ms"><b>${v}</b><small>${esc(n)}</small></span>`).join('')+
-    `<span class="ct tot" style="animation-delay:${RM?0:terms.length*90+60}ms"><b>${total.toLocaleString()}</b><small>ダメージ</small></span>`;
+  const STEP=RM?0:120,end=terms.length*STEP+80;
+  const el=document.createElement('div');el.className='calc';
+  const vw=innerWidth,pw=Math.min(vw*0.94,440);el.style.left=Math.max(pw/2+6,Math.min(vw-pw/2-6,r.left+r.width/2))+'px';el.style.top=(r.top+r.height*0.32)+'px';
+  el.innerHTML=`<div class="terms">${terms.map(([v,k,n],i)=>`<span class="ct ${k}" style="animation-delay:${i*STEP}ms"><b>${v}</b><small>${esc(n)}</small></span>`).join('')}</div>`+
+    `<div class="tot${total>=1000?' huge':''}" style="animation-delay:${end}ms"><b>${total.toLocaleString()}</b><small>ダメージ</small></div>`;
   document.body.appendChild(el);calcEl=el;
-  if(!RM)setTimeout(()=>{if(calcEl===el){sfx('rotate');shake(Math.min(8,3+total/300),200)}},terms.length*90+60);
-  calcT=setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),300)},terms.length*90+1300);
+  // each term ticks a little higher (like Balatro's scoring), then the total lands with a thump
+  if(!RM&&AC&&SET.sfx)terms.forEach((_,i)=>tone(520*Math.pow(2,Math.min(i,12)/12),0.07,'square',0.07,1,AC.currentTime+i*STEP/1000));
+  setTimeout(()=>{if(calcEl===el){sfx(total>=1000?'kill':'quad');shake(Math.min(10,4+total/250),260);buzz(total>=1000?[30,40,40]:25)}},end);
+  // after the total has landed, let the board show through so play isn't blocked
+  setTimeout(()=>{if(calcEl===el)el.classList.add('dim')},end+700);
+  calcT=setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),350)},end+1900);
 }
 function dmgNum(v,big,f){
   (S.nums||(S.nums=[])).push({v,big,f,t:0,x:0.4+Math.random()*0.3});
