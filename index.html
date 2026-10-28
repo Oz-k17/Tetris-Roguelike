@@ -328,7 +328,15 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .setrow input[type=range]{grid-column:1/3;width:100%;accent-color:var(--ice)}
 .setrow small{grid-column:1/3;font-size:12px;color:var(--muted)}
 .diff{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
-.diffrow{display:flex;gap:6px}
+.diffrow{display:flex;gap:6px;flex-wrap:wrap}
+.coopmode{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#0d1826}
+.cmrow{display:grid;grid-template-columns:56px 1fr;align-items:center;gap:8px}
+.cmrank{display:flex;align-items:center;gap:6px}
+.cmrank b{font-family:var(--display);font-weight:400;font-size:20px;color:var(--gold);min-width:22px;text-align:center}
+.cmrank .dbtn{width:40px;padding:0;font-size:16px}
+.coopmode .dbtn:disabled{cursor:default}
+.coopmode .dbtn:disabled:not(.on){opacity:.45}
+.cmnote{font-size:11px;color:var(--muted);line-height:1.5}
 .dbtn{height:32px;padding:0 14px;border-radius:16px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-family:var(--body);font-size:13px;font-weight:700;cursor:pointer}
 .dbtn.on{color:var(--bg);background:var(--ice);border-color:var(--ice)}
 .dnote{font-size:12px;color:var(--muted);flex-basis:100%}
@@ -543,6 +551,7 @@ i[data-ico]{display:contents}
     <div id="coopRoom" class="cards" hidden>
       <div class="code" id="codeShow">----</div>
       <div class="members" id="members"></div>
+      <div class="coopmode" id="coopMode"></div>
       <button class="cta" id="coopStart" disabled>出発</button>
     </div>
     <button class="ghostbtn" id="coopBack">戻る</button>
@@ -686,7 +695,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='55',UPDATED='2026-10-28 15:45';
+const VERSION='56',UPDATED='2026-10-28 16:02';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -2994,6 +3003,27 @@ function onPeers(ch){
   }
   if(NET.lobby)renderMembers();
 }
+/* lobby mode picker: the host picks map, difficulty and 氷層 here; guests see the host's picks (read-only) */
+function renderCoopMode(){
+  if(!NET)return;
+  const host=NET.isHost,hp=host?null:NET.others.find(p=>p.presence&&p.presence.r==='host');
+  const q=hp&&hp.presence||{};
+  const mk=host?myMap:(MAPS[q.mp]?q.mp:'line'),dk=host?myDiff:(DIFFS[q.df]?q.df:'easy');
+  const rmax=host?rankMaxOf(myCls):RANK_MAX,rv=host?Math.min(myRank,rmax):Math.max(0,Math.min(RANK_MAX,+q.rk||0));
+  const chips=(kind,keys,cur,name)=>`<div class="diffrow">${keys.map(k=>`<button type="button" class="dbtn${k===cur?' on':''}" data-${kind}="${k}" ${host?'':'disabled'}>${name(k)}</button>`).join('')}</div>`;
+  $('coopMode').innerHTML=
+    `<div class="cmrow"><span class="lbl">マップ</span>${chips('m',Object.keys(MAPS),mk,k=>MAPS[k].n)}</div>`+
+    `<div class="cmrow"><span class="lbl">難易度</span>${chips('d',DIFF_KEYS,dk,k=>DIFFS[k].n)}</div>`+
+    `<div class="cmrow"><span class="lbl">氷層</span><div class="cmrank"><b>${rv}</b>${host?`<button type="button" class="dbtn" id="cmRkDown" ${rv<=0?'disabled':''} aria-label="氷層を下げる">−</button><button type="button" class="dbtn" id="cmRkUp" ${rv>=rmax?'disabled':''} aria-label="氷層を上げる">＋</button>`:''}</div></div>`+
+    `<small class="cmnote">${host?`${MAPS[mk].d}。${DIFFS[dk].d}。${rv?'氷層'+rv+'：'+RANKS.slice(0,rv).join('・'):'氷層はあなたのクラスで踏破した段まで選べる'}`:`ホストが決めます。${MAPS[mk].n}・${DIFFS[dk].n}・氷層${rv}`}</small>`;
+  if(!host)return;
+  const save=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+  $('coopMode').querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{myMap=b.dataset.m;save('hyokutsu-map',myMap);NET.lastKey='';renderCoopMode()});
+  $('coopMode').querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{myDiff=b.dataset.d;save('hyokutsu-diff',myDiff);NET.lastKey='';renderCoopMode()});
+  const setRk=v=>{myRank=v;save('hyokutsu-rank',v);NET.lastKey='';renderCoopMode()};
+  if($('cmRkDown'))$('cmRkDown').onclick=()=>setRk(Math.max(0,rv-1));
+  if($('cmRkUp'))$('cmRkUp').onclick=()=>setRk(Math.min(rmax,rv+1));
+}
 function renderMembers(){
   if(!NET)return;
   const rows=[`<div>${clsBadge(myCls,28,24)}<em>${myNick?esc(myNick)+'（あなた）':'あなた'}</em><span>${NET.isHost?'ホスト':'参加'}・${clsOf(myCls).n}</span></div>`];
@@ -3004,8 +3034,8 @@ function renderMembers(){
   }
   if(list.length<MAXP-1)rows.push(`<div class="wait">仲間を待っています（${1+list.length}/${MAXP}）</div>`);
   if(NET.others.length>MAXP-1)rows.push(`<div class="wait">満員です。${MAXP}人を超えた人は参加できません</div>`);
-  {const hp=NET.isHost?null:NET.others.find(p=>p.presence&&p.presence.r==='host');const dk=NET.isHost?myDiff:(hp&&DIFFS[hp.presence.df]?hp.presence.df:'easy');const mk=NET.isHost?myMap:(hp&&MAPS[hp.presence.mp]?hp.presence.mp:'line');rows.push(`<div class="wait">${MAPS[mk].n}・難易度：${DIFFS[dk].n}${NET.isHost?'（タイトル画面で変えられます）':'（ホストが決めます）'}</div>`)}
   $('members').innerHTML=rows.join('');
+  renderCoopMode();
   $('coopStart').hidden=!NET.isHost;
   $('coopStart').disabled=!NET.others.length;
 }
