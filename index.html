@@ -686,7 +686,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='54',UPDATED='2026-10-28 15:39';
+const VERSION='55',UPDATED='2026-10-28 15:45';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -724,7 +724,7 @@ const nextBossSk=b=>b.sk==='king'?KING_CYCLE[b.skN%KING_CYCLE.length]:(b.p2&&b.s
 const curSkMs=b=>bossSkMs()*(BSK_SLOW[nextBossSk(b)]||1)*(b.p2?0.8:1);
 const KING_CYCLE=['quake','blind','breath','web','curse','gale','bite'];
 // c: class it leans toward. For that class it is 4x as likely as a neutral relic is 1.5x; other classes' relics drop to 0.25x. only: exclusive to that class.
-const RARE_FLOOR=5,COIN_STEP=20,COIN_PER=0.02,COIN_MAX=1.5,OVERHEAL_K=30,MIRROR_K=4;
+const RARE_FLOOR=5,COIN_STEP=10,COIN_PER=0.02,COIN_MAX=1.5,OVERHEAL_K=30,MIRROR_K=4;
 const RELICS={
   ghost:{n:'ゴーストの灯',g:'灯',d:'ミノの落下位置が見えるようになる',max:1,p:45,t:'技'},
   hold:{n:'保管庫の鍵',g:'鍵',d:'ホールドが使えるようになる',max:1,p:55,t:'技'},
@@ -753,7 +753,7 @@ const RELICS={
   aegis:{n:'守りの祈り',g:'祈',d:'回復のとき、受け取った全員にシールド+6',max:3,p:45,c:'heal',only:'heal',t:'癒'},
   mult:{n:'黄金の杯',g:'杯',d:'獲得スコアが+50%',max:9,p:35,c:'buff',t:'富'},
   wisdom:{n:'知恵の雪結晶',g:'知',d:'獲得経験値が+30%',max:5,p:40,c:'buff',t:'富'},
-  greed:{n:'強欲の財布',g:'財',d:'獲得ゴールドが+50%',max:5,p:35,c:'buff',t:'富'},
+  greed:{n:'強欲の財布',g:'財',d:'獲得ゴールドが+25%',max:3,p:35,c:'buff',t:'富'},
   drum:{n:'戦太鼓',g:'太',d:'鼓舞の効果時間が5秒延びる',max:5,p:45,c:'buff',only:'buff',t:'刃'},
   bell:{n:'共鳴の鐘',g:'鐘',d:'鼓舞に必要な列数が2減る',max:3,p:45,c:'buff',only:'buff',t:'刃'},
   icicle:{n:'鋭い氷柱',g:'刃',d:'列を消したときのボスへのダメージ+10',max:5,p:45,c:'atk',t:'刃',dk:'+'},
@@ -828,7 +828,7 @@ const CORES={
   k_ren:{n:'連鎖の業',g:'業',tag:'刃',col:'#ff8fa0',d:'REN中はダメージ×(1＋0.2×REN数)。RENが5つながるたび、全ダメージが永続で×0.1ずつ伸びる',per:0.1,unit:'REN5'},
   k_quad:{n:'一撃の型',g:'型',tag:'刃',col:'#ff6f7f',d:'4ライン消しのダメージ×3、それ以外の列消しは×0.8。4ラインを決めるたび、全ダメージが永続で×0.15ずつ伸びる',per:0.15,unit:'4ライン'},
   k_bomb:{n:'雪崩の心臓',g:'崩',tag:'爆',col:'#ff9a5c',d:'8個ごとに爆弾が出る。爆弾で砕いたブロック1個につきボスに6ダメージ。爆発のたびに爆弾のダメージが永続で×0.1ずつ伸びる',per:0.1,unit:'爆発'},
-  k_gold:{n:'黄金の心',g:'金',tag:'富',col:'#f2d06b',d:'ボス撃破のゴールドが2倍。持っているゴールド300Gごとに全ダメージ×1（上限なし）'},
+  k_gold:{n:'黄金の心',g:'金',tag:'富',col:'#f2d06b',d:'ボス撃破のゴールドが2倍。持っているゴールド150Gごとに全ダメージ×1（上限なし）'},
   k_guard:{n:'霜の要塞',g:'塞',tag:'盾',col:'#8fe3ff',d:'小さなシールドの上限が2倍、列を消すたびシールド+2。受けた攻撃（シールドで防いだ分も）10ごとに、全ダメージが永続で×0.05ずつ伸びる',per:0.05,unit:'被弾10'},
   k_life:{n:'命の泉',g:'泉',tag:'癒',col:'#7ee0a1',d:'回復するたび、回復量の8倍をボスへのダメージにする。ボスを倒すとHP全回復。回復するたび全ダメージが永続で×0.02ずつ伸びる',per:0.02,unit:'回復'}
 };
@@ -903,7 +903,7 @@ const saveSeen=()=>{try{localStorage.setItem('hyokutsu-seen',JSON.stringify(SEEN
 const UP=(now,need)=>[Math.min(now||0,need),need];
 const cd=c=>META.clsDeep[c]||0,cl=c=>META.clears[c]||0,kil=n=>META.kills[n]?1:0;
 const UNLOCKS=[
-  {k:'k_gold',d:'通算でゴールドを2000G稼ぐ',pr:()=>UP(META.goldTotal,2000),name:'核「黄金の心」'},
+  {k:'k_gold',d:'通算でゴールドを1500G稼ぐ',pr:()=>UP(META.goldTotal,1500),name:'核「黄金の心」'},
   {k:'k_guard',d:'守護者で地下5階に着く',pr:()=>UP(cd('tank'),5),name:'核「霜の要塞」'},
   {k:'k_life',d:'癒し手で地下5階に着く',pr:()=>UP(cd('heal'),5),name:'核「命の泉」'},
   {k:'pcfield',d:'全消しを1回する',pr:()=>UP(META.pc,1)},
@@ -1049,9 +1049,11 @@ const healNeed=()=>Math.max(4,12-2*lv('spring'));
 const buffNeed=()=>Math.max(4,8-2*lv('bell'));
 const buffDur=()=>15000+5000*lv('drum');
 const mult=()=>(1+0.5*lv('mult'))*(buffOn()?buffMul():1);
-const goldMult=()=>1+0.5*lv('greed');
+const goldMult=()=>1+0.25*lv('greed');
 const earn=g=>{const v=Math.round(g*goldMult()*(tf('富')?1.3:1)*(lv('c_ring')?2:1));S.gold+=v;S.totalGold+=v;if(!S.practice&&!S.debug)META.goldTotal=(META.goldTotal||0)+v;return v};
 const priceMul=()=>(tf('富')?0.9:1)*(rk(2)?1.2:1);
+// gold economy (2026-10-28): was [0,2,5,9,15] per clear + full REN count; players could buy out every shop
+const GOLD_LINE=[0,0,1,2,4],GOLD_BOSS=[25,6];
 const relicPrice=k=>Math.round((RELICS[k].p+5*S.floor+15*lv(k))*priceMul());
 const bossName=f=>BOSSES[(f-1)%BOSSES.length]+(f>BOSSES.length?'・改':'');
 // time-based HP damage: cold while exploring (from floor 3), boss strikes during boss fights
@@ -1273,7 +1275,7 @@ function dmgMuls(){
   if(fistMul()>1)m.push(['蓄氷',fistMul()]);
   if(lv('coinbeat')&&coinMul()>1)m.push(['黄金',coinMul()]);
   if(coreMul()>1)m.push([CORES[S.core].n,coreMul()]);
-  if(core('k_gold')){const g=Math.round((1+(S.gold||0)/300)*100)/100;if(g>1)m.push(['黄金の心',g])}
+  if(core('k_gold')){const g=Math.round((1+(S.gold||0)/150)*100)/100;if(g>1)m.push(['黄金の心',g])}
   if(lv('amp'))m.push(['増幅',Math.round(Math.pow(1.25,lv('amp'))*100)/100]);
   if(lv('reso')&&resoMul()>1)m.push(['共鳴',resoMul()]);
   if(lv('frenzy')&&S.frenzyN)m.push(['熱狂',Math.round((1+0.03*S.frenzyN)*100)/100]);
@@ -1409,7 +1411,8 @@ function lockPiece(){
     let xp=(ts?(ts==='full'?[40,60,80,100]:[15,20,30,30])[n]:[0,10,30,50,80][n4]+20*xtra)+(S.combo>0?10*S.combo:0)+(pc?150:0);
     if(b2b)xp*=1.5;
     gainXp(xp*floorXp());
-    earn([0,2,5,9,15][n4]+3*xtra+(ts==='full'?4*n:0)+(pc?20:0)+(S.combo>0?S.combo*(1+lv('combo')):0));
+    // gold: line clears give a little, bosses give the bulk (GOLD_* below)
+    earn(GOLD_LINE[n4]+xtra+(ts==='full'?n:0)+(pc?10:0)+(S.combo>1?Math.min(4,Math.floor(S.combo/2))*(1+lv('combo')):0));
     if(n===4&&lv('drill')){const k=2*lv('drill');S.board.splice(H-k,k);for(let i=0;i<k;i++)S.board.unshift(Array(W).fill(0))}
     S.totalLines+=n;
     const clearKind=ts==='full'&&n===2?'tsd':ts==='full'&&n===3?'tst':'other';
@@ -1697,7 +1700,7 @@ function bossDefeated(){
   SEEN.b[name]=1;saveSeen();if(!S.practice&&!S.debug){META.kills[name]=(META.kills[name]||0)+1;checkUnlocks()}
   S.score+=Math.round(1000*S.floor*mult());
   heal(core('k_life')?S.maxHp:killHeal()*(tf('癒')?2:1));
-  let g=earn(15+4*S.floor);if(core('k_gold'))g+=earn(15+4*S.floor);S.frenzyN=0;
+  let g=earn(GOLD_BOSS[0]+GOLD_BOSS[1]*S.floor);if(core('k_gold'))g+=earn(GOLD_BOSS[0]+GOLD_BOSS[1]*S.floor);S.frenzyN=0;
   if(lv('piggy')){const i=evo('e_piggy')?Math.floor(S.gold*0.2):Math.min(20*lv('piggy'),Math.floor(S.gold*0.15*lv('piggy')));S.gold+=i;S.totalGold+=i;g+=i}
   S.lastEarn=g;S.lastBoss=name;
   hud(true);
