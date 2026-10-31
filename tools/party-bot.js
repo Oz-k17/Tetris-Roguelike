@@ -112,15 +112,16 @@ async function runParty(classes,diff,opt,seed){
   for(const P of ps.slice(1)){P.els.codeIn.value=code;P.els.joinBtn.onclick();await flush()}
   for(let i=0;i<5;i++){T+=16;ps.forEach(P=>P.tick());await flush()}
   ps[0].G.hostStart();
-  const t0=T,LIMIT=t0+75*60*1000;let n=0;
+  const t0=T,LIMIT=t0+75*60*1000;let n=0;const deaths=[];
   while(T<LIMIT){
     T+=16;n++;
     for(const P of ps){P.tick();act(P,opt)}
     if(n%4===0)await flush();
     if(process.env.D&&n%3750===0)console.log(Math.round((T-t0)/60000),ps.map(P=>{const S=P.G.S;return `${S.cls}:${S.mode}/${S.phase} f${S.floor} hp${S.hp} rd${S.readyFloor} ${S.boss?S.boss.name+(S.boss.dead?'x':'')+S.boss.hp:'-'} t${Math.round(S.timeLeft/1000)} host${P.G.NET&&P.G.NET.isHost} oth${(P.G.NET&&P.G.NET.others||[]).map(o=>o.presence&&o.presence.r+':'+(o.presence.g?o.presence.g.f+o.presence.g.ph:'-')).join(',')}`}).join(' | '));
     const Ss=ps.map(P=>P.G.S);
-    if(Ss.some(S=>S.mode==='win'))return{win:true,floor:Ss[0].floor,ps:Ss.map(S=>({cls:S.cls,lv:S.level,hits:S.hitsTaken||0,dead:S.mode==='over'})),min:Math.round((T-t0)/60000)};
-    if(Ss.every(S=>S.mode==='over'))return{win:false,floor:Math.max(...Ss.map(S=>S.floor)),cause:Ss.map(S=>S.cause).join(' / '),min:Math.round((T-t0)/60000)};
+    Ss.forEach((S,i)=>{if(S.mode==='over'&&!S.botDead){S.botDead=1;deaths.push(`${S.cls}@F${S.floor}:${S.cause}${S.wardN?'(加護'+S.wardN+')':''}`)}if(S.mode!=='over')S.botDead=0});
+    if(Ss.some(S=>S.mode==='win'))return{win:true,deaths,floor:Ss[0].floor,ps:Ss.map(S=>({cls:S.cls,lv:S.level,hits:S.hitsTaken||0,dead:S.mode==='over'})),min:Math.round((T-t0)/60000)};
+    if(Ss.every(S=>S.mode==='over'))return{win:false,deaths,floor:Math.max(...Ss.map(S=>S.floor)),min:Math.round((T-t0)/60000)};
   }
   return{win:false,floor:ps[0].G.S.floor,cause:'timeout',min:75};
 }
@@ -129,7 +130,7 @@ if(require.main===module){
   (async()=>{
     const [cls,diff='normal',runs='4',sk='average']=process.argv.slice(2);
     const classes=cls.split(','),opt=SKILLS[sk]||SKILLS.average;const rs=[];
-    for(let i=0;i<+runs;i++)rs.push(await runParty(classes,diff,opt,i+1));
+    const off=+(process.env.SEED||0);for(let i=0;i<+runs;i++)rs.push(await runParty(classes,diff,opt,off+i+1));
     const floors=rs.map(r=>r.win?9:r.floor);
     console.log(`${cls.padEnd(19)} ${diff} ${sk}  clear ${rs.filter(r=>r.win).length}/${runs}  avgFloor ${(floors.reduce((a,b)=>a+b,0)/rs.length).toFixed(1)}  floors ${floors.join(',')}`);
     if(process.env.V)rs.forEach(r=>console.log(JSON.stringify(r)));
