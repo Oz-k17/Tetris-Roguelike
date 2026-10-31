@@ -724,7 +724,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='61',UPDATED='2026-10-31 15:54';
+const VERSION='62',UPDATED='2026-10-31 23:31';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -1000,7 +1000,8 @@ const DIFFS={
     bossX:{hp:3,dmg:1.25,strike:0.85,atk:0.8,sk:0.9},
     bossHp:DIFF_BASE.bossHp.map(v=>Math.round(v*1.3)),strikeDmg:DIFF_BASE.strikeDmg.map(v=>Math.round(v*1.3*10)/10)},
   // 難しい: boss HP x1.6 and strike x1.5, the boss acts faster, cold from floor 2, kills heal less, topping out hurts more
-  hard:{...DIFF_BASE,n:'難しい',d:'ボスが硬く痛く、攻撃もゴミ列も速い。冷気は地下2階から。普通に勝てる人向け',
+  hard:{...DIFF_BASE,n:'難しい',d:'雑魚もボスも硬く痛く、攻撃もゴミ列も速い。ボスはHP3倍。冷気は地下2階から。普通に勝てる人向け',
+    bossX:{hp:3,dmg:1.25,strike:0.85,atk:0.8,sk:0.9},
     bossHp:DIFF_BASE.bossHp.map(v=>Math.round(v*1.6)),strikeDmg:DIFF_BASE.strikeDmg.map(v=>Math.round(v*1.5*10)/10),
     strike:scaleMs(DIFF_BASE.strike,0.85),bossSk:scaleMs(DIFF_BASE.bossSk,0.85),bossAtk:scaleMs(DIFF_BASE.bossAtk,0.8),
     cold:[DIFF_BASE.cold[0],DIFF_BASE.cold[1],2],killHeal:10,topout:0.45}
@@ -2063,7 +2064,7 @@ function openSkillUp(ti){
 }
 function pickRelic(k,first){
   applyRelic(k);hide('ovReward');renderRelics();layout();
-  if(first){S.mode='play';spawn();hud(true);toast('地下1階');announceTransform();return}
+  if(first){S.mode='play';spawn();hud(true);toast(`地下${S.floor}階`);announceTransform();if(S.pendingLv)openReward(false);return}
   announceTransform();
   levelPicked();
 }
@@ -3185,6 +3186,7 @@ function onPeers(ch){
   }
   if(S&&S.coop){
     for(const p of prev)if(!NET.others.some(o=>o.peer===p.peer)&&p.presence&&p.presence.e===S.epoch)toast(`${nameOf(p)}との接続が切れた`);
+    for(const p of NET.others)if(!prev.some(o=>o.peer===p.peer)&&prev.length)setTimeout(()=>{if(NET&&NET.others.includes(p))toast(`${nameOf(p)}が途中参加した`)},1500);
   }
   if(NET.lobby)renderMembers();
 }
@@ -3311,6 +3313,19 @@ function absorbAllies(){
     }
   }
 }
+/* 途中参加: someone who joins a run in progress gets the party's average level as pending level-ups,
+   and gold for the floors they missed (the core choice comes at the next boss, as for everyone) */
+const CATCHUP_GOLD=35;
+function catchUp(){
+  const lvs=allies().map(p=>+(p.presence.st&&p.presence.st.lv)||+p.presence.lv||1);
+  const avg=lvs.length?Math.round(lvs.reduce((a,b)=>a+b,0)/lvs.length):1;
+  const ups=Math.max(0,avg-S.level),g=earn(CATCHUP_GOLD*(S.floor-1));
+  S.pendingLv+=ups;S.midJoin=true;
+  pop(['途中参加',`Lv+${ups}・${g}G`],'#8fe3ff',1.1);
+  toast(`途中参加：仲間に追いつくためLv${ups}ぶんの強化と${g}Gを受け取った`);
+  if(S.mode==='play'&&ups)openReward(false);
+  hud(true);
+}
 // I was still in a menu when the party moved on: close it and drop into the new floor with them
 function leftBehind(){
   if(S.mode==='reward'&&S.pendingLv>0){S.afterReward=null;toast('仲間は先に進んだ。選び終わったら合流する');return}
@@ -3361,13 +3376,18 @@ function netTick(now){
     const L=leader();
     if(L!=='me'&&L&&L.presence.g){
       const g=L.presence.g;
+      // joined a run already in progress: the very first sync finds the party deeper than floor 1
+      const fresh=!S.synced&&S.floor===1&&!S.bossKills&&+g.f>1;
       if(+g.f>S.floor){
         S.altarDone=false;S.incoming=[];
-        if(S.mode!=='wait'&&S.mode!=='over'&&S.mode!=='play'&&S.mode!=='pause')leftBehind();
+        if(!(fresh&&S.mode==='reward')&&S.mode!=='wait'&&S.mode!=='over'&&S.mode!=='play'&&S.mode!=='pause')leftBehind();
         S.floor=+g.f;S.boss=null;S.mobWait=MOB_FIRST;S.phase='play';S.readyFloor=0;S.hitAcc=0;S.kickVote='';floorShield();
         S.nodePicked=false;S.readyNode=0;S.nodeSeen=false;S.inNodeShop=false;
         if(S.mode==='wait'){hide('ovWait');resumePlay();toast(`地下${S.floor}階`)}
+        if(fresh)catchUp();
       }
+      if(!S.synced&&+g.f===S.floor&&g.ph!=='play'){S.readyFloor=S.floor+1;S.readyNode=S.floor+1}
+      S.synced=true;
       if(+g.f===S.floor){
         S.timeLeft=+g.t||0;
         if(['play','shop','route','node'].includes(g.ph))S.phase=(S.boss&&S.boss.dead)?(S.boss.elite?'node':'shop'):g.ph;
