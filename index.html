@@ -739,9 +739,9 @@ const SHAPES={
   B:[[1]], D:[[1]]
 };
 const CLASSES={
-  tank:{n:'守護者',role:'タンク',g:'盾',col:'#8fe3ff',hp:36,hpAlly:10,d:'最大HP36、仲間1人につき+10。仲間がいるとボスの強撃をすべて引き受け（仲間1人につき受けるダメージ-15%、受けるたびにシールド+3）、仲間へのゴミ列も遅らせる。強撃を25%の確率で防ぐ。',
+  tank:{n:'守護者',role:'タンク',g:'盾',col:'#8fe3ff',hp:36,hpAlly:10,d:'最大HP36、仲間1人につき+10。仲間がいるとボスの強撃をすべて引き受け（かばうときは受けるダメージが40〜60%減り、受けるたびに仲間1人につきシールド+3）、仲間へのゴミ列も遅らせる。強撃を25%の確率で防ぐ。',
     sk:{n:'氷壁',need:16,d:'5秒間、受けるダメージとゴミ列をすべて無効にする。自分と仲間全員にシールド+10。守護者専用の遺物とスキル強化で伸びる。'}},
-  heal:{n:'癒し手',role:'ヒーラー',g:'癒',col:'#7ee0a1',hp:30,d:'12列消すごとに自分と仲間全員のHPを8回復。パーティでは「加護」：癒し手が生きている間、全員が1階に1回だけ、倒れるはずの攻撃をHP1で耐える。',
+  heal:{n:'癒し手',role:'ヒーラー',g:'癒',col:'#7ee0a1',hp:30,d:'12列（パーティでは10列）消すごとに自分と仲間全員のHPを8回復。パーティでは「加護」：癒し手が生きている間、全員が1階に1回だけ、倒れるはずの攻撃をHP1で耐える。',
     sk:{n:'雪解けの奇跡',need:18,d:'自分と仲間全員のHPを18回復し、倒れた仲間をHP15で蘇生する。癒し手専用の遺物とスキル強化で伸びる。'}},
   buff:{n:'鼓手',role:'バッファー',g:'鼓',col:'#f2d06b',hp:30,d:'8列消すごとに鼓舞。15秒間、自分と仲間全員のボスへのダメージとスコア・経験値が1.5倍。',
     sk:{n:'凍てつく調べ',need:16,d:'6秒間ボスを凍らせる。強撃・ゴミ列・ボスのスキルが止まり、その間のボスへのダメージが1.25倍。仲間全員に効く。鼓手専用の遺物とスキル強化で伸びる。'}},
@@ -1158,7 +1158,7 @@ const xpNeed=l=>{const e=D().xpEarly||[];return Math.round(D().xp[0]*Math.pow(D(
 const floorXp=()=>1+0.15*(S.floor-1);
 const bombInterval=()=>{const b=lv('bomb')?14-3*(lv('bomb')-1)-(evo('e_bomb')?3:0):99;return core('k_bomb')?Math.min(8,b):b};
 const sandInterval=()=>10-2*(lv('sand')-1);
-const healNeed=()=>Math.max(4,12-2*lv('spring'));
+const healNeed=()=>Math.max(4,12-2*lv('spring')-(S.coop&&anyAllyAlive()?2:0));
 const buffNeed=()=>Math.max(4,8-2*lv('bell'));
 const buffDur=()=>15000+5000*lv('drum');
 const mult=()=>(1+0.5*lv('mult'))*(buffOn()?buffMul():1);
@@ -1722,7 +1722,7 @@ function hpTick(dt){
 }
 const coverN=()=>S.coop&&S.cls==='tank'?Math.min(MAXP-1,aliveAllies().length):0;
 function strikeHit(mul,why){
-  const cv=coverN();if(cv){mul*=1-0.15*cv;addShield(3*cv)}
+  const cv=coverN();if(cv){mul*=Math.max(0.4,0.7-0.1*cv);addShield(3*cv)}
   if(evo('e_thorns')&&S.boss&&!S.boss.dead){S.boss.myDmg+=60;S.fx.push({k:'hit',t:0});dmgNum(60,false,'氷茨')}
   if(R()<blockChance()){
     S.blocked++;S.fx.push({k:'block',t:0});if(!S.practice&&!S.debug){META.blocked=(META.blocked||0)+1;if(S.cls==='tank')checkUnlocks()}
