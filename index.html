@@ -740,7 +740,7 @@ const SHAPES={
 };
 const CLASSES={
   tank:{n:'守護者',role:'タンク',g:'盾',col:'#8fe3ff',hp:36,hpAlly:10,d:'最大HP36、仲間1人につき+10。仲間がいるとボスの強撃をすべて引き受け（かばうときは受けるダメージが40〜60%減り、受けるたびに仲間1人につきシールド+3）、仲間へのゴミ列も遅らせる。強撃を25%の確率で防ぐ。',
-    sk:{n:'氷壁',need:16,d:'5秒間、受けるダメージとゴミ列をすべて無効にする。自分と仲間全員にシールド+10。守護者専用の遺物とスキル強化で伸びる。'}},
+    sk:{n:'氷壁',need:16,d:'5秒間、受けるダメージとゴミ列をすべて無効にする。自分と仲間全員にシールド+10、仲間に予告中のゴミ列も消す。守護者専用の遺物とスキル強化で伸びる。'}},
   heal:{n:'癒し手',role:'ヒーラー',g:'癒',col:'#7ee0a1',hp:30,d:'12列（パーティでは10列）消すごとに自分と仲間全員のHPを8回復。パーティでは「加護」：癒し手が生きている間、全員が1階に1回だけ、倒れるはずの攻撃をHP1で耐える。',
     sk:{n:'雪解けの奇跡',need:18,d:'自分と仲間全員のHPを18回復し、倒れた仲間をHP15で蘇生する。癒し手専用の遺物とスキル強化で伸びる。'}},
   buff:{n:'鼓手',role:'バッファー',g:'鼓',col:'#f2d06b',hp:30,d:'8列消すごとに鼓舞。15秒間、自分と仲間全員のボスへのダメージとスコア・経験値が1.5倍。',
@@ -3305,7 +3305,7 @@ function absorbAllies(){
         }
       }
       else if(S.mode!=='over'){
-        if(cs==='tank'){const sh=num(v.ws,10,80);addShield(sh);if(u[1]==='A')S.immuneUntil=Math.max(S.immuneUntil||0,nowT()+4000);S.fx.push({k:'block',t:0});toast(`${who}の氷壁 シールド+${sh}${u[1]==='A'?'・無敵4秒':''}`);giftIn(p,`盾+${sh}`)}
+        if(cs==='tank'){const sh=num(v.ws,10,80),gr=incomingRows();S.incoming=[];addShield(sh);if(u[1]==='A')S.immuneUntil=Math.max(S.immuneUntil||0,nowT()+4000);S.fx.push({k:'block',t:0});toast(`${who}の氷壁 シールド+${sh}${gr?`・ゴミ列${gr}段を防いだ`:''}${u[1]==='A'?'・無敵4秒':''}`);giftIn(p,`盾+${sh}`)}
         else if(cs==='buff'){startFreeze(num(v.fm,6000,25000),Math.max(1,Math.min(3,+v.fx||1.25)),u[1]==='A');toast(`${who}の凍てつく調べ ボスが凍った`);giftIn(p,'凍結')}
       }
       hud(true);

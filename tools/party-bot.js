@@ -71,6 +71,8 @@ function candidates(G){
 }
 function act(P,opt){
   const G=P.G,S=G.S,rnd=P.rnd;if(!S)return;
+  if(S.incoming){P.seenG=P.seenG||new WeakSet();for(const g of S.incoming)if(!P.seenG.has(g)){P.seenG.add(g);S.botGarb=(S.botGarb||0)+g.rows}}
+  {const top=S.board.findIndex(r=>r.some(v=>v));const h=top<0?0:G.H-top;S.botMaxH=Math.max(S.botMaxH||0,h)}
   if(S.mode==='reward'){
     const btns=(P.els.cards&&P.els.cards.kids||[]).filter(c=>c.onclick&&!c.disabled);
     if(btns.length){btns[Math.floor(rnd()*Math.min(btns.length,3))].onclick();return}
@@ -117,7 +119,7 @@ async function runParty(classes,diff,opt,seed){
     T+=16;n++;
     for(const P of ps){P.tick();act(P,opt)}
     if(n%4===0)await flush();
-    if(process.env.D&&n%3750===0)console.log(Math.round((T-t0)/60000),ps.map(P=>{const S=P.G.S;return `${S.cls}:${S.mode}/${S.phase} f${S.floor} hp${S.hp} rd${S.readyFloor} ${S.boss?S.boss.name+(S.boss.dead?'x':'')+S.boss.hp:'-'} t${Math.round(S.timeLeft/1000)} host${P.G.NET&&P.G.NET.isHost} oth${(P.G.NET&&P.G.NET.others||[]).map(o=>o.presence&&o.presence.r+':'+(o.presence.g?o.presence.g.f+o.presence.g.ph:'-')).join(',')}`}).join(' | '));
+    if(process.env.D&&n%3750===0)console.log(Math.round((T-t0)/60000),ps.map(P=>{const S=P.G.S;return `${S.cls}:${S.mode}/${S.phase} f${S.floor} hp${S.hp} g${S.botGarb||0} hits${S.hitsTaken||0} lines${S.totalLines} hmax${S.botMaxH||0} ${S.boss?S.boss.name+(S.boss.dead?'x':'')+S.boss.hp:'-'} t${Math.round(S.timeLeft/1000)} host${P.G.NET&&P.G.NET.isHost} oth${(P.G.NET&&P.G.NET.others||[]).map(o=>o.presence&&o.presence.r+':'+(o.presence.g?o.presence.g.f+o.presence.g.ph:'-')).join(',')}`}).join(' | '));
     const Ss=ps.map(P=>P.G.S);
     Ss.forEach((S,i)=>{if(S.mode==='over'&&!S.botDead){S.botDead=1;deaths.push(`${S.cls}@F${S.floor}:${S.cause}${S.wardN?'(加護'+S.wardN+')':''}`)}if(S.mode!=='over')S.botDead=0});
     if(Ss.some(S=>S.mode==='win'))return{win:true,deaths,floor:Ss[0].floor,ps:Ss.map(S=>({cls:S.cls,lv:S.level,hits:S.hitsTaken||0,dead:S.mode==='over'})),min:Math.round((T-t0)/60000)};
