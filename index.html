@@ -2147,8 +2147,8 @@ function reroll(){
 function leaveShop(){
   hide('ovShop');layout();
   if(S.inNodeShop){S.inNodeShop=false;nodeDone();return}
-  if(S.map==='branch'&&!(coopOn()&&anyAllyAlive())){openRoute();return}
-  if(coopOn()&&anyAllyAlive()){
+  if(S.map==='branch'&&!partyWaits()){openRoute();return}
+  if(partyWaits()){
     S.readyFloor=S.floor+1;S.mode='wait';S.waitAt=performance.now();
     $('waitMsg').textContent='仲間の買い物が終わるのを待っています';
     show('ovWait');
@@ -2225,10 +2225,13 @@ function eliteLoot(){
   const keys=pickRelics(3,x=>x!=='potion'&&(!RELICS[x].c||RELICS[x].c===S.cls));
   openRelicChoice(keys,'精鋭の戦利品',`${S.eliteGold||0}G を手に入れた。遺物をひとつ選ぶ`,()=>{if(S.pendingLv){S.afterReward='node';openReward(false)}else nodeDone()});
 }
+// in a party, only the leader moves the floor on. A guest who is the last one standing still waits for the
+// (fallen) leader, who advances at once because a fallen player counts as ready.
+const partyWaits=()=>coopOn()&&(anyAllyAlive()||!isAuthority());
 // node finished: solo goes down at once, a party waits for everyone
 function nodeDone(){
   S.readyNode=S.floor+1;
-  if(coopOn()&&anyAllyAlive()){S.mode='wait';S.waitAt=performance.now();$('waitMsg').textContent='仲間を待っています';show('ovWait');return}
+  if(partyWaits()){S.mode='wait';S.waitAt=performance.now();$('waitMsg').textContent='仲間を待っています';show('ovWait');return}
   advanceFloor();
 }
 function openChoice(title,sub,opts){
