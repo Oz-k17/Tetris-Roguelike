@@ -739,9 +739,9 @@ const SHAPES={
   B:[[1]], D:[[1]]
 };
 const CLASSES={
-  tank:{n:'守護者',role:'タンク',g:'盾',col:'#8fe3ff',hp:36,hpAlly:6,d:'最大HP36、仲間1人につき+6。仲間がいるとボスの強撃をすべて引き受け、仲間へのゴミ列も遅らせる。強撃を25%の確率で防ぐ。受けるゴミ列の穴が2つになる。',
+  tank:{n:'守護者',role:'タンク',g:'盾',col:'#8fe3ff',hp:36,hpAlly:10,d:'最大HP36、仲間1人につき+10。仲間がいるとボスの強撃をすべて引き受け（仲間1人につき受けるダメージ-10%、受けるたびにシールド+2）、仲間へのゴミ列も遅らせる。強撃を25%の確率で防ぐ。受けるゴミ列の穴が2つになる。',
     sk:{n:'氷壁',need:16,d:'5秒間、受けるダメージとゴミ列をすべて無効にする。自分と仲間全員にシールド+10。守護者専用の遺物とスキル強化で伸びる。'}},
-  heal:{n:'癒し手',role:'ヒーラー',g:'癒',col:'#7ee0a1',hp:30,d:'12列消すごとに自分と仲間全員のHPを8回復。',
+  heal:{n:'癒し手',role:'ヒーラー',g:'癒',col:'#7ee0a1',hp:30,d:'12列消すごとに自分と仲間全員のHPを8回復。パーティでは「加護」：癒し手が生きている間、全員が1階に1回だけ、倒れるはずの攻撃をHP1で耐える。',
     sk:{n:'雪解けの奇跡',need:18,d:'自分と仲間全員のHPを18回復し、倒れた仲間をHP15で蘇生する。癒し手専用の遺物とスキル強化で伸びる。'}},
   buff:{n:'鼓手',role:'バッファー',g:'鼓',col:'#f2d06b',hp:30,d:'8列消すごとに鼓舞。15秒間、自分と仲間全員のボスへのダメージとスコア・経験値が1.5倍。',
     sk:{n:'凍てつく調べ',need:16,d:'6秒間ボスを凍らせる。強撃・ゴミ列・ボスのスキルが止まり、その間のボスへのダメージが1.25倍。仲間全員に効く。鼓手専用の遺物とスキル強化で伸びる。'}},
@@ -1679,7 +1679,7 @@ function applyDamage(n,pierce){
 function topOut(){
   if(S.practice){S.board=emptyBoard();S.combo=-1;toast('盤面リセット');spawn();return}
   const r=applyDamage(topoutDmg(),true);
-  if(r.dead){S.cause='天井に届いた';gameOver();return}
+  if(r.dead&&!ward()){S.cause='天井に届いた';gameOver();return}
   if(lv('bulwark')){
     const keep=S.board.slice(H-8).map(r=>r.slice());
     S.board=[...Array.from({length:H-8},()=>Array(W).fill(0)),...keep];
@@ -1689,11 +1689,21 @@ function topOut(){
   toast(`HP -${r.taken}　盤面リセット`);
   spawn();
 }
+/* 加護 (healer, party only): while a healer in the party is alive, each member survives one lethal hit per floor at HP 1 */
+function ward(){
+  if(!S.coop||S.wardFloor===S.floor)return false;
+  const h=S.cls==='heal'?null:aliveAllies().find(p=>p.presence.cls==='heal');
+  if(S.cls!=='heal'&&!h)return false;
+  S.wardFloor=S.floor;S.hp=1;S.wardN=(S.wardN||0)+1;S.fx.push({k:'heal',t:0});
+  pop(['加護',h?nameOf(h):'癒し手'],'#7ee0a1',1.2);sfx('heal');toast(`${h?nameOf(h)+'の':''}加護でHP1で踏みとどまった（この階はもう効かない）`);
+  if(h)giftIn(h,'加護');hud(true);return true;
+}
 function takeHit(n,why){
   // 氷鏡の盾: a boss hit returns damage based on the shield held at that moment
   const sh0=S.shield||0;
   if(lv('mirror')&&sh0>0&&S.boss&&!S.boss.dead&&why!=='冷気で凍えた'){const d=sh0*MIRROR_K;S.boss.myDmg+=d;S.fx.push({k:'hit',t:0});dmgNum(d,false,'氷鏡')}
   const r=applyDamage(n);
+  if(r.dead&&ward())return;
   if(r.dead){S.cause=why;gameOver();return}
   toast(r.taken?`${why} HP-${r.taken}`:`${why}　シールドで吸収`);
 }
@@ -1711,7 +1721,9 @@ function hpTick(dt){
     if(S.hitAcc>=coldMs()){S.hitAcc=0;takeHit(coldDmg(),'冷気で凍えた')}
   }
 }
+const coverN=()=>S.coop&&S.cls==='tank'?Math.min(MAXP-1,aliveAllies().length):0;
 function strikeHit(mul,why){
+  const cv=coverN();if(cv){mul*=1-0.1*cv;addShield(2*cv)}
   if(evo('e_thorns')&&S.boss&&!S.boss.dead){S.boss.myDmg+=60;S.fx.push({k:'hit',t:0});dmgNum(60,false,'氷茨')}
   if(R()<blockChance()){
     S.blocked++;S.fx.push({k:'block',t:0});if(!S.practice&&!S.debug){META.blocked=(META.blocked||0)+1;if(S.cls==='tank')checkUnlocks()}
