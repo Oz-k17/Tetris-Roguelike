@@ -385,6 +385,15 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .near i{grid-column:1 / -1;display:block;height:4px;border-radius:2px;background:var(--line);overflow:hidden}
 .near i b{display:block;height:100%;background:var(--gold)}
 .results{display:flex;flex-direction:column;gap:8px}
+.btnrow .dailybtn{border-color:var(--gold);color:var(--gold)}
+.dboard{display:flex;flex-direction:column;gap:4px}
+.drow{display:grid;grid-template-columns:24px auto 1fr auto auto;align-items:center;gap:8px;padding:6px 10px;border:1px solid #1a2b3e;border-radius:8px;background:#0d1826;font-size:13px}
+.drow b{font-family:var(--display);color:var(--muted);text-align:right}
+.drow em{font-style:normal;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drow span{font-size:11px;color:var(--muted)}
+.drow strong{font-family:var(--display);color:var(--gold);font-variant-numeric:tabular-nums}
+.drow.me{border-color:var(--gold)}
+.drow:nth-child(1) b{color:var(--gold)}
 .rcard{border:1px solid #1a2b3e;border-radius:10px;padding:10px 12px;background:#0d1826;display:flex;flex-direction:column;gap:8px}
 .rcard.me{border-color:#2c4a66}
 .rcard.down{opacity:.8}
@@ -512,6 +521,7 @@ i[data-ico]{display:contents}
     <div class="btnrow stack">
       <button class="cta" id="startBtn">ひとりで潜る</button>
       <button class="ghostbtn" id="coopBtn">みんなで潜る<small>最大4人</small></button>
+      <button class="ghostbtn dailybtn" id="dailyBtn" type="button">今日のお題<small id="dailySub">同じ種でみんなと競う</small></button>
     </div>
     <div class="btnrow three">
       <button class="ghostbtn" id="practiceBtn" type="button">練習</button>
@@ -612,6 +622,19 @@ i[data-ico]{display:contents}
   </div>
 </div>
 
+<div class="ov" id="ovDaily" hidden>
+  <div class="sheet">
+    <div class="kick">DAILY</div>
+    <h2>今日のお題</h2>
+    <p>日付ごとにクラス・マップ・ミノの順番・遺物の候補が決まっている。誰が遊んでも同じ条件で、スコアを競う。何回でも挑めて、その日のベストが残る。</p>
+    <dl class="stats2" id="dailyInfo"></dl>
+    <div class="lbl">今日のランキング</div>
+    <div class="dboard" id="dailyBoard"></div>
+    <button class="cta" id="dailyGo" type="button">挑む</button>
+    <button class="ghostbtn" id="dailyBack" type="button">戻る</button>
+  </div>
+</div>
+
 <div class="ov" id="ovCodex" hidden>
   <div class="sheet">
     <h2>図鑑</h2>
@@ -657,6 +680,7 @@ i[data-ico]{display:contents}
     <div class="nearlist" id="winNear"></div>
     <div class="lbl" id="winResLbl">この潜行の活躍</div>
     <div class="results" id="winRes"></div>
+    <button class="cta" id="winRoomBtn" type="button" hidden>この部屋でもう一度</button>
     <button class="cta" id="deeperBtn">さらに深く潜る</button>
     <button class="ghostbtn" id="winTitleBtn">タイトルに戻る</button>
   </div>
@@ -688,6 +712,7 @@ i[data-ico]{display:contents}
     <button class="ghostbtn" id="watchBtn" hidden>仲間を観戦する</button>
     <button class="ghostbtn" id="cheerBtn2" type="button" hidden>応援を送る（仲間にシールド+4・スキル+1）</button>
     <button class="cta" id="againBtn">もう一度潜る</button>
+    <button class="ghostbtn" id="goTitleBtn" type="button" hidden>タイトルに戻る</button>
   </div>
 </div>
 
@@ -695,7 +720,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='59',UPDATED='2026-10-28 16:45';
+const VERSION='60',UPDATED='2026-10-31 15:40';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -985,6 +1010,51 @@ let myDiff='easy';
 try{const d=localStorage.getItem('hyokutsu-diff');if(DIFFS[d])myDiff=d}catch(e){}
 const D=()=>DIFFS[S&&S.diff]||DIFFS.easy;
 // records are kept per difficulty; "easy" keeps the original keys so earlier records carry over
+/* ---------- 今日のお題 (daily challenge) ----------
+   The JST date picks the class and map (difficulty 普通, 氷層 0) and seeds every random choice.
+   Your best of the day is kept locally; on claude.ai it also goes to a shared ranking (db: daily/<your id>). */
+const jstDay=()=>new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
+const hashStr=t=>{let h=2166136261;for(let i=0;i<t.length;i++)h=Math.imul(h^t.charCodeAt(i),16777619);return h>>>0};
+function dailySpec(day){day=day||jstDay();const seed=hashStr('hyokutsu-'+day),r=mulberry(seed);
+  const cls=CLS_KEYS[Math.floor(r()*CLS_KEYS.length)],map=r()<0.5?'line':'branch';return{day,seed,cls,map,diff:'normal'}}
+let dailyNext=null,DB=null,dailyRows=null,dailyErr='';
+(async()=>{try{if(window.claude&&window.claude.use)DB=await window.claude.use('db')}catch(e){DB=null}})();
+const dailyLocal=day=>{try{return JSON.parse(localStorage.getItem('hyokutsu-daily-'+day)||'null')}catch(e){return null}};
+async function myUid(){try{return USER&&USER.id?await USER.id():null}catch(e){return null}}
+async function loadDaily(day){
+  if(!DB){dailyRows=null;return}
+  try{const q=await DB.collection('daily').where('d','==',day).orderBy('sc','desc').limit(20).get();
+    dailyRows=q.docs.map(d=>({id:d.id,...d.data()}));dailyErr=''}catch(e){dailyRows=null;dailyErr='ランキングを読み込めませんでした'}
+}
+async function submitDaily(rec){
+  try{const prev=dailyLocal(rec.d);if(!prev||rec.sc>prev.sc)localStorage.setItem('hyokutsu-daily-'+rec.d,JSON.stringify(rec))}catch(e){}
+  if(!DB)return;
+  const id=await myUid();if(!id)return;
+  try{const ref=DB.doc('daily/'+id),cur=await ref.get(),c=cur.exists?cur.data():null;
+    if(!c||c.d!==rec.d||rec.sc>(+c.sc||0))await ref.set({...rec,nm:myNick||''})}catch(e){}
+}
+async function renderDailyBoard(boxId,day){
+  const box=$(boxId);if(!box)return;
+  if(!DB){box.innerHTML='<p class="khint">みんなのランキングは claude.ai の作品ページで遊ぶと見られます</p>';return}
+  box.innerHTML='<p class="khint">読み込み中…</p>';
+  await loadDaily(day);
+  if(!dailyRows){box.innerHTML=`<p class="khint">${dailyErr||'ランキングはまだ使えません'}</p>`;return}
+  if(!dailyRows.length){box.innerHTML='<p class="khint">まだ誰も挑んでいない。一番乗りしよう</p>';return}
+  const me=await myUid();
+  let names={};try{if(USER&&USER.profiles)names=await USER.profiles(dailyRows.map(r=>r.id))}catch(e){}
+  box.innerHTML=dailyRows.map((r,i)=>{const nm=(names[r.id]&&names[r.id].name)||(typeof r.nm==='string'&&r.nm.slice(0,10))||'名無し';
+    return`<div class="drow${r.id===me?' me':''}"><b>${i+1}</b>${clsBadge(CLASSES[r.cls]?r.cls:'atk',22,14)}<em>${esc(nm)}${r.id===me?'（あなた）':''}</em><span>${r.win?'踏破':'地下'+(+r.fl|0)+'階'}</span><strong>${(+r.sc|0).toLocaleString()}</strong></div>`}).join('');
+}
+function openDaily(){
+  const d=dailySpec(),c=clsOf(d.cls),mine=dailyLocal(d.day);
+  hide('ovTitle');
+  $('dailyInfo').innerHTML=`<div><dt>日付</dt><dd>${d.day}</dd></div><div><dt>クラス</dt><dd>${clsBadge(d.cls,20,12)}${c.n}</dd></div><div><dt>マップ</dt><dd>${MAPS[d.map].n}</dd></div><div><dt>難易度</dt><dd>${DIFFS[d.diff].n}</dd></div><div><dt>今日のベスト</dt><dd>${mine?mine.sc.toLocaleString():'-'}</dd></div>`;
+  show('ovDaily');renderDailyBoard('dailyBoard',d.day);
+}
+function startDaily(){
+  const d=dailySpec();dailyNext=d;hide('ovDaily');
+  newRun(false,0,d.cls,d.diff,false,d.map,0);
+}
 const recKey=(k,d)=>d==='easy'?`hyokutsu-${k}`:`hyokutsu-${k}-${d}`;
 const readRec=(k,d)=>{try{return+localStorage.getItem(recKey(k,d))||0}catch(e){return 0}};
 let best=readRec('best',myDiff),deep=readRec('deep',myDiff);
@@ -992,6 +1062,7 @@ function saveBest(){if(S.debug)return;const d=S.diff||'easy';if(S.score>readRec(
 function noteDeep(){if(!S||S.practice||S.debug)return;
   if(S.floor>META.deep)META.deep=S.floor;if(S.cls==='tank'&&S.floor>META.tankDeep)META.tankDeep=S.floor;if(S.floor>(META.clsDeep[S.cls]||0))META.clsDeep[S.cls]=S.floor;checkUnlocks();const d=S.diff||'easy';if(S.floor>readRec('deep',d)){try{localStorage.setItem(recKey('deep',d),S.floor)}catch(e){}}if(d===myDiff)deep=Math.max(deep,S.floor)}
 function renderTitleInfo(){
+  {const d=dailySpec(),m=dailyLocal(d.day);$('dailySub').textContent=`${clsOf(d.cls).n}・${MAPS[d.map].n}${m?'・ベスト '+m.sc.toLocaleString():''}`}
   best=readRec('best',myDiff);deep=readRec('deep',myDiff);
   $('diffRow').innerHTML=DIFF_KEYS.map(k=>`<button type="button" class="dbtn${k===myDiff?' on':''}" data-d="${k}" title="${DIFFS[k].d}">${DIFFS[k].n}</button>`).join('');
   $('diffRow').querySelectorAll('button').forEach(b=>b.onclick=()=>{myDiff=b.dataset.d;try{localStorage.setItem('hyokutsu-diff',myDiff)}catch(e){}renderTitleInfo()});
@@ -1084,7 +1155,12 @@ const strikeMs=()=>{const a=D().strike;return Math.max(a[2],a[0]-a[1]*(S.floor-1
 // block chance stacks hyperbolically: 1 - 1/(1+a). The guardian alone is 25%; it approaches but never reaches 100%.
 const blockChance=extra=>{const a=(S.cls==='tank'?1/3:0)+0.2*(lv('guard')+(extra||0));return a>0?1-1/(1+a):0};
 const rot=(m,dir)=>dir>0?m[0].map((_,i)=>m.map(r=>r[i]).reverse()):m[0].map((_,i)=>m.map(r=>r[r.length-1-i]));
-const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+/* Randomness that decides the run goes through R (offers, events, shop, holes) and RB (the piece bag).
+   Normal runs use Math.random; 今日のお題 seeds both from the date, so everyone gets the same pieces and offers. */
+function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+let R=Math.random,RB=Math.random;
+const shuffleWith=(a,rnd)=>{for(let i=a.length-1;i>0;i--){const j=rnd()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const shuffle=a=>shuffleWith(a,R);
 const fmtTime=ms=>{const s=Math.ceil(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clsOf=k=>CLASSES[k]||CLASSES.atk;
@@ -1161,6 +1237,9 @@ function leader(){
   const al=allies();
   const hosts=al.filter(p=>p.presence.r==='host').sort((a,b)=>a.peer<b.peer?-1:1);
   if(hosts.length)return hosts[0];
+  // the host went back to the room's lobby after the run ended: nobody takes over a finished run
+  const roomHost=NET.others.find(p=>p.presence&&p.presence.r==='host');
+  if(roomHost&&(S.mode==='win'||(S.mode==='over'&&S.overAllDead)))return roomHost;
   // host left: smallest peer label takes over
   const labels=al.map(p=>p.peer);if(NET.myPeer)labels.push(NET.myPeer);
   labels.sort();
@@ -1181,7 +1260,7 @@ function collide(m,x,y){
 }
 function refill(){
   while(S.queue.length<8){
-    if(!S.bag.length){S.bag=['I','O','T','S','Z','J','L'];for(let i=0;i<lv('iwell');i++)S.bag.push('I');shuffle(S.bag)}
+    if(!S.bag.length){S.bag=['I','O','T','S','Z','J','L'];for(let i=0;i<lv('iwell');i++)S.bag.push('I');shuffleWith(S.bag,RB)}
     S.queue.push(S.bag.pop());
   }
 }
@@ -1195,6 +1274,9 @@ function spawn(){
   if(collide(S.cur.m,S.cur.x,S.cur.y))topOut();
 }
 function newRun(coop,epoch,cls,diff,practice,map,rank){
+  if(coop&&NET)NET.dmg={};
+  const daily=!coop&&!practice?dailyNext:null;dailyNext=null;
+  if(daily){R=mulberry(daily.seed);RB=mulberry(daily.seed^0x5bd1e995)}else{R=Math.random;RB=Math.random}
   const c=clsOf(cls);
   const allyN=coop&&NET?Math.min(MAXP-1,NET.others.length):0;
   const mhp=c.hp+(c.hpAlly||0)*allyN;
@@ -1206,6 +1288,7 @@ function newRun(coop,epoch,cls,diff,practice,map,rank){
      blocked:0,hitsTaken:0,shield:0,regenAcc:0,skCharge:0,skUses:0,tf:{},tfNew:null,skUp:['','',''],bakuC:0,incoming:[],offsetTotal:0,digC:0,digRows:0,evo:{},core:'',coreN:0,coreAcc:0,frenzyN:0,allyBuffMul:1.5,calmUntil:0,calmN:0,lastSkAt:-1e9,lastLinkAt:-1e9,freezeMul:1.3,echoFrom:0,echoUntil:0,rageUntil:0,immuneUntil:0,freezeUntil:0,blindUntil:0,webUntil:0,galeUntil:0,
      totalLines:0,relics:{},bag:[],queue:[],cur:null,hold:null,canHold:true,combo:-1,
      bombC:0,sandC:0,dropAcc:0,lockAcc:0,lockResets:0,mode:'reward',fx:[]};
+  if(daily){S.daily=daily.day;S.debug=false}
   refill();renderRelics();
   if(NET){NET.seen={};NET.dmg={};NET.rosterKey=''}
   $('partyBox').hidden=!S.coop;
@@ -1494,7 +1577,7 @@ function lockPiece(){
 const digEvery=(x=0)=>Math.max(4,8-2*(lv('dig')+x-1));
 function riseDig(){
   let over=S.board[0].some(v=>v);
-  S.board.shift();const row=Array(W).fill('G');row[Math.floor(Math.random()*W)]=0;S.board.push(row);
+  S.board.shift();const row=Array(W).fill('G');row[Math.floor(R()*W)]=0;S.board.push(row);
   if(S.cur){let k=0;while(collide(S.cur.m,S.cur.x,S.cur.y)&&k++<4)S.cur.y--;if(collide(S.cur.m,S.cur.x,S.cur.y))over=true}
   S.fx.push({k:'atk',t:0});sfx('warn');return over;
 }
@@ -1609,7 +1692,7 @@ function hpTick(dt){
 }
 function strikeHit(mul,why){
   if(evo('e_thorns')&&S.boss&&!S.boss.dead){S.boss.myDmg+=60;S.fx.push({k:'hit',t:0});dmgNum(60,false,'氷茨')}
-  if(Math.random()<blockChance()){
+  if(R()<blockChance()){
     S.blocked++;S.fx.push({k:'block',t:0});if(!S.practice&&!S.debug){META.blocked=(META.blocked||0)+1;if(S.cls==='tank')checkUnlocks()}
     addShield(15*lv('fortress'));
     toast(lv('fortress')?`盾で防いだ　シールド+${15*lv('fortress')}`:'盾で防いだ');
@@ -1792,7 +1875,7 @@ function openCore(){
   const pool=Object.keys(CORES).filter(k=>unlocked(k));
   // class leaning: the healer sees 命の泉 more, the guardian 霜の要塞, the drummer 黄金の心
   const lean={heal:'k_life',tank:'k_guard',buff:'k_gold'}[S.cls];
-  const pick=shuffle(pool.slice());if(lean&&pool.includes(lean)&&!pick.slice(0,3).includes(lean)&&Math.random()<0.6)pick.splice(2,0,lean);
+  const pick=shuffle(pool.slice());if(lean&&pool.includes(lean)&&!pick.slice(0,3).includes(lean)&&R()<0.6)pick.splice(2,0,lean);
   const keys=[...new Set(pick)].slice(0,3);
   S.mode='reward';
   $('rwLv').innerHTML='';$('rwTitle').textContent='核を選ぶ';
@@ -1830,7 +1913,7 @@ function openAltar(keys){
   show('ovReward');
 }
 function showWin(){
-  const al=allies();
+  const al=allies();dailyDone(true);
   if(!S.practice&&!S.debug){
     META.clears[S.cls]=(META.clears[S.cls]||0)+1;
     if((S.rank||0)>=rankMaxOf(S.cls)&&rankMaxOf(S.cls)<RANK_MAX){META.rankMax[S.cls]=(S.rank||0)+1;S.rankUp=META.rankMax[S.cls]}
@@ -1842,6 +1925,7 @@ function showWin(){
     ['受けたダメージ',S.hitsTaken],...(S.cls==='tank'?[['防いだ強撃',S.blocked]]:[]),['稼いだゴールド',S.totalGold+'G'],['スコア',S.score.toLocaleString()]]
     .map(([k,v])=>`<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
   renderResults('winRes');renderNear('winNear');
+  $('winRoomBtn').hidden=!coopOn();
   show('ovWin');
 }
 
@@ -1861,7 +1945,7 @@ function pickRelics(n,ok){
   while(out.length<n&&pool.length){
     const ct=S.core&&CORES[S.core]&&CORES[S.core].tag;
     const ws=pool.map(k=>{const r=RELICS[k];if(r.duo)return 3;const c=r.c;return(c===S.cls?4:c?0.25:1.5)*(r.w||1)*(ct&&r.t===ct?2.5:1)});
-    let t=ws.reduce((a,b)=>a+b,0),r=Math.random()*t,i=0;
+    let t=ws.reduce((a,b)=>a+b,0),r=R()*t,i=0;
     while(i<ws.length-1&&r>=ws[i]){r-=ws[i];i++}
     out.push(pool.splice(i,1)[0]);
   }
@@ -1984,7 +2068,7 @@ function shopItems(){
   items.push({kind:'charm',g:'符',n:'氷の護符',d:'ダメージを吸収するシールド+20',price:Math.round((16+3*S.floor)*priceMul())});
   items.push({kind:'clean',g:'掃',n:'雪かきの箒',d:'盤面に残ったゴミブロックをすべて消し、上のブロックを落とす',price:Math.round((18+3*S.floor)*priceMul())});
   // 弱体の札 is not a staple: it shows up in about a third of shops (each reroll rolls again)
-  if(Math.random()<WEAKEN_CHANCE)items.push({kind:'weaken',g:'札',n:'弱体の札',d:'次のボスのHPを15%削った状態で戦える',price:Math.round((22+3*S.floor)*priceMul())});
+  if(R()<WEAKEN_CHANCE)items.push({kind:'weaken',g:'札',n:'弱体の札',d:'次のボスのHPを15%削った状態で戦える',price:Math.round((22+3*S.floor)*priceMul())});
   return items;
 }
 function openShop(){
@@ -2063,7 +2147,7 @@ const ELITES=[{n:'氷の騎士',sk:'bite'},{n:'凍てる亡霊',sk:'blind'},{n:'
 function genNodes(){
   const w={elite:S.floor>=1?1.2:0,event:1.5,rest:1,treasure:0.8,merchant:0.7},out=[];
   const pool=Object.keys(w).filter(k=>w[k]>0);
-  while(out.length<3&&pool.length){let t=pool.reduce((a,k)=>a+w[k],0),r=Math.random()*t,i=0;while(i<pool.length-1&&r>=w[pool[i]]){r-=w[pool[i]];i++}out.push(pool.splice(i,1)[0])}
+  while(out.length<3&&pool.length){let t=pool.reduce((a,k)=>a+w[k],0),r=R()*t,i=0;while(i<pool.length-1&&r>=w[pool[i]]){r-=w[pool[i]];i++}out.push(pool.splice(i,1)[0])}
   return out;
 }
 function openRoute(){
@@ -2157,7 +2241,7 @@ function runEvent(){
       {g:'技',n:'スキルのゲージを満タンにする',d:'次の階の始まりからスキルが使える',go:()=>{S.skCharge=skNeed();nodeDone()}}]),
     ()=>{const ups=Object.keys(S.relics).filter(x=>RELICS[x]&&!RELICS[x].once&&!RELICS[x].cursed&&lv(x)<RELICS[x].max);
       openChoice('古い石碑','文字が刻まれた石碑が、淡く光っている',[
-      {g:'研',n:'遺物を1つ研ぐ',d:'持っている遺物の中からランダムに1つLv+1',off:!ups.length,go:()=>{const k=ups[Math.random()*ups.length|0];applyRelic(k);renderRelics();toast(`${RELICS[k].n} Lv+1`);announceTransform();nodeDone()}},
+      {g:'研',n:'遺物を1つ研ぐ',d:'持っている遺物の中からランダムに1つLv+1',off:!ups.length,go:()=>{const k=ups[R()*ups.length|0];applyRelic(k);renderRelics();toast(`${RELICS[k].n} Lv+1`);announceTransform();nodeDone()}},
       {g:'知',n:'経験値を得る',d:'石碑を読み解く（経験値+300）',go:()=>{gainXp(300);if(S.pendingLv){S.afterReward='node';openReward(false)}else nodeDone()}}])},
     ()=>openChoice('秘湯','洞窟の奥に、湯気の立つ温泉がある',[
       {g:'湯',n:'HPを全回復する',d:'ゆっくり浸かる',go:()=>{heal(S.maxHp);nodeDone()}},
@@ -2166,10 +2250,10 @@ function runEvent(){
       {g:'呪',n:'開ける',d:'代償つきの遺物を3つから選ぶ',go:()=>openRelicChoice(shuffle(Object.keys(RELICS).filter(k=>RELICS[k].cursed&&!lv(k))).slice(0,3),'呪いの宝箱','代償つきの遺物をひとつ選ぶ',nodeDone)},
       {g:'去',n:'立ち去る',d:'触らぬ神にたたりなし',go:nodeDone}]),
     ()=>openChoice('賭け好きの雪だるま','「30G賭けないか？　勝てば3倍だ」',[
-      {g:'賭',n:'30Gを賭ける',d:'半分の確率で90Gになる',off:S.gold<30,go:()=>{S.gold-=30;const win=Math.random()<0.5;if(win){S.gold+=90;S.totalGold+=60;toast('勝った！ 90G')}else toast('負けた…');hud(true);nodeDone()}},
+      {g:'賭',n:'30Gを賭ける',d:'半分の確率で90Gになる',off:S.gold<30,go:()=>{S.gold-=30;const win=R()<0.5;if(win){S.gold+=90;S.totalGold+=60;toast('勝った！ 90G')}else toast('負けた…');hud(true);nodeDone()}},
       {g:'去',n:'断る',d:'賭けはしない',go:nodeDone}])
   ];
-  evs[Math.random()*evs.length|0]();
+  evs[R()*evs.length|0]();
 }
 function advanceFloor(){
   S.altarDone=false;S.incoming=[];S.nodePicked=false;S.readyNode=0;S.nodeSeen=false;hide('ovRoute');
@@ -2184,8 +2268,9 @@ function advanceFloor(){
 /* ---------- screens ---------- */
 function show(id){$(id).hidden=false}
 function hide(id){$(id).hidden=true}
+function dailyDone(win){if(!S.daily||S.dailySent)return;S.dailySent=true;submitDaily({d:S.daily,sc:S.score,fl:S.floor,cls:S.cls,win:!!win})}
 function gameOver(){
-  S.mode='over';S.hp=Math.max(0,S.hp);noteDeep();
+  S.mode='over';S.hp=Math.max(0,S.hp);noteDeep();dailyDone(false);
   S.newBest=S.score>best;
   saveBest();
   hide('ovReward');hide('ovShop');hide('ovWait');hide('ovWin');
@@ -2227,7 +2312,7 @@ function renderResults(boxId){
 function showOver(){
   const allDead=!coopOn()||!anyAllyAlive();
   $('goTitle').textContent=coopOn()?(allDead?'全員力尽きた':'力尽きた'):'力尽きた';
-  $('goNote').hidden=!coopOn();
+  $('goNote').hidden=!coopOn()&&!S.daily;
   $('goNote').textContent=coopOn()?(allDead?'ここまでの潜行の記録です。':'仲間はまだ戦っている。癒し手の「雪解けの奇跡」で蘇生できる。'):'';
   const c=clsOf(S.cls);
   $('goKick').textContent=`RUN OVER · 地下${S.floor}階`;
@@ -2246,8 +2331,10 @@ function showOver(){
   $('goRelLbl').textContent=rk.length?`持っていた遺物 · ${rk.length}`:'';
   $('goRelics').innerHTML=rk.map(k=>{const r=RELICS[k];return`<span class="dia" title="${r.n}" style="color:${relicCol(r)}"><i>${r.g}</i>${S.relics[k]>1?`<sup>${S.relics[k]}</sup>`:''}</span>`}).join('');
   $('watchBtn').hidden=!(coopOn()&&!allDead);
-  $('againBtn').textContent=coopOn()?'タイトルに戻る':'もう一度潜る';
+  $('againBtn').textContent=coopOn()?(allDead?'この部屋でもう一度':'タイトルに戻る'):'もう一度潜る';
+  $('goTitleBtn').hidden=!(coopOn()&&allDead);
   S.overAllDead=allDead;
+  if(S.daily){$('goNote').textContent=`今日のお題（${S.daily}）の記録。ランキングはタイトルの「今日のお題」から`;$('againBtn').textContent='今日のお題をもう一度'}
   renderResults('goRes');renderNear('goNear');
   show('ovOver');
 }
@@ -2438,10 +2525,23 @@ function burst(y,row,mul){
 function shake(mag,dur){if(RM||!SET.shake)return;S.shake={mag,dur,t:0}}
 let toastT=0;
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),1300)}
+/* party rematch: back to the same room's lobby. The host starts again from there; anyone still
+   reading their results is pulled into the new run automatically. */
+function backToRoom(){
+  if(!NET||!NET.room){toTitle();return}
+  ['ovOver','ovPause','ovShop','ovReward','ovWait','ovWin','ovRoute','ovClass','ovSet'].forEach(hide);
+  $('practiceTools').hidden=true;
+  demo();$('partyBox').hidden=true;$('clsChip').hidden=true;$('skillRow').hidden=true;$('buffTag').hidden=true;layout();
+  NET.lobby=true;NET.lastKey='';NET.dmg={};
+  show('ovCoop');$('coopMenu').hidden=true;$('coopRoom').hidden=false;renderCoopCls();
+  $('codeShow').innerHTML=String(NET.code).split('').map(d=>`<span>${d}</span>`).join('');
+  coopMsg(NET.isHost?'同じ部屋に戻った。仲間がそろったら出発できます（結果画面の仲間も一緒に出発します）。':'同じ部屋に戻った。ホストが出発するのを待っています。クラスは出発まで変えられます。');
+  renderMembers();
+}
 function toTitle(){
   if(NET&&NET.room){try{NET.room.leave()}catch(e){}}
   NET=null;
-  ['ovOver','ovPause','ovShop','ovReward','ovWait','ovCoop','ovClass','ovWin','ovCodex','ovSet','ovRoute'].forEach(hide);
+  ['ovOver','ovPause','ovShop','ovReward','ovWait','ovCoop','ovClass','ovWin','ovCodex','ovSet','ovRoute','ovDaily'].forEach(hide);
   $('practiceTools').hidden=true;
   demo();$('partyBox').hidden=true;$('clsChip').hidden=true;$('skillRow').hidden=true;$('buffTag').hidden=true;layout();
   renderTitleInfo();
@@ -2570,7 +2670,7 @@ function setW(id,pct){const v=Math.max(0,Math.min(100,pct)).toFixed(1)+'%';if(hc
 function hud(force){
   if(!S||S.mode==='title')return;
   setText('floor',S.floor===FINAL?`地下${S.floor}階 最下層`:`地下${S.floor}階`);
-  {const rt=S.rank?`・氷層${S.rank}`:'',k=S.floor+'/'+S.endless+'/'+S.diff+'/'+S.map+rt;if(hc.prog!==k){hc.prog=k;$('prog').innerHTML=S.floor>FINAL||S.endless?`踏破済み・${DIFFS[S.diff].n}${S.map==='branch'?'・分岐':''}${rt}`:`クリアまで <b>${S.floor}/${FINAL}</b>・${DIFFS[S.diff].n}${S.map==='branch'?'・分岐':''}${rt}`}}
+  {const rt=(S.rank?`・氷層${S.rank}`:'')+(S.daily?'・今日のお題':''),k=S.floor+'/'+S.endless+'/'+S.diff+'/'+S.map+rt;if(hc.prog!==k){hc.prog=k;$('prog').innerHTML=S.floor>FINAL||S.endless?`踏破済み・${DIFFS[S.diff].n}${S.map==='branch'?'・分岐':''}${rt}`:`クリアまで <b>${S.floor}/${FINAL}</b>・${DIFFS[S.diff].n}${S.map==='branch'?'・分岐':''}${rt}`}}
   setText('score',S.score.toLocaleString());
   setText('gold',S.gold+'G');
   setText('lv','Lv '+S.level);
@@ -3079,7 +3179,7 @@ function renderMembers(){
   const list=NET.others.slice(0,MAXP-1);
   for(const p of list){
     const q=p.presence||{},c=clsOf(q.cls);
-    rows.push(`<div>${clsBadge(q.cls,28,24)}<em>${esc(NET.names[p.peer]||nickOf(p)||'仲間')}</em><span>${q.r==='host'?'ホスト':'参加'}・${c.n}</span></div>`);
+    rows.push(`<div>${clsBadge(q.cls,28,24)}<em>${esc(NET.names[p.peer]||nickOf(p)||'仲間')}</em><span>${q.r==='host'?'ホスト':'参加'}・${c.n}${q.l?'':'・結果を見ています'}</span></div>`);
   }
   if(list.length<MAXP-1)rows.push(`<div class="wait">仲間を待っています（${1+list.length}/${MAXP}）</div>`);
   if(NET.others.length>MAXP-1)rows.push(`<div class="wait">満員です。${MAXP}人を超えた人は参加できません</div>`);
@@ -3199,10 +3299,12 @@ function renderWait(){
 $('kickBtn').onclick=()=>{if(!S||S.mode!=='wait')return;const t=waitTarget();S.kickVote=S.kickVote===t?'':t;sfx('block');renderWait()};
 function netTick(now){
   if(!NET||!NET.room)return;
-  if(NET.lobby&&!NET.isHost){
+  const runDone=S&&S.coop&&(S.mode==='win'||(S.mode==='over'&&S.overAllDead));
+  if((NET.lobby||runDone)&&!NET.isHost){
     const L=NET.others.find(p=>p.presence&&p.presence.r==='host'&&p.presence.e&&p.presence.g);
-    if(L&&L.presence.e!==NET.seenEpoch){
-      NET.seenEpoch=L.presence.e;NET.lobby=false;hide('ovCoop');newRun(true,L.presence.e,myCls,DIFFS[L.presence.df]?L.presence.df:'easy',false,MAPS[L.presence.mp]?L.presence.mp:'line',Math.max(0,Math.min(RANK_MAX,+L.presence.rk||0)));
+    if(L&&L.presence.e!==NET.seenEpoch&&!(S&&S.coop&&L.presence.e===S.epoch)){
+      if(runDone)toast('ホストが次の潜行を始めた');
+      NET.seenEpoch=L.presence.e;NET.lobby=false;['ovCoop','ovOver','ovWin','ovPause','ovShop','ovReward','ovWait','ovRoute'].forEach(hide);newRun(true,L.presence.e,myCls,DIFFS[L.presence.df]?L.presence.df:'easy',false,MAPS[L.presence.mp]?L.presence.mp:'line',Math.max(0,Math.min(RANK_MAX,+L.presence.rk||0)));
     }
   }
   if(coopOn()){
@@ -3547,8 +3649,11 @@ $('setBtn2').onclick=()=>openSettings('ovPause');
 $('codexBack').onclick=()=>{hide('ovCodex');show('ovTitle')};
 $('setBack').onclick=()=>{CAP=null;previewStop();hide('ovSet');show(setFrom)};
 $('startBtn').onclick=()=>{pickMode='run';openClassPick()};
+$('dailyBtn').onclick=openDaily;$('dailyGo').onclick=startDaily;$('dailyBack').onclick=()=>{hide('ovDaily');show('ovTitle')};
 $('classBack').onclick=()=>{pickMode='run';hide('ovClass');show('ovTitle')};
-$('againBtn').onclick=()=>{if(S&&S.coop){toTitle()}else{hide('ovOver');openClassPick()}};
+$('againBtn').onclick=()=>{if(S&&S.daily&&!S.coop){hide('ovOver');openDaily();return}if(S&&S.coop){if(S.overAllDead&&NET&&NET.room)backToRoom();else toTitle()}else{hide('ovOver');openClassPick()}};
+$('goTitleBtn').onclick=toTitle;
+$('winRoomBtn').onclick=backToRoom;
 $('watchBtn').onclick=()=>{hide('ovOver');S.watching=true};
 $('deeperBtn').onclick=()=>{hide('ovWin');S.endless=true;S.mode=S.winFrom==='reward'?'reward':'play';if(S.mode==='reward'){show('ovReward');S.afterReward='shop'}else afterBoss()};
 $('winTitleBtn').onclick=toTitle;
