@@ -393,6 +393,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .drow span{font-size:11px;color:var(--muted)}
 .drow strong{font-family:var(--display);color:var(--gold);font-variant-numeric:tabular-nums}
 .drow.me{border-color:var(--gold)}
+.drow .pcls{display:flex;gap:2px}
+.drow.party em{font-size:12px}
 .drow:nth-child(1) b{color:var(--gold)}
 .rcard{border:1px solid #1a2b3e;border-radius:10px;padding:10px 12px;background:#0d1826;display:flex;flex-direction:column;gap:8px}
 .rcard.me{border-color:#2c4a66}
@@ -629,8 +631,10 @@ i[data-ico]{display:contents}
     <p>日付ごとにクラス・マップ・ミノの順番・遺物の候補が決まっている。誰が遊んでも同じ条件で、スコアを競う。何回でも挑めて、その日のベストが残る。</p>
     <dl class="stats2" id="dailyInfo"></dl>
     <div class="lbl">今日のランキング</div>
+    <div class="tabs" id="dailyTabs"></div>
     <div class="dboard" id="dailyBoard"></div>
-    <button class="cta" id="dailyGo" type="button">挑む</button>
+    <p class="khint">パーティで挑むときは「みんなで潜る」の部屋で、ホストがモードを「今日のお題」にします。クラスは各自で選べて、ミノの順番と遺物の候補は全員同じ</p>
+    <button class="cta" id="dailyGo" type="button">ひとりで挑む</button>
     <button class="ghostbtn" id="dailyBack" type="button">戻る</button>
   </div>
 </div>
@@ -720,7 +724,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='60',UPDATED='2026-10-31 15:40';
+const VERSION='61',UPDATED='2026-10-31 15:54';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -1033,8 +1037,24 @@ async function submitDaily(rec){
   try{const ref=DB.doc('daily/'+id),cur=await ref.get(),c=cur.exists?cur.data():null;
     if(!c||c.d!==rec.d||rec.sc>(+c.sc||0))await ref.set({...rec,nm:myNick||''})}catch(e){}
 }
+let dailyTab='solo';
+async function renderPartyBoard(box,day){
+  let rows;
+  try{const q=await DB.collection('dparty').where('d','==',day).orderBy('ps','desc').limit(60).get();rows=q.docs.map(d=>({id:d.id,...d.data()}))}catch(e){box.innerHTML='<p class="khint">ランキングを読み込めませんでした</p>';return}
+  const seen={},top=[];for(const r of rows){const k=String(r.e);if(seen[k])continue;seen[k]=1;top.push(r);if(top.length>=10)break}
+  if(!top.length){box.innerHTML='<p class="khint">まだどのパーティも挑んでいない。「みんなで潜る」の部屋でホストが「今日のお題」を選ぶと挑めます</p>';return}
+  const me=await myUid();
+  const ids=[...new Set(top.flatMap(r=>(Array.isArray(r.m)?r.m:[]).map(m=>m.ui).filter(x=>typeof x==='string'&&x)))];
+  let names={};try{if(USER&&USER.profiles&&ids.length)names=await USER.profiles(ids.slice(0,64))}catch(e){}
+  box.innerHTML=top.map((r,i)=>{const m=(Array.isArray(r.m)?r.m:[]).slice(0,MAXP);const mine=m.some(x=>x.ui&&x.ui===me);
+    const nm=m.map(x=>(names[x.ui]&&names[x.ui].name)||(typeof x.nm==='string'&&x.nm.slice(0,10))||'名無し');
+    return`<div class="drow party${mine?' me':''}"><b>${i+1}</b><span class="pcls">${m.map(x=>clsBadge(CLASSES[x.cls]?x.cls:'atk',20,12)).join('')}</span><em>${esc(nm.join('・'))}</em><span>${m.length}人・${r.win?'踏破':'地下'+(+r.fl|0)+'階'}</span><strong>${(+r.ps|0).toLocaleString()}</strong></div>`}).join('');
+}
 async function renderDailyBoard(boxId,day){
   const box=$(boxId);if(!box)return;
+  $('dailyTabs').innerHTML=[['solo','ひとり'],['party','パーティ']].map(([k,n])=>`<button type="button" data-k="${k}" class="${k===dailyTab?'on':''}">${n}</button>`).join('');
+  $('dailyTabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{dailyTab=b.dataset.k;renderDailyBoard(boxId,day)});
+  if(dailyTab==='party'&&DB){box.innerHTML='<p class="khint">読み込み中…</p>';renderPartyBoard(box,day);return}
   if(!DB){box.innerHTML='<p class="khint">みんなのランキングは claude.ai の作品ページで遊ぶと見られます</p>';return}
   box.innerHTML='<p class="khint">読み込み中…</p>';
   await loadDaily(day);
@@ -1275,7 +1295,7 @@ function spawn(){
 }
 function newRun(coop,epoch,cls,diff,practice,map,rank){
   if(coop&&NET)NET.dmg={};
-  const daily=!coop&&!practice?dailyNext:null;dailyNext=null;
+  const daily=!practice?dailyNext:null;dailyNext=null;
   if(daily){R=mulberry(daily.seed);RB=mulberry(daily.seed^0x5bd1e995)}else{R=Math.random;RB=Math.random}
   const c=clsOf(cls);
   const allyN=coop&&NET?Math.min(MAXP-1,NET.others.length):0;
@@ -1913,7 +1933,7 @@ function openAltar(keys){
   show('ovReward');
 }
 function showWin(){
-  const al=allies();dailyDone(true);
+  const al=allies();dailyDone(true);dailyPartyDone(true);
   if(!S.practice&&!S.debug){
     META.clears[S.cls]=(META.clears[S.cls]||0)+1;
     if((S.rank||0)>=rankMaxOf(S.cls)&&rankMaxOf(S.cls)<RANK_MAX){META.rankMax[S.cls]=(S.rank||0)+1;S.rankUp=META.rankMax[S.cls]}
@@ -2268,7 +2288,22 @@ function advanceFloor(){
 /* ---------- screens ---------- */
 function show(id){$(id).hidden=false}
 function hide(id){$(id).hidden=true}
-function dailyDone(win){if(!S.daily||S.dailySent)return;S.dailySent=true;submitDaily({d:S.daily,sc:S.score,fl:S.floor,cls:S.cls,win:!!win})}
+/* party daily: when the whole party is down (or wins), each member stores the party's total in dparty/<their id>,
+   keeping their best party of the day. The ranking groups rows by run (epoch). */
+let MYID=null,coopDaily=false;
+function dailyPartyDone(win){
+  if(!S.daily||!S.coop||S.dailySent)return;S.dailySent=true;
+  const mem=[{ui:MYID||'',cls:S.cls,sc:S.score,nm:myNick||''},...allies().slice(0,MAXP-1).map(p=>({ui:typeof p.presence.ui==='string'?p.presence.ui.slice(0,64):'',cls:CLASSES[p.presence.cls]?p.presence.cls:'atk',sc:Math.max(0,+p.presence.sc||0),nm:nickOf(p)}))];
+  submitDailyParty({d:S.daily,e:S.epoch,ps:mem.reduce((a,m)=>a+m.sc,0),fl:S.floor,win:!!win,m:mem});
+}
+async function submitDailyParty(rec){
+  try{const prev=JSON.parse(localStorage.getItem('hyokutsu-dparty-'+rec.d)||'null');if(!prev||rec.ps>prev.ps)localStorage.setItem('hyokutsu-dparty-'+rec.d,JSON.stringify(rec))}catch(e){}
+  if(!DB)return;
+  const id=await myUid();if(!id)return;
+  try{const ref=DB.doc('dparty/'+id),cur=await ref.get(),c=cur.exists?cur.data():null;
+    if(!c||c.d!==rec.d||rec.ps>(+c.ps||0))await ref.set(rec)}catch(e){}
+}
+function dailyDone(win){if(!S.daily||S.dailySent||S.coop)return;S.dailySent=true;submitDaily({d:S.daily,sc:S.score,fl:S.floor,cls:S.cls,win:!!win})}
 function gameOver(){
   S.mode='over';S.hp=Math.max(0,S.hp);noteDeep();dailyDone(false);
   S.newBest=S.score>best;
@@ -2334,7 +2369,8 @@ function showOver(){
   $('againBtn').textContent=coopOn()?(allDead?'この部屋でもう一度':'タイトルに戻る'):'もう一度潜る';
   $('goTitleBtn').hidden=!(coopOn()&&allDead);
   S.overAllDead=allDead;
-  if(S.daily){$('goNote').textContent=`今日のお題（${S.daily}）の記録。ランキングはタイトルの「今日のお題」から`;$('againBtn').textContent='今日のお題をもう一度'}
+  if(S.daily&&S.coop&&allDead)dailyPartyDone(false);
+  if(S.daily&&(!S.coop||allDead)){$('goNote').hidden=false;$('goNote').textContent=S.coop?`今日のお題（${S.daily}）のパーティ記録。合計スコアがパーティのランキングに載る`:`今日のお題（${S.daily}）の記録。ランキングはタイトルの「今日のお題」から`;if(!S.coop)$('againBtn').textContent='今日のお題をもう一度'}
   renderResults('goRes');renderNear('goNear');
   show('ovOver');
 }
@@ -3157,16 +3193,25 @@ function renderCoopMode(){
   if(!NET)return;
   const host=NET.isHost,hp=host?null:NET.others.find(p=>p.presence&&p.presence.r==='host');
   const q=hp&&hp.presence||{};
-  const mk=host?myMap:(MAPS[q.mp]?q.mp:'line'),dk=host?myDiff:(DIFFS[q.df]?q.df:'easy');
-  const rmax=host?rankMaxOf(myCls):RANK_MAX,rv=host?Math.min(myRank,rmax):Math.max(0,Math.min(RANK_MAX,+q.rk||0));
-  const chips=(kind,keys,cur,name)=>`<div class="diffrow">${keys.map(k=>`<button type="button" class="dbtn${k===cur?' on':''}" data-${kind}="${k}" ${host?'':'disabled'}>${name(k)}</button>`).join('')}</div>`;
-  $('coopMode').innerHTML=
+  const dy=host?coopDaily:!!q.dy,sp=dy?dailySpec(host?null:String(q.dy).slice(0,10)):null;
+  const mk=sp?sp.map:host?myMap:(MAPS[q.mp]?q.mp:'line'),dk=sp?sp.diff:host?myDiff:(DIFFS[q.df]?q.df:'easy');
+  const rmax=host?rankMaxOf(myCls):RANK_MAX,rv=sp?0:host?Math.min(myRank,rmax):Math.max(0,Math.min(RANK_MAX,+q.rk||0));
+  const chips=(kind,keys,cur,name,lock)=>`<div class="diffrow">${keys.map(k=>`<button type="button" class="dbtn${k===cur?' on':''}" data-${kind}="${k}" ${host&&!lock?'':'disabled'}>${name(k)}</button>`).join('')}</div>`;
+  const modeRow=`<div class="cmrow"><span class="lbl">モード</span>${chips('y',['run','daily'],dy?'daily':'run',k=>k==='daily'?'今日のお題':'いつもの')}</div>`;
+  if(sp){
+    $('coopMode').innerHTML=modeRow+
+      `<div class="cmrow"><span class="lbl">マップ</span>${chips('m',[mk],mk,k=>MAPS[k].n,1)}</div>`+
+      `<div class="cmrow"><span class="lbl">難易度</span>${chips('d',[dk],dk,k=>DIFFS[k].n,1)}</div>`+
+      `<small class="cmnote">今日のお題（${sp.day}）。マップ・難易度は日付で決まり、氷層は0。クラスは各自で選べて、ミノの順番と遺物の候補は全員同じ。全員の合計スコアでパーティのランキングに載る${host?'':'（ホストが決めます）'}</small>`;
+  }else $('coopMode').innerHTML=modeRow+
     `<div class="cmrow"><span class="lbl">マップ</span>${chips('m',Object.keys(MAPS),mk,k=>MAPS[k].n)}</div>`+
     `<div class="cmrow"><span class="lbl">難易度</span>${chips('d',DIFF_KEYS,dk,k=>DIFFS[k].n)}</div>`+
     `<div class="cmrow"><span class="lbl">氷層</span><div class="cmrank"><b>${rv}</b>${host?`<button type="button" class="dbtn" id="cmRkDown" ${rv<=0?'disabled':''} aria-label="氷層を下げる">−</button><button type="button" class="dbtn" id="cmRkUp" ${rv>=rmax?'disabled':''} aria-label="氷層を上げる">＋</button>`:''}</div></div>`+
     `<small class="cmnote">${host?`${MAPS[mk].d}。${DIFFS[dk].d}。${rv?'氷層'+rv+'：'+RANKS.slice(0,rv).join('・'):'氷層はあなたのクラスで踏破した段まで選べる'}`:`ホストが決めます。${MAPS[mk].n}・${DIFFS[dk].n}・氷層${rv}`}</small>`;
   if(!host)return;
   const save=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+  $('coopMode').querySelectorAll('[data-y]').forEach(b=>b.onclick=()=>{coopDaily=b.dataset.y==='daily';NET.lastKey='';renderCoopMode()});
+  if(sp)return;
   $('coopMode').querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{myMap=b.dataset.m;save('hyokutsu-map',myMap);NET.lastKey='';renderCoopMode()});
   $('coopMode').querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{myDiff=b.dataset.d;save('hyokutsu-diff',myDiff);NET.lastKey='';renderCoopMode()});
   const setRk=v=>{myRank=v;save('hyokutsu-rank',v);NET.lastKey='';renderCoopMode()};
@@ -3299,12 +3344,16 @@ function renderWait(){
 $('kickBtn').onclick=()=>{if(!S||S.mode!=='wait')return;const t=waitTarget();S.kickVote=S.kickVote===t?'':t;sfx('block');renderWait()};
 function netTick(now){
   if(!NET||!NET.room)return;
+  if(!MYID&&!NET.idReq&&USER){NET.idReq=1;myUid().then(v=>{if(v){MYID=v;if(NET)NET.lastKey=''}})}
   const runDone=S&&S.coop&&(S.mode==='win'||(S.mode==='over'&&S.overAllDead));
   if((NET.lobby||runDone)&&!NET.isHost){
     const L=NET.others.find(p=>p.presence&&p.presence.r==='host'&&p.presence.e&&p.presence.g);
     if(L&&L.presence.e!==NET.seenEpoch&&!(S&&S.coop&&L.presence.e===S.epoch)){
       if(runDone)toast('ホストが次の潜行を始めた');
-      NET.seenEpoch=L.presence.e;NET.lobby=false;['ovCoop','ovOver','ovWin','ovPause','ovShop','ovReward','ovWait','ovRoute'].forEach(hide);newRun(true,L.presence.e,myCls,DIFFS[L.presence.df]?L.presence.df:'easy',false,MAPS[L.presence.mp]?L.presence.mp:'line',Math.max(0,Math.min(RANK_MAX,+L.presence.rk||0)));
+      NET.seenEpoch=L.presence.e;NET.lobby=false;['ovCoop','ovOver','ovWin','ovPause','ovShop','ovReward','ovWait','ovRoute'].forEach(hide);
+      const dq=L.presence.dy&&/^\d{4}-\d\d-\d\d$/.test(L.presence.dy)?dailySpec(L.presence.dy):null;
+      if(dq){dailyNext=dq;newRun(true,L.presence.e,myCls,dq.diff,false,dq.map,0)}
+      else newRun(true,L.presence.e,myCls,DIFFS[L.presence.df]?L.presence.df:'easy',false,MAPS[L.presence.mp]?L.presence.mp:'line',Math.max(0,Math.min(RANK_MAX,+L.presence.rk||0)));
     }
   }
   if(coopOn()){
@@ -3373,9 +3422,9 @@ function netTick(now){
     pres.g=NET.isHost?{ph:S.phase,f:S.floor,t:Math.round(S.timeLeft/100)*100,
       boss:S.boss?{id:S.boss.id,n:S.boss.name,m:S.boss.max}:null,node:S.nodePicked?{f:S.floor,k:S.nodeKind}:null}:null;
   }else pres={r:NET.isHost?'host':'guest',l:1,cls:myCls,e:null,g:null};
-  pres.nm=myNick;pres.uid=MYUID;
+  pres.nm=myNick;pres.uid=MYUID;pres.ui=MYID||'';if(S&&S.coop)pres.sc=S.score;
   if(coopOn()){pres.ch=S.cheers||0;pres.em={n:S.emN||0,i:S.emI||0}}
-  if(NET.isHost){pres.df=S&&S.coop?S.diff:myDiff;pres.mp=S&&S.coop?S.map:myMap;pres.rk=S&&S.coop?S.rank:Math.min(myRank,rankMaxOf(myCls))}
+  if(NET.isHost){pres.dy=S&&S.coop?(S.daily||''):(coopDaily?jstDay():'');pres.df=S&&S.coop?S.diff:myDiff;pres.mp=S&&S.coop?S.map:myMap;pres.rk=S&&S.coop?S.rank:Math.min(myRank,rankMaxOf(myCls))}
   const key=JSON.stringify(pres);
   if(key===NET.lastKey)return;
   NET.lastKey=key;NET.lastSent=now;
@@ -3384,6 +3433,7 @@ function netTick(now){
 function hostStart(){
   if(!NET||!NET.isHost||!NET.others.length)return;
   NET.lobby=false;hide('ovCoop');
+  if(coopDaily){const sp=dailySpec();dailyNext=sp;newRun(true,Date.now(),myCls,sp.diff,false,sp.map,0);return}
   newRun(true,Date.now(),myCls,myDiff,false,myMap,Math.min(myRank,rankMaxOf(myCls)));
 }
 
