@@ -482,9 +482,9 @@ body.land header>.meter:not([id]) .bar{flex:1 1 50px;min-width:50px}
 body.land #skillRow{grid-area:sk}
 body.land main{grid-area:m;align-self:center}
 body.land .pad button{height:auto;min-height:44px}
-body.land .pad button[data-a=left]{grid-area:b1}body.land .pad button[data-a=right]{grid-area:b2}
+body.land .pad button[data-a=left]{grid-area:b1}body.land .pad button[data-a=ccw]{grid-area:b2}
 body.land .pad button[data-a=soft]{grid-area:b3}body.land .pad button[data-a=hard]{grid-area:b4}
-body.land .pad button[data-a=ccw]{grid-area:b5}body.land .pad button[data-a=cw]{grid-area:b6}
+body.land .pad button[data-a=cw]{grid-area:b5}body.land .pad button[data-a=right]{grid-area:b6}
 body.land .pad button[data-a=hold]{grid-area:b7}body.land .pad button[data-a=skill]{grid-area:b8}
 /* ---------- wide layout (PC / iPad landscape) ---------- */
 body.wide .app{max-width:1560px;padding:20px 28px;gap:0}
@@ -635,9 +635,9 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
   </main>
   <div class="pad" id="pad">
     <button data-a="left" aria-label="左へ"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
-    <button data-a="right" aria-label="右へ"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
     <button data-a="ccw" aria-label="左回転"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9a8 8 0 1 1 1.5 9"/><path d="M4 4v5h5"/></svg></button>
     <button data-a="cw" aria-label="右回転"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 9a8 8 0 1 0-1.5 9"/><path d="M20 4v5h-5"/></svg></button>
+    <button data-a="right" aria-label="右へ"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
     <button data-a="soft" aria-label="ソフトドロップ"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 9l7 7 7-7"/></svg></button>
     <button data-a="hard" class="hard" aria-label="ハードドロップ"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 5l6 6 6-6"/><path d="M6 11l6 6 6-6"/><path d="M5 21h14"/></svg></button>
     <button data-a="hold" id="holdBtn">HOLD</button>
@@ -938,7 +938,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='68',UPDATED='2026-11-02 17:00';
+const VERSION='69',UPDATED='2026-11-02 17:26';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
