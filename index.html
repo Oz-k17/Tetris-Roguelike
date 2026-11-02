@@ -386,6 +386,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .calc{position:fixed;z-index:26;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:8px;width:min(94vw,440px);padding:12px 10px 14px;border-radius:14px;
   background:radial-gradient(ellipse at center,rgba(42,36,16,.96),rgba(8,14,24,.94));border:2px solid var(--gold);box-shadow:0 0 0 1px rgba(0,0,0,.6),0 0 32px rgba(242,208,107,.45);pointer-events:none;transition:opacity .35s,transform .35s;animation:calcbox .2s ease-out}
 .calc.dim{opacity:.45}
+/* see-through while it sits over blocks or the falling piece */
+.calc.see{opacity:.3}
 .calc.out{opacity:0;transform:translate(-50%,-60%)}
 .calc .terms{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-end;gap:6px 8px}
 .calc .ct{display:flex;flex-direction:column;align-items:center;padding:4px 9px;border-radius:8px;background:rgba(8,14,24,.9);border:1px solid #2c4a66;opacity:0;animation:calcin .24s cubic-bezier(.2,.9,.3,1.5) forwards}
@@ -916,7 +918,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='66',UPDATED='2026-11-02 15:44';
+const VERSION='67',UPDATED='2026-11-02 16:50';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -2777,7 +2779,8 @@ function calcFx(det,dt,total){
   const terms=[[String(det.base),'b','基本'],...det.add.map(([n,v])=>['+'+v,'a',n]),...det.muls.map(([n,v])=>['×'+v,'m',n]),...(dt?[['×1.3','m','DT砲']]:[])];
   const STEP=RM?0:120,end=terms.length*STEP+80;
   const el=document.createElement('div');el.className='calc';
-  const vw=innerWidth,pw=Math.min(vw*0.94,440);el.style.left=Math.max(pw/2+6,Math.min(vw-pw/2-6,r.left+r.width/2))+'px';el.style.top=(r.top+r.height*0.32)+'px';
+  // as wide as the board at most, so it never spills over HOLD / NEXT beside it
+  const vw=innerWidth,pw=Math.min(vw*0.94,440,r.width+8);el.style.width=pw+'px';el.style.left=Math.max(pw/2+6,Math.min(vw-pw/2-6,r.left+r.width/2))+'px';el.style.top=(r.top+r.height*0.32)+'px';
   el.innerHTML=`<div class="terms">${terms.map(([v,k,n],i)=>`<span class="ct ${k}" style="animation-delay:${i*STEP}ms"><b>${v}</b><small>${esc(n)}</small></span>`).join('')}</div>`+
     `<div class="tot${total>=1000?' huge':''}" style="animation-delay:${end}ms"><b>${total.toLocaleString()}</b><small>ダメージ</small></div>`;
   document.body.appendChild(el);calcEl=el;
@@ -3154,14 +3157,16 @@ function drawBoard(dt){
     });
     bctx.globalAlpha=1;
   }
-  // floating damage numbers
+  // floating damage numbers (faded where they cover blocks or the falling piece)
   if(S.nums&&S.nums.length){
     S.nums=S.nums.filter(q=>{
       q.t+=dt;const life=900;if(q.t>=life)return false;
       const a=q.t/life,fs=Math.floor(s*(q.big?1.3:0.95));
-      bctx.globalAlpha=a>.6?(1-a)/.4:1;
       bctx.font=`${fs}px DotGothic16, monospace`;bctx.textAlign='center';bctx.textBaseline='middle';
       const x=W*s*q.x,y=s*(2.4-a*1.6);
+      {const tw=Math.max(bctx.measureText('-'+q.v).width,q.f?q.f.length*s*0.45:0)/2,bot=y+fs*(q.f?1.1:0.5);
+       const over=boardBusy((x-tw)/s,(y-fs/2)/s,(x+tw)/s,bot/s);
+       bctx.globalAlpha=(a>.6?(1-a)/.4:1)*(over?0.35:1)}
       bctx.lineWidth=4;bctx.strokeStyle='#0b1320';bctx.strokeText('-'+q.v,x,y);
       bctx.fillStyle=q.big?'#ffd36b':'#ff8fa0';bctx.fillText('-'+q.v,x,y);
       if(q.f){bctx.font=`${Math.floor(s*0.45)}px DotGothic16, monospace`;bctx.lineWidth=3;bctx.strokeText(q.f,x,y+fs*0.75);bctx.fillStyle='#c7d6e3';bctx.fillText(q.f,x,y+fs*0.75)}
@@ -3203,6 +3208,29 @@ function mini(ctx,t,cx,cy,s,alpha){
   ctx.save();ctx.translate(cx-w/2-minC*s,cy-h/2-minR*s);
   m.forEach((row,r)=>row.forEach((v,c)=>{if(v)cell(ctx,c,r,s,t,alpha)}));
   ctx.restore();
+}
+// is any block, the falling piece or its ghost inside this box (board cell units)?
+function boardBusy(x0,y0,x1,y1){
+  if(!S||!S.board)return false;
+  const cx0=Math.max(0,Math.floor(x0)),cx1=Math.min(W-1,Math.floor(x1)),cy0=Math.max(0,Math.floor(y0)),cy1=Math.min(H-1,Math.floor(y1));
+  for(let y=cy0;y<=cy1;y++)for(let x=cx0;x<=cx1;x++)if(S.board[y]&&S.board[y][x])return true;
+  const p=S.cur;if(p&&S.mode!=='over'){
+    let gy=p.y;while(!collide(p.m,p.x,gy+1))gy++;
+    for(let r=0;r<p.m.length;r++)for(let c=0;c<p.m[r].length;c++)if(p.m[r][c]){const x=p.x+c;
+      for(const yy of [p.y+r,gy+r])if(x>=cx0&&x<=cx1&&yy>=cy0&&yy<=cy1)return true}
+  }
+  return false;
+}
+// the damage math panel goes see-through while it covers something on the board
+function calcSee(){
+  if(!calcEl||!calcEl.isConnected||calcEl.classList.contains('out'))return;
+  const br=board.getBoundingClientRect(),cr=calcEl.getBoundingClientRect();if(!br.width||!C)return;
+  const k=C*(br.width/(W*C));
+  let over=boardBusy((cr.left-br.left)/k,(cr.top-br.top)/k,(cr.right-br.left)/k,(cr.bottom-br.top)/k);
+  // also HOLD / NEXT / relics / party beside the board
+  if(!over)for(const el of [holdC,nextC,$('relics'),$('partyBox')]){if(!el||el.hidden)continue;const r=el.getBoundingClientRect();
+    if(r.width&&r.height&&r.left<cr.right&&r.right>cr.left&&r.top<cr.bottom&&r.bottom>cr.top){over=true;break}}
+  calcEl.classList.toggle('see',over);
 }
 function drawSide(){
   const w=ASIDE,ms=Math.floor(w/5.2);
@@ -4140,7 +4168,7 @@ function frame(now){
     if(sh.t>=sh.dur){S.shake=null;board.style.transform=''}
     else{const m=sh.mag*(1-sh.t/sh.dur);board.style.transform=`translate(${((Math.random()*2-1)*m).toFixed(1)}px,${((Math.random()*2-1)*m).toFixed(1)}px)`}
   }
-  if(S){drawBoard(dt);drawSide();hud()}
+  if(S){drawBoard(dt);drawSide();hud();calcSee()}
   requestAnimationFrame(frame);
 }
 demo();layout();
