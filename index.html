@@ -199,16 +199,44 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .card.shopcard{grid-template-columns:48px 1fr auto}
 .card.shopcard .d{grid-column:2 / 4}
 /* shop: 2 columns of compact cards (glyph + name / price, then the full description underneath) */
-#shItems{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex-direction:initial}
-#shItems .shsec{grid-column:1 / -1;font-size:11px;letter-spacing:.16em;color:var(--muted);margin:2px 0 -2px}
-#shItems .card.shopcard{grid-template-columns:34px 1fr;gap:2px 8px;padding:10px;align-items:start;align-content:start;min-width:0}
-#shItems .card.shopcard .g{width:34px;height:34px;font-size:15px;grid-row:span 2}
-#shItems .card.shopcard .g.round svg{width:20px;height:20px}
-#shItems .card.shopcard .n{font-size:13px;line-height:1.3;min-width:0;overflow-wrap:anywhere}
-#shItems .card.shopcard .n em,#shItems .card.shopcard .n .ct{display:block;margin-left:0;font-size:10.5px}
-#shItems .card.shopcard .price{grid-column:2;font-size:15px;line-height:1.2}
-#shItems .card.shopcard .d{grid-column:1 / -1;font-size:11.5px;line-height:1.45;margin-top:4px}
-#shItems .card.shopcard .d .tg,#shItems .card.shopcard .d .dk{font-size:10px;line-height:15px;margin-bottom:2px}
+/* shop: relic list + item tiles + one detail panel with the buy button (fits one phone screen) */
+.shop2{gap:10px}
+.shlbl{font-size:11px;letter-spacing:.16em;color:var(--muted);margin-bottom:-4px}
+.shrel{display:flex;flex-direction:column;gap:6px}
+.shrow{display:flex;align-items:center;gap:10px;min-height:50px;padding:4px 12px 4px 8px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--fg);font-family:var(--body);text-align:left;cursor:pointer}
+.shrow.on,.shgood.on{border-color:var(--sc);background:#182a3c;box-shadow:inset 0 0 0 .5px var(--sc)}
+.shrow.sold,.shgood.sold{opacity:.45}
+.shrow .g{width:40px;height:40px;flex:none;display:grid;place-items:center;font-family:var(--display);font-size:16px}
+.shrow .mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.shrow .nm{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shrow .meta{display:flex;align-items:center;gap:6px;font-size:11px;white-space:nowrap;overflow:hidden}
+.shrow .meta .tg,.shdet .d .tg{display:inline-block;padding:0 5px;border:1px solid var(--tc);color:var(--tc);border-radius:3px;font-weight:700;line-height:15px}
+.shrow .meta em{font-style:normal;font-family:var(--display);color:var(--gold)}
+.shrow .meta .ct{font-weight:700}
+.shrow .meta .ev{color:#ff8fa0;font-weight:700}
+.shrow .price{flex:none;font-size:18px}
+.upl{font-size:10px;font-weight:700;color:var(--bg);background:var(--ice);padding:0 5px;border-radius:3px;margin-right:6px;vertical-align:1px}
+.shgoods{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.shgood{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:#c7d6e3;font-family:var(--body);font-size:11px;cursor:pointer}
+.shgood .rd,.shdet .rd{width:36px;height:36px;flex:none;display:grid;place-items:center;border:1.5px solid currentColor;border-radius:50%}
+.shgood .price{font-size:15px}
+.shdet{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1.5px solid var(--sc);border-radius:14px;background:var(--panel);min-height:150px}
+.shdet .hd{display:flex;align-items:center;gap:12px}
+.shdet .hd .g{width:48px;height:48px;flex:none;display:grid;place-items:center;font-family:var(--display);font-size:20px}
+.shdet .hd .rd{width:44px;height:44px}
+.shdet .hd b{display:block;font-size:18px}
+.shdet .sub{font-size:12px;font-weight:700}
+.shdet .d{font-size:14px;line-height:1.55}
+.shdet .d .tg,.shdet .d .dk{margin-right:6px;font-size:11px}
+.shdet .d .dk{display:inline-block;padding:0 6px;border-radius:3px;font-weight:700;line-height:16px;color:var(--bg)}
+.shdet .d .dk.add{background:#6f9cf5}.shdet .d .dk.mul{background:var(--gold)}
+.shdet .d .dd{font-weight:700}
+.shdet .ev{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:8px;background:#1a0f17;font-size:12px;line-height:1.5}
+.shdet .buy{margin-top:auto;height:52px;border:none;border-radius:10px;background:var(--gold);color:var(--bg);font-family:var(--display);font-size:19px;letter-spacing:.06em;cursor:pointer}
+.shdet .buy:disabled{background:#2c4560;color:#9fb6c9;cursor:default}
+.shfoot{display:grid;grid-template-columns:1fr 1.3fr;gap:8px}
+.shfoot .ghostbtn,.shfoot .cta{height:48px;font-size:13px}
+.shfoot .cta{background:none;border:1px solid var(--ice);color:var(--ice);font-size:16px}
 .card.clscard .g{border-color:currentColor}
 .card .n .rk{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-top:2px}
 .rankrow{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border:1px solid #5a4a22;border-radius:10px;background:#15140f}
@@ -579,14 +607,20 @@ i[data-ico]{display:contents}
 </div>
 
 <div class="ov" id="ovShop" hidden>
-  <div class="sheet">
+  <div class="sheet shop2">
     <div class="shophead">
       <div><h2>氷窟の行商人</h2><p id="shSub">地下2階へ降りる前に</p></div>
       <div class="purse"><span id="shGold">0G</span><div class="shhp" id="shHp"></div></div>
     </div>
-    <div class="cards" id="shItems"></div>
-    <button class="ghostbtn" id="rerollBtn">品ぞろえを入れ替える</button>
-    <button class="cta" id="leaveBtn">先へ進む</button>
+    <div class="shlbl">遺物</div>
+    <div class="shrel" id="shRel"></div>
+    <div class="shlbl">道具</div>
+    <div class="shgoods" id="shGoods"></div>
+    <div class="shdet" id="shDet"></div>
+    <div class="shfoot">
+      <button class="ghostbtn" id="rerollBtn">入れ替え</button>
+      <button class="cta" id="leaveBtn">先へ進む</button>
+    </div>
   </div>
 </div>
 
@@ -1983,7 +2017,8 @@ function pickRelics(n,ok){
   }
   return out;
 }
-function relicCardHtml(k,extra){
+// the pieces of a relic card; the level-up card and the shop arrange them differently
+function relicBits(k){
   const r=RELICS[k];if(!SEEN.r[k]){SEEN.r[k]=1;saveSeen()}
   const lvTxt=!r.once&&lv(k)?`Lv${lv(k)}→${lv(k)+1}`:'';
   const ct=r.cursed?`<span class="ct" style="color:#c58cff">代償つき</span>`:r.duo?`<span class="ct duo">デュオ <b style="color:${CLASSES[r.duo[0]].col}">${CLASSES[r.duo[0]].n}</b>×<b style="color:${CLASSES[r.duo[1]].col}">${CLASSES[r.duo[1]].n}</b></span>`:
@@ -1992,9 +2027,14 @@ function relicCardHtml(k,extra){
   if(r.t){const have=tagCount(r.t),owned=lv(k)>0;tg=`<span class="tg" style="--tc:${TAGS[r.t].col}">${r.t}${tf(r.t)?' 変身済み':` ${have}${owned?'':'→'+(have+1)}/3`}</span>`}
   const dkc=r.dk?`<span class="dk ${r.dk==='+'?'add':'mul'}">${r.dk==='+'?'＋ダメージ':'×ダメージ'}</span>`:'';
   const dd=r.dd?`<br><b class="dd">${r.dd()}</b>`:'';
-  const evh=Object.keys(EVOS).filter(e=>!evo(e)&&(EVOS[e].base===k||EVOS[e].cat===k)).map(e=>{const v=EVOS[e],bm=lv(v.base)>=RELICS[v.base].max,ch=lv(v.cat)>0;
-    return`<br><b class="dd" style="color:${v.col}">進化：${RELICS[v.base].n}（最大）${bm?'✓':''}＋${RELICS[v.cat].n}${ch?'✓':''} → ${v.n}</b>`}).join('');
-  const hint=evh+(r.t&&!tf(r.t)&&!lv(k)&&tagCount(r.t)===2?`<br><b class="dd" style="color:${TAGS[r.t].col}">取ると「${TAGS[r.t].tf}」に変身：${TAGS[r.t].d}</b>`:'');
+  const evs=Object.keys(EVOS).filter(e=>!evo(e)&&(EVOS[e].base===k||EVOS[e].cat===k)).map(e=>{const v=EVOS[e],bm=lv(v.base)>=RELICS[v.base].max,ch=lv(v.cat)>0;
+    return`<b class="dd" style="color:${v.col}">進化：${RELICS[v.base].n}（最大）${bm?'✓':''}＋${RELICS[v.cat].n}${ch?'✓':''} → ${v.n}</b>`});
+  const trans=r.t&&!tf(r.t)&&!lv(k)&&tagCount(r.t)===2?`<b class="dd" style="color:${TAGS[r.t].col}">取ると「${TAGS[r.t].tf}」に変身：${TAGS[r.t].d}</b>`:'';
+  return{r,lvTxt,ct,tg,dkc,dd,evs,trans};
+}
+function relicCardHtml(k,extra){
+  const{r,lvTxt,ct,tg,dkc,dd,evs,trans}=relicBits(k);
+  const hint=evs.map(h=>'<br>'+h).join('')+(trans?'<br>'+trans:'');
   return `<span class="g dia" style="color:${relicCol(r)}"><i>${r.g}</i></span><span class="n">${r.n}${lvTxt?`<em>${lvTxt}</em>`:''}${ct}</span>${extra||''}<span class="d">${tg}${dkc}${r.d}${dd}${hint}</span>`;
 }
 
@@ -2105,33 +2145,61 @@ function shopItems(){
 }
 function openShop(){
   S.mode='shop';S.shop={items:shopItems(),rerolls:0};
-  $('shSub').textContent=`${S.lastBoss}を倒した。地下${S.floor+1}階へ降りる前に`;
+  $('shSub').textContent=`${S.lastBoss}を倒した · 地下${S.floor+1}階の前`;
   renderShop();show('ovShop');
 }
 const rerollCost=()=>8+6*S.shop.rerolls;
+const ITEM_SHORT={heal:'薬',charm:'護符',clean:'箒',weaken:'札'};
 function renderShop(){
   $('shGold').innerHTML=ico('gold','#f2d06b','#8a6d1f',24)+S.gold+'G';
   $('shHp').innerHTML=ico('hp','#ff6f7f','#ffd0d6')+`${S.hp}/${S.maxHp}`+(S.shield?ico('shield','#8fe3ff','#e4f9ff')+S.shield:'');
-  const box=$('shItems');box.innerHTML='';
   const hasG=S.board.some(r=>r.some(v=>v==='G'));
-  // two sections in a 2-column grid: relics (incl. polish) first, then consumables
-  const isRel=it=>it.kind==='relic'||it.kind==='up';
-  const order=S.shop.items.map((it,i)=>({it,i}));
-  const sec=n=>{const h=document.createElement('div');h.className='shsec';h.textContent=n;box.appendChild(h)};
-  [['遺物',order.filter(o=>isRel(o.it))],['道具',order.filter(o=>!isRel(o.it))]].forEach(([title,list])=>{if(!list.length)return;sec(title);list.forEach(({it,i})=>{
-    const useless=(it.kind==='heal'&&S.hp>=S.maxHp)?'満タン':(it.kind==='clean'&&!hasG)?'不要':'';
-    const poor=S.gold<it.price;
-    const priceHtml=`<span class="price${poor&&!it.sold&&!useless?' poor':''}">${it.sold?'購入済':useless||it.price+'G'}</span>`;
-    const b=document.createElement('button');b.type='button';b.className='card shopcard';
-    b.disabled=it.sold||!!useless||poor;
-    b.innerHTML=it.kind==='relic'?relicCardHtml(it.k,priceHtml):it.kind==='up'?relicCardHtml(it.k,priceHtml).replace('<span class="n">','<span class="n"><b class="upl">研磨</b> '):
-      `<span class="g round" style="color:${ITEM_COL[it.kind]}">${ico(it.kind==='heal'?'heal_item':it.kind,ITEM_COL[it.kind],'#e4eff8',24)}</span><span class="n">${it.n}</span>${priceHtml}<span class="d">${it.d}</span>`;
-    b.onclick=()=>buy(i);
-    box.appendChild(b);
-  })});
+  const items=S.shop.items,isRel=it=>it.kind==='relic'||it.kind==='up';
+  // why an item can't be bought right now (empty string: it can)
+  const block=it=>it.sold?'購入済':(it.kind==='heal'&&S.hp>=S.maxHp)?'満タン':(it.kind==='clean'&&!hasG)?'不要':'';
+  if(!(S.shop.sel>=0&&S.shop.sel<items.length)){const f=items.findIndex(it=>!block(it));S.shop.sel=f<0?0:f}
+  const sel=S.shop.sel;
+  const priceHtml=it=>{const bl=block(it);return`<span class="price${!bl&&S.gold<it.price?' poor':''}">${bl||it.price+'G'}</span>`};
+  const pick=i=>()=>{S.shop.sel=i;renderShop()};
+  const rel=$('shRel'),gd=$('shGoods');rel.innerHTML='';gd.innerHTML='';
+  items.forEach((it,i)=>{
+    const b=document.createElement('button');b.type='button';b.onclick=pick(i);b.setAttribute('aria-pressed',i===sel);
+    if(isRel(it)){
+      const x=relicBits(it.k),col=relicCol(x.r);
+      b.className='shrow'+(i===sel?' on':'')+(it.sold?' sold':'');b.style.setProperty('--sc',col);
+      b.innerHTML=`<span class="g dia" style="color:${col}"><i>${x.r.g}</i></span><span class="mid"><span class="nm">${it.kind==='up'?'<b class="upl">研磨</b>':''}${x.r.n}</span>`+
+        `<span class="meta">${x.tg}${x.lvTxt?`<em>${x.lvTxt}</em>`:''}${x.ct}${x.evs.length?'<span class="ev">進化あり</span>':''}${x.trans?`<span class="ev" style="color:${TAGS[x.r.t].col}">変身できる</span>`:''}</span></span>${priceHtml(it)}`;
+      rel.appendChild(b);
+    }else{
+      const col=ITEM_COL[it.kind];
+      b.className='shgood'+(i===sel?' on':'')+(it.sold?' sold':'');b.style.setProperty('--sc',col);b.setAttribute('aria-label',it.n);
+      b.innerHTML=`<span class="rd" style="color:${col}">${ico(it.kind==='heal'?'heal_item':it.kind,col,'#e4eff8',24)}</span><span>${ITEM_SHORT[it.kind]||it.n}</span>${priceHtml(it)}`;
+      gd.appendChild(b);
+    }
+  });
+  const it=items[sel],det=$('shDet');
+  if(it){
+    let hd,body,col;
+    if(isRel(it)){
+      const x=relicBits(it.k);col=relicCol(x.r);
+      const sub=[it.kind==='up'?'研磨（持っている遺物のLvを上げる）':'',x.lvTxt].filter(Boolean).join(' · ');
+      hd=`<span class="g dia" style="color:${col}"><i>${x.r.g}</i></span><span><b>${x.r.n}</b><span class="sub" style="color:${col}">${sub}</span>${x.ct?' '+x.ct:''}</span>`;
+      const hints=[...x.evs,x.trans].filter(Boolean);
+      body=`<span class="d">${x.tg}${x.dkc}${x.r.d}${x.dd}</span>${hints.length?`<span class="ev">${hints.join('')}</span>`:''}`;
+    }else{
+      col=ITEM_COL[it.kind];
+      hd=`<span class="rd" style="color:${col}">${ico(it.kind==='heal'?'heal_item':it.kind,col,'#e4eff8',24)}</span><span><b>${it.n}</b><span class="sub" style="color:${col}">道具 · その場で使う</span></span>`;
+      body=`<span class="d">${it.d}</span>`;
+    }
+    const bl=block(it),poor=!bl&&S.gold<it.price;
+    det.style.setProperty('--sc',col);
+    det.innerHTML=`<div class="hd">${hd}</div>${body}<button type="button" class="buy"${bl||poor?' disabled':''}>${bl||(poor?`ゴールドが足りない（${it.price}G）`:`${it.price}G で買う`)}</button>`;
+    det.querySelector('.buy').onclick=()=>buy(sel);
+  }else det.innerHTML='';
   const rc=rerollCost();
-  $('rerollBtn').textContent=`遺物の品ぞろえを入れ替える（${rc}G）`;
+  $('rerollBtn').innerHTML=`入れ替え <b style="font-family:var(--display);font-weight:400;color:var(--gold)">${rc}G</b>`;
   $('rerollBtn').disabled=S.gold<rc;
+  $('leaveBtn').textContent='先へ進む';
 }
 function buy(i){
   const it=S.shop.items[i];
@@ -2153,6 +2221,7 @@ function reroll(){
   S.gold-=c;S.shop.rerolls++;
   const keep=S.shop.items.filter(it=>it.kind!=='relic'&&it.kind!=='up');
   S.shop.items=[...shopItems().filter(it=>it.kind==='relic'||it.kind==='up'),...keep];
+  S.shop.sel=-1;
   hud(true);renderShop();
 }
 function leaveShop(){
