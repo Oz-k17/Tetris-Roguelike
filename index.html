@@ -464,6 +464,116 @@ i[data-ico]{display:contents}
 .members .cb{width:28px;height:28px}
 .rlist .cb{align-self:center}
 @media (prefers-reduced-motion:reduce){.bar b,.toast{transition:none}.spin{animation:none}}
+/* ---------- wide layout (PC / iPad landscape) ---------- */
+body.wide .app{max-width:1560px;padding:20px 28px;gap:0}
+body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
+.desk{flex:1;min-height:0;display:grid;grid-template-columns:minmax(240px,300px) auto minmax(280px,1fr);gap:26px}
+.desk[hidden]{display:none}
+.dkcol{min-height:0;min-width:0;display:flex;flex-direction:column;gap:14px;overflow:hidden}
+.dkme{display:flex;align-items:center;gap:14px}
+.dkcls{width:56px;height:56px;flex:none;display:grid;place-items:center;border-radius:10px}
+.dkme>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.dkfloor{font-family:var(--display);font-size:30px;letter-spacing:.04em;line-height:1.1}
+.dkme small{font-size:13px;color:var(--muted)}.dkme small b{color:var(--ice)}
+.dkhp{display:flex;flex-direction:column;gap:6px}
+.dkhpn{display:flex;align-items:center;gap:8px}
+.dkhpn .px{width:20px;height:20px}
+#dkHpT{font-family:var(--display);font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
+#dkHpT small{font-size:20px;color:var(--muted)}#dkHpT em{font-style:normal;font-size:22px;color:var(--ice);margin-left:10px}
+.dkhp.low #dkHpT{color:var(--danger)}
+.dkhpbar{position:relative;height:14px;border-radius:3px;background:var(--panel);overflow:hidden}
+.dkhpbar b{position:absolute;top:0;bottom:0;left:0;background:var(--danger);transition:width .2s}
+.dkhpbar b.s{background:var(--ice);opacity:.75}
+.dktiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.dkt{display:flex;flex-direction:column;gap:4px;padding:10px;border:1px solid var(--line);border-radius:8px;background:#101b29;min-width:0}
+.dkt>span{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
+.dkt>b{font-family:var(--display);font-weight:400;font-size:21px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dkt>b.xp{color:var(--xp)}.dkt>b.gold{color:var(--gold)}
+.dkbar{height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.dkbar b{display:block;height:100%;width:0;background:var(--xp);transition:width .15s}
+.dkskill{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid #5a2732;border-radius:10px;background:#160f18;--skc:var(--danger)}
+.dkskill.ready{box-shadow:0 0 0 1px var(--skc),0 0 20px color-mix(in srgb,var(--skc) 30%,transparent)}
+.dkskh{display:flex;align-items:center;gap:8px}
+.dkskh .k{font-size:11px;letter-spacing:.14em;color:var(--skc)}.dkskh b{font-size:15px}
+.dkskh .v,.dkpas .v{margin-left:auto;font-family:var(--display);font-size:16px}
+.dkbar.sk{height:8px;background:#2a141c}.dkbar.sk b{background:var(--skc)}
+.dkskill .d{font-size:12px;line-height:1.5;color:#9fb6c9}
+.dkskill .d kbd{font-family:var(--display);color:var(--fg);padding:0 5px;border:1px solid #2c4560;border-radius:3px}
+.dkpas{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;font-size:12px;color:#9fb6c9;padding-top:6px;border-top:1px dashed #3a2430}
+.dkpas .v{font-size:13px;margin:0}.dkpas .dkbar b{background:var(--skc)}
+.dkrel{display:flex;flex-direction:column;gap:8px;min-height:0;flex:1}
+.dkrh{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;color:var(--muted)}
+.dkrh span:first-child{letter-spacing:.16em}
+.dktags{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.dktag{display:flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:#101b29}
+.dktag b{font-family:var(--display);font-weight:400;font-size:15px}
+.dktag span{display:flex;gap:3px}.dktag span i{width:7px;height:7px;border-radius:1px;background:var(--line)}
+.dktag em{margin-left:auto;font-style:normal;font-size:11px;font-family:var(--display)}
+.dktag.done{background:rgba(143,227,255,.06)}
+.dkrelslot{min-height:0;overflow-y:auto;scrollbar-width:thin}
+.desk .relics{gap:4px;padding:4px 0 0 4px}
+.desk .relics .dia{width:34px;height:34px}
+.dkver{margin-top:auto;font-size:11px;color:#4f6a80;font-family:var(--display)}
+.dkm{gap:10px;align-items:stretch}
+.dkenemy{display:flex;flex-direction:column;gap:7px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#101b29}
+.dkenemy.boss{border-color:#5a2732;background:#1a0f17}
+.dkenemy.mob{border-color:#2c4560}
+.dkeh{display:flex;align-items:center;gap:8px;min-width:0}
+.dkeh .btag{display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border-radius:3px;background:var(--danger);color:var(--bg);font-size:11px;font-weight:700;letter-spacing:.1em;flex:none}
+.dkenemy.mob .btag{background:#9fd8ff}.dkenemy.wait .btag{display:none}
+.dkeh b{font-family:var(--display);font-weight:400;font-size:20px;color:#ffd0d6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.dkenemy.mob .dkeh b,.dkenemy.wait .dkeh b{color:var(--fg)}
+.dkeh .v{margin-left:auto;font-family:var(--display);font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.dkebar{height:12px;border-radius:2px;background:#2a141c;overflow:hidden}
+.dkebar b{display:block;height:100%;background:var(--danger);transition:width .2s}
+.dkenemy.mob .dkebar b{background:#9fd8ff}.dkenemy.wait .dkebar{background:var(--panel)}.dkenemy.wait .dkebar b{background:var(--ice)}
+.dkleg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11px;color:#9fb6c9}
+.dkleg span{display:flex;align-items:center;gap:4px}.dkleg i{width:8px;height:8px}
+.dktimers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;font-size:12px}
+.dktimers>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.dktimers>div>span{display:flex;justify-content:space-between;gap:6px;white-space:nowrap}
+.dktimers i{font-style:normal;overflow:hidden;text-overflow:ellipsis}.dktimers i+i{font-family:var(--display);flex:none}
+#dkT1 span{color:#ff8d9a}#dkT2 span{color:#c8b8ff}
+.dkbar.st{background:#2a141c}.dkbar.st b{background:var(--danger)}
+.dkbar.sk2{background:#241c3a}.dkbar.sk2 b{background:var(--xp)}
+.dkboard{display:flex;gap:10px;align-items:flex-start}
+.dkside{display:flex;flex-direction:column;gap:6px;width:72px}
+.dkside .lbl{font-size:10px;letter-spacing:.14em;color:var(--muted)}
+.dkcalc{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border:1.5px solid #5a4a22;border-radius:12px;background:#17150f;transition:box-shadow .3s,border-color .3s}
+.dkcalc.hot{border-color:var(--gold);box-shadow:0 0 32px rgba(242,208,107,.14)}
+.dkch{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:12px;letter-spacing:.16em;color:#c9b064}
+.dkch .dklb{font-family:var(--display);letter-spacing:0;font-size:14px;color:var(--xp);text-align:right}
+.dkterms{display:flex;flex-wrap:wrap;gap:6px;min-height:46px;align-items:center}
+.dkterms .dkempty{font-size:12px;color:#7d7454}
+.dkterms .ct{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:50px;padding:5px 8px;border:1px solid #2c4560;border-radius:7px;background:var(--bg)}
+.dkterms .ct b{font-family:var(--display);font-weight:400;font-size:20px;line-height:1.1}
+.dkterms .ct small{font-size:10px;color:#9fb6c9;white-space:nowrap}
+.dkterms .ct.a b{color:var(--ice)}.dkterms .ct.m{border-color:#5a4a22}.dkterms .ct.m b{color:var(--gold)}
+@media (prefers-reduced-motion:no-preference){.dkterms .ct{animation:dkin .25s both}}
+@keyframes dkin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.dktot{display:flex;align-items:baseline;justify-content:flex-end;gap:10px;padding-top:8px;border-top:1px dashed #5a4a22}
+.dktot span{font-size:13px;color:#c9b064}
+.dktot b{font-family:var(--display);font-weight:400;font-size:44px;line-height:.9;color:var(--gold);text-shadow:0 0 18px rgba(242,208,107,.3)}
+.dklog{flex:1;min-height:0;display:flex;flex-direction:column;gap:7px;overflow:hidden}
+.dklog .lbl,.desk #partyBox>.lbl{font-size:11px;letter-spacing:.16em;color:var(--muted)}
+#dkLog{display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.dkli{display:flex;align-items:center;gap:12px;padding:7px 12px;border-left:3px solid var(--line);border-radius:0 8px 8px 0;background:#101b29}
+.dkli time{width:40px;flex:none;font-family:var(--display);font-size:12px;color:#6f879b}
+.dkli span{flex:1;min-width:0;font-size:13px;line-height:1.45}
+.dkli b{font-family:var(--display);font-weight:400;font-size:16px;white-space:nowrap}
+.dkkeys{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:#6f879b}
+.dkkeys b{font-family:var(--display);font-weight:400;color:#9fb6c9}
+#dkPadSlot .pad{grid-template-columns:repeat(8,1fr);gap:6px}
+#dkPadSlot .pad button{height:52px}
+.desk #partyBox{display:flex;flex-direction:column;gap:8px}
+.desk #partyBox[hidden]{display:none}
+.desk #partyList{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.desk .mate{flex-direction:row;align-items:flex-end;gap:10px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#101b29;position:relative;width:auto}
+.desk .mate>div{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.desk .mate span{font-size:13px;max-width:none;color:var(--fg)}
+.desk .mate .mhpt{font-family:var(--display);font-size:17px;white-space:nowrap;overflow:visible}
+.desk .mate .mhp{max-width:none;height:6px}
+.desk .mate.down{opacity:.5}
 </style>
 
 <div class="app">
@@ -510,6 +620,54 @@ i[data-ico]{display:contents}
     <button data-a="hard" class="hard" aria-label="ハードドロップ"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 5l6 6 6-6"/><path d="M6 11l6 6 6-6"/><path d="M5 21h14"/></svg></button>
     <button data-a="hold" id="holdBtn">HOLD</button>
     <button data-a="skill" class="skill" id="skillBtn" aria-label="クラススキル"><span id="skIco"></span><span id="skTxt">SKILL</span></button>
+  </div>
+  <!-- PC / iPad landscape: three columns (me · enemy + board · damage, party, log). The board, HOLD/NEXT,
+       relics, party and (on touch screens) the pad are moved in here by setWide(). -->
+  <div class="desk" id="desk" hidden>
+    <section class="dkcol dkl">
+      <div class="dkme"><span class="dkcls" id="dkCls"></span><div><span class="dkfloor" id="dkFloor"></span><small id="dkProg"></small></div></div>
+      <div class="dkhp" id="dkHp"><div class="dkhpn"><i data-ico="hp" data-f="#ff6f7f" data-f2="#ffd0d6"></i><span id="dkHpT"></span></div><div class="dkhpbar"><b id="dkHpB"></b><b class="s" id="dkShB"></b></div></div>
+      <div class="dktiles">
+        <div class="dkt"><span><i data-ico="xp" data-f="#b9a3ff"></i>レベル</span><b class="xp" id="dkLv"></b><div class="dkbar xp"><b id="dkXp"></b></div></div>
+        <div class="dkt"><span><i data-ico="gold" data-f="#f2d06b" data-f2="#8a6d1f"></i>ゴールド</span><b class="gold" id="dkGold"></b></div>
+        <div class="dkt"><span>スコア</span><b id="dkScore"></b></div>
+      </div>
+      <div class="dkskill" id="dkSkill">
+        <div class="dkskh"><span class="k">スキル</span><b id="dkSkN"></b><span class="v" id="dkSkV"></span></div>
+        <div class="dkbar sk"><b id="dkSkB"></b></div>
+        <span class="d" id="dkSkD"></span>
+        <div class="dkpas" id="dkPas" hidden><span id="dkPasL"></span><div class="dkbar"><b id="dkPasB"></b></div><span class="v" id="dkPasV"></span></div>
+      </div>
+      <div class="dkrel">
+        <div class="dkrh"><span id="dkRelN">遺物</span><span>同じタグ3つで変身</span></div>
+        <div class="dktags" id="dkTags"></div>
+        <div class="dkrelslot" id="dkRelSlot"></div>
+      </div>
+      <span class="dkver" id="dkVer"></span>
+    </section>
+    <section class="dkcol dkm">
+      <div class="dkenemy" id="dkEnemy">
+        <div class="dkeh"><span class="btag" id="dkETag"><i data-ico="boss" data-f="#0b1320"></i><i id="dkETagT">BOSS</i></span><b id="dkEName"></b><span class="v" id="dkEVal"></span></div>
+        <div class="dkebar"><b id="dkEBar"></b></div>
+        <div class="dkleg" id="dkELeg" hidden></div>
+        <div class="dktimers">
+          <div id="dkT1"><span><i id="dkT1L"></i><i id="dkT1V"></i></span><div class="dkbar st"><b id="dkT1B"></b></div></div>
+          <div id="dkT2"><span><i id="dkT2L"></i><i id="dkT2V"></i></span><div class="dkbar sk2"><b id="dkT2B"></b></div></div>
+        </div>
+      </div>
+      <div class="dkboard"><div id="dkBoardSlot"></div><div class="dkside"><span class="lbl">HOLD</span><div id="dkHoldSlot"></div><span class="lbl">NEXT</span><div id="dkNextSlot"></div></div></div>
+    </section>
+    <section class="dkcol dkr">
+      <div class="dkcalc" id="dkCalc">
+        <div class="dkch"><span>直前のダメージ</span><span class="dklb" id="dkCalcTag"></span></div>
+        <div class="dkterms" id="dkTerms"><span class="dkempty">列を消すと、ここに計算が出る</span></div>
+        <div class="dktot"><span>敵へ</span><b id="dkTot">-</b></div>
+      </div>
+      <div id="dkPartySlot"></div>
+      <div class="dklog"><span class="lbl">ログ</span><div id="dkLog"></div></div>
+      <div class="dkkeys" id="dkKeys"></div>
+      <div id="dkPadSlot"></div>
+    </section>
   </div>
 </div>
 
@@ -758,7 +916,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='65',UPDATED='2026-11-02 12:47';
+const VERSION='66',UPDATED='2026-11-02 15:44';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -1344,7 +1502,7 @@ function newRun(coop,epoch,cls,diff,practice,map,rank){
      totalLines:0,relics:{},bag:[],queue:[],cur:null,hold:null,canHold:true,combo:-1,
      bombC:0,sandC:0,dropAcc:0,lockAcc:0,lockResets:0,mode:'reward',fx:[]};
   if(daily){S.daily=daily.day;S.debug=false}
-  refill();renderRelics();
+  refill();renderRelics();DKLOG.length=0;if($('dkTerms'))$('dkTerms').innerHTML='<span class="dkempty">列を消すと、ここに計算が出る</span>';if($('dkTot'))$('dkTot').textContent='-';
   if(NET){NET.seen={};NET.dmg={};NET.rosterKey=''}
   $('partyBox').hidden=!S.coop;
   $('skIco').innerHTML=clsBadge(S.cls,18,12);$('skillBtn').style.setProperty('--skc',c.col);hc.sk='';
@@ -1604,7 +1762,8 @@ function lockPiece(){
       S.boss.myDmg+=dmg;S.fx.push({k:'hit',t:0});
       dmgNum(dmg,hardClear||pc,det.f+(dt?' ×1.3':''));
       // the math panel shows while a REN is going, or for a hit worth 10%+ of the boss's HP
-      if(S.combo>0||dmg>=S.boss.max*0.1)calcFx(det,dt,dmg);
+      const big=S.combo>0||dmg>=S.boss.max*0.1;
+      if(WIDE)deskCalc(det,dt,dmg,clearLabel(n,ts,b2b,pc,dt),big);else if(big)calcFx(det,dt,dmg);
       if(n===4&&lv('lifeice')&&performance.now()-S.lastLeech>=15000&&S.hp<S.maxHp){
         S.lastLeech=performance.now();heal(8*lv('lifeice'));S.fx.push({k:'heal',t:0});toast(`生命の氷柱 HP+${8*lv('lifeice')}`);hud(true);
       }
@@ -1873,7 +2032,7 @@ function mobDefeated(b){
   const g=earn(MOB_GOLD[0]+MOB_GOLD[1]*S.floor);
   gainXp(MOB_XP*floorXp());
   S.score+=Math.round(250*S.floor*mult());
-  pop([b.name,'撃破',`+${g}G`],'#9fd8ff',1.05);sfx('kill');toast(`${b.name}を倒した　+${g}G`);hud(true);
+  pop([b.name,'撃破',`+${g}G`],'#9fd8ff',1.05);sfx('kill');toast(`${b.name}を倒した`);logPush(`${b.name}を倒した`,`+${g}G`,'#f2d06b');hud(true);
 }
 function bossHpTick(){
   const b=S.boss;if(!b)return;
@@ -2644,7 +2803,7 @@ function burst(y,row,mul){
 }
 function shake(mag,dur){if(RM||!SET.shake)return;S.shake={mag,dur,t:0}}
 let toastT=0;
-function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),1300)}
+function toast(msg){logPush(msg);const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),1300)}
 /* party rematch: back to the same room's lobby. The host starts again from there; anyone still
    reading their results is pulled into the new run automatically. */
 function backToRoom(){
@@ -2831,6 +2990,7 @@ function hud(force){
    const canCheer=co&&S.mode==='over'&&anyAllyAlive();$('cheerBtn').hidden=!(canCheer&&S.watching);$('cheerBtn2').hidden=!canCheer;
    const cd=S.cheerAt&&nowT()-S.cheerAt<6000;$('cheerBtn').disabled=$('cheerBtn2').disabled=!!cd;
    $('myBub').hidden=!(S.myBubUntil&&nowT()<S.myBubUntil)}
+  if(WIDE)deskHud();
 }
 // rebuilds the ally rows when the roster or the size mode changes; returns true when there is nobody to show
 function renderPartyDom(){
@@ -3070,8 +3230,114 @@ function drawSide(){
 }
 
 /* ---------- layout ---------- */
+/* ---------- wide layout ---------- */
+let WIDE=false;
+const TOUCH=(()=>{try{return matchMedia('(pointer: coarse)').matches||('ontouchstart' in window)}catch(e){return false}})();
+// PC windows and iPad in landscape get the three-column layout; phones and portrait tablets keep the tall one
+const wantWide=()=>{const w=innerWidth,h=innerHeight;return h>=500&&w>h*1.05&&w>=900};
+const HOME={};
+function setWide(on){
+  if(on===WIDE)return;WIDE=on;
+  document.body.classList.toggle('wide',on);$('desk').hidden=!on;
+  const bw=document.querySelector('.boardwrap'),parts=[['bw',bw],['hold',holdC],['next',nextC],['rel',$('relics')],['pb',$('partyBox')],['pad',$('pad')]];
+  if(!HOME.bw)for(const[k,el]of parts)HOME[k]=[el.parentNode,el.nextSibling];
+  if(on){
+    const to={bw:'dkBoardSlot',hold:'dkHoldSlot',next:'dkNextSlot',rel:'dkRelSlot',pb:'dkPartySlot',pad:TOUCH?'dkPadSlot':null};
+    for(const[k,el]of parts)if(to[k])$(to[k]).appendChild(el);
+  }else for(const[k,el]of parts.reverse()){const[p,n]=HOME[k];p.insertBefore(el,n&&n.parentNode===p?n:null)}
+  $('dkKeys').hidden=TOUCH;
+  for(const k in hc)if(k.startsWith('dk'))delete hc[k];
+  if(NET)NET.rosterKey='';
+}
+function layoutWide(){
+  const mid=document.querySelector('.dkm'),en=$('dkEnemy');
+  const availH=mid.clientHeight-en.offsetHeight-10-2;
+  const availW=Math.min(620,innerWidth*0.4)-ASIDE-12;
+  C=Math.max(14,Math.min(40,Math.floor(Math.min(availH/H,availW/W))));
+  sizeCanvas(board,W*C,H*C);sizeCanvas(holdC,ASIDE,56);
+  matePS=6;nextSlot=46;mateGrid=false;
+  sizeCanvas(nextC,ASIDE,(S&&S.relics?nextN():1)*nextSlot);
+  if(S&&S.coop&&NET){renderPartyDom();fillParty(NET.others.filter(p=>p.presence&&p.presence.e===S.epoch).slice(0,MAXP-1))}
+  renderKeys();
+}
+function renderKeys(){
+  const k=a=>(SET.keys[a]||[]).filter(Boolean).map(keyName).join('/')||'-';
+  $('dkKeys').innerHTML=[[k('left')+' '+k('right'),'移動'],[k('ccw')+' '+k('cw'),'回転'],[k('hard'),'ハード'],[k('hold'),'ホールド'],[k('skill'),'スキル'],[k('pause'),'一時停止']].map(([a,b])=>`<span><b>${esc(a)}</b> ${b}</span>`).join('');
+}
+// log: what just happened, newest first (toasts, big hits, kills)
+const DKLOG=[];
+function logPush(txt,v,col){
+  if(!S||S.mode==='title'||!txt)return;
+  if(!S.t0)S.t0=nowT();
+  const t=fmtTime(Math.max(0,nowT()-S.t0)).replace(/^(\d+):/,'$1:');
+  if(DKLOG[0]&&DKLOG[0].txt===txt&&!v)return;
+  DKLOG.unshift({t,txt:String(txt),v:v||'',col:col||''});if(DKLOG.length>14)DKLOG.length=14;hc.dkLogK='';
+}
+const clearLabel=(n,ts,b2b,pc,dt)=>[ts==='full'?['T-SPIN','T-SPIN SINGLE','T-SPIN DOUBLE','T-SPIN TRIPLE'][n]:ts?'T-SPIN MINI':n>4?`${n}ライン`:['','1ライン','2ライン','3ライン','4ライン'][n],dt?'DT砲':'',b2b?'B2B':'',S.combo>0?`REN ${S.combo}`:'',pc?'全消し':''].filter(Boolean).join(' · ');
+function calcTerms(det,dt){return[[String(det.base),'b','基本'],...det.add.map(([n,v])=>['+'+v,'a',n]),...det.muls.map(([n,v])=>['×'+v,'m',n]),...(dt?[['×1.3','m','DT砲']]:[])]}
+function calcSound(n,total){
+  const STEP=RM?0:120,end=n*STEP+80;
+  if(!RM&&AC&&SET.sfx)for(let i=0;i<n;i++)tone(520*Math.pow(2,Math.min(i,12)/12),0.07,'square',0.07,1,AC.currentTime+i*STEP/1000);
+  setTimeout(()=>{sfx(total>=1000?'kill':'quad');shake(Math.min(10,4+total/250),260);buzz(total>=1000?[30,40,40]:25)},end);
+}
+function deskCalc(det,dt,total,lbl,big){
+  const terms=calcTerms(det,dt);
+  $('dkTerms').innerHTML=terms.map(([v,k,n],i)=>`<span class="ct ${k}" style="animation-delay:${RM?0:i*60}ms"><b>${v}</b><small>${esc(n)}</small></span>`).join('');
+  $('dkTot').textContent='-'+total.toLocaleString();$('dkCalcTag').textContent=lbl;
+  const c=$('dkCalc');c.classList.toggle('hot',big);
+  if(big){calcSound(terms.length,total);logPush(lbl||'ダメージ','-'+total.toLocaleString(),'#f2d06b')}
+}
+function deskHud(){
+  const c=clsOf(S.cls),b=S.boss;
+  if(hc.dkCls!==S.cls){hc.dkCls=S.cls;$('dkCls').innerHTML=ico(S.cls,'#0b1320',0,46);$('dkCls').style.background=c.col;$('dkSkill').style.setProperty('--skc',c.col)}
+  setText('dkFloor',S.floor===FINAL?`地下${S.floor}階 最下層`:`地下${S.floor}階`);
+  {const k=S.cls+S.diff+S.floor+S.endless+(S.rank||0)+(S.daily||'')+S.level+(S.coop?1:0);if(hc.dkProg!==k){hc.dkProg=k;
+    $('dkProg').innerHTML=`${c.n} · ${DIFFS[S.diff].n}${S.rank?' · 氷層'+S.rank:''}${S.daily?' · 今日のお題':''} · ${S.floor>FINAL||S.endless?'踏破済み':`クリアまで <b>${S.floor}/${FINAL}</b>`}`}}
+  {const hp=Math.max(0,S.hp),mx=S.maxHp,sh=S.shield||0,k=hp+'/'+mx+'/'+sh;if(hc.dkHp!==k){hc.dkHp=k;const tot=Math.max(mx,hp+sh);
+    $('dkHpT').innerHTML=`${hp}<small>/${mx}</small>${sh?`<em>+${sh}</em>`:''}`;$('dkHpB').style.width=(hp/tot*100)+'%';$('dkShB').style.left=(hp/tot*100)+'%';$('dkShB').style.width=(sh/tot*100)+'%';$('dkHp').classList.toggle('low',hp<=mx*0.3)}}
+  setText('dkLv','Lv '+S.level);setW('dkXp',S.pendingLv?100:S.xp/xpNeed(S.level)*100);
+  setText('dkGold',S.gold+'G');setText('dkScore',S.score.toLocaleString());
+  {const need=skNeed(),ch=Math.min(need,S.skCharge||0),rd=ch>=need;
+    setText('dkSkN',c.sk.n);setText('dkSkV',rd?'使える':`${ch}/${need}列`);setW('dkSkB',ch/need*100);$('dkSkill').classList.toggle('ready',rd);
+    const kk=(SET.keys.skill||[]).find(Boolean),dk=S.cls+kk+TOUCH;if(hc.dkSkD!==dk){hc.dkSkD=dk;$('dkSkD').innerHTML=esc(c.sk.d.split('。')[0])+'。'+(TOUCH?'':` たまったら <kbd>${esc(keyName(kk||''))}</kbd>`)}}
+  {const pas=S.cls==='heal'||S.cls==='buff';$('dkPas').hidden=!pas;
+    if(S.cls==='heal'){setText('dkPasL','癒し');setW('dkPasB',S.skillLines/healNeed()*100);setText('dkPasV',`${S.skillLines}/${healNeed()}`)}
+    else if(S.cls==='buff'){if(buffOn()){const r=S.buffUntil-performance.now();setText('dkPasL','鼓舞 発動中');setW('dkPasB',r/buffDur()*100);setText('dkPasV',Math.ceil(r/1000)+'秒')}else{setText('dkPasL','鼓舞');setW('dkPasB',S.skillLines/buffNeed()*100);setText('dkPasV',`${S.skillLines}/${buffNeed()}`)}}}
+  {const ks=Object.keys(TAGS).map(t=>tf(t)?'v':tagCount(t)).join(''),nr=Object.keys(S.relics||{}).length;
+    if(hc.dkTags!==ks){hc.dkTags=ks;$('dkTags').innerHTML=Object.keys(TAGS).map(t=>{const n=Math.min(3,tagCount(t)),d=tf(t),col=TAGS[t].col;
+      return`<div class="dktag${d?' done':''}" style="${d?`border-color:${col}`:''}"><b style="color:${col}">${t}</b><span>${[0,1,2].map(i=>`<i style="${i<n||d?`background:${col}`:''}"></i>`).join('')}</span><em style="color:${col}">${d?'変身':n+'/3'}</em></div>`}).join('')}
+    setText('dkRelN',`遺物 · ${nr}`)}
+  setText('dkVer','ver '+VERSION);
+  // enemy panel
+  {const en=$('dkEnemy');let kind,tag='',name,val,w,t1=null,t2=null;
+    if(b){kind=b.mob?'mob':'boss';tag=b.mob?'雑魚':b.elite?'精鋭':'BOSS';name=b.name+(b.p2&&!b.dead?'・第2形態':'');val=b.dead?'討伐':`${b.hp.toLocaleString()} / ${b.max.toLocaleString()}`;w=b.hp/b.max*100;
+      if(!b.dead){
+        if(frozen())t1=['凍結中','',0];
+        else if(taunted())t1=['強撃 → 守護者がかばう','',0];
+        else{const iv=strikeMs();t1=['強撃',`あと${Math.max(0,Math.ceil((iv-S.hitAcc)/1000))}s`,S.hitAcc/iv*100]}
+        if(b.mob){const iv=bossAtkMs();t2=['ゴミ列',`あと${Math.max(0,Math.ceil((iv-b.atk)/1000))}s`,b.atk/iv*100]}
+        else{const iv=curSkMs(b);t2=[BSK[nextBossSk(b)].n,`あと${Math.max(0,Math.ceil((iv-b.skAcc)/1000))}s`,b.skAcc/iv*100]}
+      }
+    }else if(S.practice){kind='wait';name='練習モード';val='∞';w=100}
+    else{kind='wait';name='ボスまで';val=fmtTime(S.timeLeft);w=S.timeLeft/STAGE_MS*100;
+      if(S.phase==='play'&&isFinite(coldMs())){const iv=coldMs();t1=['冷気',`あと${Math.max(0,Math.ceil((iv-S.hitAcc)/1000))}s`,S.hitAcc/iv*100]}}
+    if(hc.dkKind!==kind){hc.dkKind=kind;en.className='dkenemy '+kind}
+    setText('dkETagT',tag);setText('dkEName',name);setText('dkEVal',val);setW('dkEBar',w);
+    for(const[id,t]of[['dkT1',t1],['dkT2',t2]]){$(id).style.visibility=t?'visible':'hidden';if(t){setText(id+'L',t[0]);setText(id+'V',t[1]);setW(id+'B',t[2])}}
+    // party: who took how much off this enemy
+    const leg=$('dkELeg'),co=coopOn()&&b&&!b.mob;leg.hidden=!co;
+    if(co){const rows=[['あなた',Math.min(b.myDmg,b.max),c.col]];
+      for(const p of allies()){const d=NET.dmg[pkey(p)];if(d&&d.i===b.id)rows.push([nameOf(p),Math.round(d.v),clsOf(p.presence.cls).col])}
+      const k=rows.map(r=>r[0]+r[1]).join('|');if(hc.dkLeg!==k){hc.dkLeg=k;leg.innerHTML='<span>削った量</span>'+rows.sort((a,b2)=>b2[1]-a[1]).map(([n,v,col])=>`<span><i style="background:${col}"></i>${esc(n)} ${v.toLocaleString()}</span>`).join('')}}
+  }
+  // log
+  {const k=DKLOG.length+'/'+(DKLOG[0]?DKLOG[0].t+DKLOG[0].txt:'');if(hc.dkLogK!==k){hc.dkLogK=k;
+    $('dkLog').innerHTML=DKLOG.map((e,i)=>`<div class="dkli" style="border-left-color:${e.col||'#2c4560'};opacity:${Math.max(.35,1-i*.08)}"><time>${e.t}</time><span>${esc(e.txt)}</span>${e.v?`<b style="color:${e.col||'#9fb6c9'}">${esc(e.v)}</b>`:''}</div>`).join('')}}
+}
 function sizeCanvas(cv,w,h){cv.width=Math.round(w*DPR);cv.height=Math.round(h*DPR);cv.style.width=w+'px';cv.style.height=h+'px'}
 function layout(){
+  setWide(wantWide());
+  if(WIDE){layoutWide();return}
   const app=document.querySelector('.app');
   const hdr=document.querySelector('header').offsetHeight,pad=$('pad').offsetHeight;
   const availH=app.clientHeight-hdr-pad-16-16-2;
