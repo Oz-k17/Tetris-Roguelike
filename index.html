@@ -539,7 +539,7 @@ i[data-ico]{display:contents}
       <li>ボスへのダメージは「（基本値＋＋ダメージ）×各倍率」。遺物の「＋ダメージ」「×ダメージ」の印で見分けられる</li>
       <li>回転は標準のSRS。TSD・TST・DT砲などの定番の積み方がそのまま使える。T-SPINはボスに大ダメージ、DT砲（TSDのあとのTST）はさらに1.3倍</li>
       <li>スコアで経験値がたまり、レベルアップごとに遺物をひとつ選べる</li>
-      <li>ボスが来るまでは雑魚敵が次々に出てくる。倒すと少しゴールドと経験値がもらえる。タイマーが0になると雑魚は逃げ、ボスが出現。列を消して敵のHPを削る</li>
+      <li>ボスが来るまでは雑魚敵が次々に出てくる。倒すとゴールド（深い階ほど多い）と経験値がもらえる。タイマーが0になると雑魚は逃げ、ボスが出現。列を消して敵のHPを削る</li>
       <li>HPは時間とともに削られる。雑魚とボスは強撃、敵がいない間は冷気（地下3階から）。盤面上の細いゲージが満ちると来る</li>
       <li>ボスを倒すとHPが15回復し、行商人が来る。ゴールドで遺物や薬、護符を買って次の階へ</li>
       <li>天井に届くと最大HPの35%（最低12）を失って盤面リセット。このダメージはシールドや氷壁でも防げない。ほかのダメージはシールドがHPより先に吸収する。HPが尽きたら終わり。地下8階のボスを倒せば踏破</li>
@@ -758,7 +758,7 @@ i[data-ico]{display:contents}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='64',UPDATED='2026-11-02 12:01';
+const VERSION='65',UPDATED='2026-11-02 12:47';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -1182,7 +1182,7 @@ const bossRows=()=>S.floor>=4?2:1;
    (no skills, no 2nd form). Each kill gives a little gold and XP; the next one comes MOB_GAP later.
    The boss itself is scaled by D().bossX (only 普通 for now). */
 const MOBS=['氷の小鬼','霜狼','つらら蝙蝠','雪だるま兵','凍てつく亡者','氷スライム','吹雪の精','結晶トカゲ'];
-const MOB_FIRST=3000,MOB_GAP=3500,MOB_MIN=8000,MOB_GOLD=[3,1],MOB_XP=60;
+const MOB_FIRST=3000,MOB_GAP=3500,MOB_MIN=8000,MOB_GOLD=[18,4],MOB_XP=60;
 const BX0={hp:1,dmg:1,strike:1,atk:1,sk:1};
 // the attack side eases in too: 30% of the extra on B1, 60% on B2, all of it from B3
 const BX=()=>{const x=S.boss&&!S.boss.mob&&!S.boss.elite&&!S.boss.dead&&D().bossX;if(!x)return BX0;
@@ -1873,7 +1873,7 @@ function mobDefeated(b){
   const g=earn(MOB_GOLD[0]+MOB_GOLD[1]*S.floor);
   gainXp(MOB_XP*floorXp());
   S.score+=Math.round(250*S.floor*mult());
-  pop([b.name,'撃破'],'#9fd8ff',1.05);sfx('kill');toast(`${b.name}を倒した　+${g}G`);hud(true);
+  pop([b.name,'撃破',`+${g}G`],'#9fd8ff',1.05);sfx('kill');toast(`${b.name}を倒した　+${g}G`);hud(true);
 }
 function bossHpTick(){
   const b=S.boss;if(!b)return;
