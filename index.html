@@ -3234,7 +3234,7 @@ function drawSide(){
 let WIDE=false;
 const TOUCH=(()=>{try{return matchMedia('(pointer: coarse)').matches||('ontouchstart' in window)}catch(e){return false}})();
 // PC windows and iPad in landscape get the three-column layout; phones and portrait tablets keep the tall one
-const wantWide=()=>{const w=innerWidth,h=innerHeight;return h>=500&&w>h*1.05&&w>=900};
+const wantWide=()=>{const w=+window.innerWidth||0,h=+window.innerHeight||0;return h>=500&&w>h*1.05&&w>=900};
 const HOME={};
 function setWide(on){
   if(on===WIDE)return;WIDE=on;
@@ -3252,7 +3252,7 @@ function setWide(on){
 function layoutWide(){
   const mid=document.querySelector('.dkm'),en=$('dkEnemy');
   const availH=mid.clientHeight-en.offsetHeight-10-2;
-  const availW=Math.min(620,innerWidth*0.4)-ASIDE-12;
+  const availW=Math.min(620,(+window.innerWidth||1280)*0.4)-ASIDE-12;
   C=Math.max(14,Math.min(40,Math.floor(Math.min(availH/H,availW/W))));
   sizeCanvas(board,W*C,H*C);sizeCanvas(holdC,ASIDE,56);
   matePS=6;nextSlot=46;mateGrid=false;
