@@ -466,6 +466,26 @@ i[data-ico]{display:contents}
 .members .cb{width:28px;height:28px}
 .rlist .cb{align-self:center}
 @media (prefers-reduced-motion:reduce){.bar b,.toast{transition:none}.spin{animation:none}}
+/* ---------- phone held sideways: board in the middle, my info + move buttons left, enemy + rotate/hold/skill right ---------- */
+body.land .app{max-width:none;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto minmax(0,1fr) minmax(0,1fr);
+  grid-template-rows:auto auto 1fr auto auto;grid-template-areas:"hud hud m ph ph" "lv lv m sk sk" ". . m . ." "b1 b2 m b5 b6" "b3 b4 m b7 b8";
+  column-gap:10px;row-gap:6px;padding-block:max(6px,env(safe-area-inset-top,0px)) max(6px,env(safe-area-inset-bottom,0px))}
+body.land header,body.land .pad{display:contents}
+body.land .hud{grid-area:hud;flex-wrap:wrap;row-gap:4px}
+body.land .hud .hpbox{flex:1 1 100%;order:5}
+body.land header>.meter:not([id]){grid-area:lv;flex-wrap:wrap;row-gap:2px}
+body.land #phase{grid-area:ph;height:auto;padding:6px 10px}
+body.land #phase .ph{flex-wrap:wrap;row-gap:2px}
+body.land #phaseLbl{max-width:none;flex:1 1 100%;order:3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.land #phase .ph .val{margin-left:auto}
+body.land header>.meter:not([id]) .bar{flex:1 1 50px;min-width:50px}
+body.land #skillRow{grid-area:sk}
+body.land main{grid-area:m;align-self:center}
+body.land .pad button{height:auto;min-height:44px}
+body.land .pad button[data-a=left]{grid-area:b1}body.land .pad button[data-a=right]{grid-area:b2}
+body.land .pad button[data-a=soft]{grid-area:b3}body.land .pad button[data-a=hard]{grid-area:b4}
+body.land .pad button[data-a=ccw]{grid-area:b5}body.land .pad button[data-a=cw]{grid-area:b6}
+body.land .pad button[data-a=hold]{grid-area:b7}body.land .pad button[data-a=skill]{grid-area:b8}
 /* ---------- wide layout (PC / iPad landscape) ---------- */
 body.wide .app{max-width:1560px;padding:20px 28px;gap:0}
 body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
@@ -918,7 +938,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='67',UPDATED='2026-11-02 16:50';
+const VERSION='68',UPDATED='2026-11-02 17:00';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -3264,6 +3284,9 @@ const TOUCH=(()=>{try{return matchMedia('(pointer: coarse)').matches||('ontouchs
 // PC windows and iPad in landscape get the three-column layout; phones and portrait tablets keep the tall one
 const wantWide=()=>{const w=+window.innerWidth||0,h=+window.innerHeight||0;return h>=500&&w>h*1.05&&w>=900};
 const HOME={};
+// a phone on its side: too short for the tall layout, too small for the three columns
+const wantLand=()=>{const w=+window.innerWidth||0,h=+window.innerHeight||0;return h>0&&h<500&&w>h*1.2};
+let LAND=false;
 function setWide(on){
   if(on===WIDE)return;WIDE=on;
   document.body.classList.toggle('wide',on);$('desk').hidden=!on;
@@ -3365,12 +3388,19 @@ function deskHud(){
 function sizeCanvas(cv,w,h){cv.width=Math.round(w*DPR);cv.height=Math.round(h*DPR);cv.style.width=w+'px';cv.style.height=h+'px'}
 function layout(){
   setWide(wantWide());
-  if(WIDE){layoutWide();return}
+  if(WIDE){if(LAND){LAND=false;document.body.classList.remove('land')}layoutWide();return}
+  {const l=wantLand();if(l!==LAND){LAND=l;document.body.classList.toggle('land',l);if(NET)NET.rosterKey=''}}
   const app=document.querySelector('.app');
-  const hdr=document.querySelector('header').offsetHeight,pad=$('pad').offsetHeight;
-  const availH=app.clientHeight-hdr-pad-16-16-2;
   const cs=getComputedStyle(app);
-  const availW=app.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight)-ASIDE-10-2;
+  let availH,availW;
+  if(LAND){
+    availH=app.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom)-2;
+    availW=(app.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight))*0.44-ASIDE-10-2;
+  }else{
+    const hdr=document.querySelector('header').offsetHeight,pad=$('pad').offsetHeight;
+    availH=app.clientHeight-hdr-pad-16-16-2;
+    availW=app.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight)-ASIDE-10-2;
+  }
   C=Math.max(12,Math.min(34,Math.floor(Math.min(availW/W,availH/H))));
   sizeCanvas(board,W*C,H*C);
   sizeCanvas(holdC,ASIDE,56);
