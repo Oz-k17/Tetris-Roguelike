@@ -8,7 +8,7 @@ const SRC=[...HTML.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]).sort(
 // ---- stub DOM that remembers buttons appended to a container, so overlays can be "clicked"
 const el=()=>{const t={style:{setProperty(){}},classList:{toggle(){},add(){},remove(){},contains(){return false}},dataset:{},hidden:false,textContent:'',value:'',kids:[],
   getContext:()=>new Proxy({},{get:(o,k)=>k==='measureText'?()=>({width:1}):k==='createLinearGradient'?()=>({addColorStop(){}}):()=>{},set:()=>true}),
-  addEventListener(){},appendChild(c){t.kids.push(c)},focus(){},querySelectorAll:()=>[],querySelector:()=>null,firstChild:null,clientHeight:800,clientWidth:400,offsetHeight:60,getBoundingClientRect:()=>({left:0,top:0,width:0,height:0}),getClientRects:()=>[],remove(){}};
+  addEventListener(){},setAttribute(){},removeAttribute(){},getAttribute(){return null},appendChild(c){t.kids.push(c)},focus(){},querySelectorAll:()=>[],querySelector:()=>el(),firstChild:null,clientHeight:800,clientWidth:400,offsetHeight:60,getBoundingClientRect:()=>({left:0,top:0,width:0,height:0}),getClientRects:()=>[],remove(){}};
   return new Proxy(t,{get:(o,k)=>k in o?o[k]:undefined,set:(o,k,v)=>{if(k==='innerHTML')o.kids=[];o[k]=v;return true}})};
 const els={};
 let t=0;const timers=[];
