@@ -95,6 +95,13 @@ aside>.relics{flex:1 1 auto;min-height:26px;overflow-y:auto;overflow-x:hidden;sc
 .mate .mhp b{display:block;height:100%;background:#ff6f7f}
 .mate .mhp b+b{background:var(--ice);margin-top:-4px}
 .mate.down{opacity:.45}
+.mate.aimed{outline:2px solid #ff5a6a;outline-offset:1px;border-radius:4px;animation:aimp .5s ease-in-out infinite alternate}
+.boardwrap.aimed>canvas{box-shadow:0 0 0 3px #ff5a6a,0 0 24px #ff5a6a88;animation:aimp .5s ease-in-out infinite alternate}
+.boardwrap.cover>canvas{box-shadow:0 0 0 3px #8fe3ff,0 0 24px #8fe3ff88}
+@keyframes aimp{from{filter:none}to{filter:brightness(1.25)}}
+.aimban{position:absolute;left:50%;top:18%;transform:translateX(-50%);z-index:6;padding:6px 12px;border-radius:10px;background:rgba(20,8,14,.88);border:1.5px solid #ff5a6a;color:#ffd0d5;font-weight:700;font-size:14px;text-align:center;white-space:nowrap;pointer-events:none;zoom:var(--uiz,1)}
+.aimban.cover{border-color:#8fe3ff;color:#dff6ff;background:rgba(8,16,24,.88)}
+.aimban b{display:block;font-family:var(--display);font-size:22px;font-weight:400}
 .party.grid{flex-direction:row;gap:3px}
 .party.grid .mate{flex-direction:column;align-items:center;gap:2px;width:22px}
 .party.grid .mate div{align-items:center;width:22px}
@@ -209,6 +216,10 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 /* shop: 2 columns of compact cards (glyph + name / price, then the full description underneath) */
 /* shop: relic list + item tiles + one detail panel with the buy button (fits one phone screen) */
 .rarelb{display:inline-block;margin-right:6px;padding:0 6px;border-radius:3px;background:linear-gradient(90deg,#f2c14e,#ff9bd2);color:var(--bg);font-size:11px;font-weight:700;line-height:16px;vertical-align:1px}
+.qtag{display:inline-block;margin-right:5px;padding:0 5px;border-radius:3px;border:1px solid var(--qc);color:var(--qc);font-size:11px;font-weight:700;line-height:15px;white-space:nowrap}
+.qline{display:block;margin-top:4px;font-size:12px;color:var(--muted)}
+.votes{display:inline}.vchip{display:inline-block;margin-left:4px;padding:0 6px;border-radius:8px;background:#2a3d55;color:var(--fg);font-style:normal;font-size:11px;font-weight:700;line-height:17px;vertical-align:2px}.vchip.me{background:var(--ice);color:var(--bg)}
+.card.node.voted{box-shadow:0 0 0 2px var(--ice)}
 .shop2{gap:10px}.shop2>*{flex-shrink:0}
 .shlbl{font-size:11px;letter-spacing:.16em;color:var(--muted);margin-bottom:-4px}
 .shrel{display:flex;flex-direction:column;gap:6px}
@@ -624,6 +635,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
     <div class="boardwrap">
       <canvas id="board"></canvas>
       <div class="toast" id="toast"></div>
+      <div class="aimban" id="aimBan" hidden></div>
       <button class="fbtn emo" id="emoteBtn" type="button" hidden>スタンプ</button>
       <div class="emotebar" id="emoteBar" hidden></div>
       <div class="mybub" id="myBub" hidden></div>
@@ -947,7 +959,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='72',UPDATED='2026-11-04 11:50';
+const VERSION='73',UPDATED='2026-11-04 12:56';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -1327,9 +1339,9 @@ function renderTitleInfo(){
 const emptyBoard=()=>Array.from({length:H},()=>Array(W).fill(0));
 const lv=k=>(S.relics&&S.relics[k])||0;
 const buffOn=()=>{const t=performance.now();return!!((S.buffUntil&&t<S.buffUntil)||(S.echoUntil&&t>=S.echoFrom&&t<S.echoUntil))};
-const gravityMs=()=>Math.max(55,850*Math.pow(D().gravity,S.floor-1))*Math.pow(1.15,lv('slow'))*(S.galeUntil&&until('galeUntil')>0?0.4:1)*(lv('c_sand')?1.3:1)*(1+0.12*lullLv())*(evo('e_slow')?1.3:1);
+const gravityMs=()=>Math.max(55,850*Math.pow(D().gravity,S.floor-1))*(quirk('rapid')?0.7:1)*Math.pow(1.15,lv('slow'))*(S.galeUntil&&until('galeUntil')>0?0.4:1)*(lv('c_sand')?1.3:1)*(1+0.12*lullLv())*(evo('e_slow')?1.3:1);
 const LATE_HP=1.15; // per floor past 4
-const bossBaseHp=()=>Math.round((D().bossHp[0]+D().bossHp[1]*(S.floor-1))*Math.pow(LATE_HP,Math.max(0,S.floor-4))*(rk(1)?1.1:1));
+const bossBaseHp=()=>Math.round((D().bossHp[0]+D().bossHp[1]*(S.floor-1))*Math.pow(LATE_HP,Math.max(0,S.floor-4))*(rk(1)?1.1:1)*(quirk('gold')?1.2:quirk('heavy')?0.8:1));
 const strikeDmg=()=>Math.round((D().strikeDmg[0]+D().strikeDmg[1]*(S.floor-1))*(rk(6)?1.2:1)*BX().dmg);
 const coldDmg=()=>D().cold[1]+Math.max(0,S.floor-D().cold[2])+(lv('c_heart')?3:0);
 // topping out costs a share of max HP (at least 12) and cannot be blocked
@@ -1350,7 +1362,7 @@ const tf=t=>!!(S&&S.tf&&S.tf[t]);
 const su=i=>(S&&S.skUp&&S.skUp[i])||'';
 const skBaseNeed=()=>{const b={heal:12,buff:11,atk:9}[S.cls];return su(1)==='B'&&b?b:clsOf(S.cls).sk.need};
 const skNeed=()=>Math.max(5,Math.round((skBaseNeed()-(su(2)==='A'?4:0))*Math.pow(0.85,lv('focus'))*(tf('技')?0.8:1)*(lv('c_crown')?0.7:1)));
-const nextN=()=>Math.max(0,1+lv('next')+(tf('技')?1:0)-(lv('c_eye')?1:0));
+const nextN=()=>quirk('fog')?1:Math.max(0,1+lv('next')+(tf('技')?1:0)-(lv('c_eye')?1:0));
 // swordsman skill: weak at first, grown by relics (rend / hone) and the Lv5 upgrade
 const ranRows=x=>2+(su(0)==='A'?2:0)+lv('rend')+(x||0);
 const ranPer=x=>3+(su(0)==='B'?3:0)+2*(lv('hone')+(x||0));
@@ -1382,7 +1394,7 @@ const BX=()=>{const x=S.boss&&!S.boss.mob&&!S.boss.elite&&!S.boss.dead&&D().boss
   const t=S.floor>=3?1:S.floor===2?0.6:0.3,f=k=>1+(x[k]-1)*t;return{hp:x.hp,dmg:f('dmg'),strike:f('strike'),atk:f('atk'),sk:f('sk')}};
 const xpNeed=l=>{const e=D().xpEarly||[];return Math.round(D().xp[0]*Math.pow(D().xp[1],l-1)*(l<=e.length?e[l-1]:1))};
 // XP comes from what you cleared, not from score, so deep floors don't snowball levels
-const floorXp=()=>1+0.15*(S.floor-1);
+const floorXp=()=>(1+0.15*(S.floor-1))*(quirk('frost')||quirk('fog')?1.5:1);
 const bombInterval=()=>{const b=lv('bomb')?14-3*(lv('bomb')-1)-(evo('e_bomb')?3:0):99;return core('k_bomb')?Math.min(8,b):b};
 const sandInterval=()=>10-2*(lv('sand')-1);
 const healNeed=()=>Math.max(4,12-2*lv('spring')-(S.coop&&anyAllyAlive()?2:0));
@@ -1390,16 +1402,78 @@ const buffNeed=()=>Math.max(4,8-2*lv('bell'));
 const buffDur=()=>15000+5000*lv('drum');
 const mult=()=>(1+0.5*lv('mult'))*(buffOn()?buffMul():1);
 const goldMult=()=>1+0.25*lv('greed');
-const earn=g=>{const v=Math.round(g*goldMult()*(tf('富')?1.3:1)*(lv('c_ring')?2:1));S.gold+=v;S.totalGold+=v;if(!S.practice&&!S.debug)META.goldTotal=(META.goldTotal||0)+v;return v};
+const earn=g=>{const v=Math.round(g*goldMult()*(quirk('gold')?1.5:1)*(tf('富')?1.3:1)*(lv('c_ring')?2:1));S.gold+=v;S.totalGold+=v;if(!S.practice&&!S.debug)META.goldTotal=(META.goldTotal||0)+v;return v};
 const priceMul=()=>(tf('富')?0.9:1)*(rk(2)?1.2:1);
 // gold economy (2026-10-28): was [0,2,5,9,15] per clear + full REN count; players could buy out every shop
 const GOLD_LINE=[0,0,1,2,4],GOLD_BOSS=[25,6];
 const relicPrice=k=>Math.round((RELICS[k].p+5*S.floor+15*lv(k))*priceMul());
-const bossName=f=>BOSSES[(f-1)%BOSSES.length]+(f>BOSSES.length?'・改':'');
+// boss order is shuffled per run (seeded, so a party or a daily run sees the same order):
+// B1-B3 take 3 of the 4 lighter bosses, B4-B7 the leftover one plus the 3 heavier ones, B8 is always the king
+const BOSS_EARLY=[0,1,2,3],BOSS_LATE=[4,5,6];
+function bossOrder(rng){
+  const e=shuffleWith(BOSS_EARLY.slice(),rng),l=shuffleWith([e[3],...BOSS_LATE],rng);
+  return[e[0],e[1],e[2],...l,7];
+}
+const bossIdx=f=>{const o=S&&S.bo;return o?o[(f-1)%o.length]:(f-1)%BOSSES.length};
+const bossName=f=>BOSSES[bossIdx(f)]+(f>BOSSES.length?'・改':'');
+/* ---------- 階の目標: one shared goal per floor (party totals in co-op); reaching it pays everyone ---------- */
+const GOALS={
+  lines:{n:'列を消す',u:'列',k:'l',t:n=>12+6*(n-1)},
+  quad:{n:'4列消し',u:'回',k:'q',t:n=>Math.max(1,Math.ceil(n*0.75))},
+  tspin:{n:'T-SPIN',u:'回',k:'t',t:n=>n},
+  link:{n:'連携',u:'回',k:'c',t:n=>n,party:1}
+};
+function stOf(st,k){return k==='l'?+(st&&st.l)||0:+(st&&st[k])||0}
+const myStVal=k=>k==='l'?S.totalLines:+(S.st[k]||0);
+function enterGoal(){
+  if(S.practice||(S.goal&&S.goal.f===S.floor))return;
+  const n=1+(S.coop?allies().slice(0,MAXP-1).length:0);
+  const kinds=Object.keys(GOALS).filter(k=>!GOALS[k].party||n>1);
+  const r=mulberry((S.seed^Math.imul(S.floor+101,0x85ebca6b))|0),k=kinds[Math.floor(r()*kinds.length)];
+  const G=GOALS[k];S.goal={f:S.floor,k,t:G.t(n),n,base:myStVal(G.k),done:false};
+  if(NET)NET.gb={};
+  hc.prog='';hc.dkProg='';
+}
+function goalProg(){
+  const g=S.goal;if(!g)return 0;const G=GOALS[g.k];
+  let v=myStVal(G.k)-g.base;
+  if(S.coop&&NET){NET.gb=NET.gb||{};for(const p of allies().slice(0,MAXP-1)){const key=pkey(p),cur=stOf(p.presence.st,G.k);if(NET.gb[key]==null)NET.gb[key]=cur;v+=Math.max(0,cur-NET.gb[key])}}
+  return Math.max(0,v);
+}
+function goalTick(){
+  const g=S.goal;if(!g||g.done||g.f!==S.floor||S.mode!=='play')return;
+  if(goalProg()<g.t)return;
+  g.done=true;S.goalsDone=(S.goalsDone||0)+1;const gg=earn(20+6*S.floor);heal(10);
+  pop(['目標達成',`+${gg}G・HP+10`],'#7fe0b0',1.2);sfx('level');feel('medium');logPush('階の目標達成',`+${gg}G`,'#7fe0b0');hc.prog='';hc.dkProg='';hud(true);
+}
+function goalTag(){const g=S.goal;if(!g||g.f!==S.floor)return'';const G=GOALS[g.k],v=Math.min(g.t,goalProg());return`<span class="qtag goal${g.done?' ok':''}" style="--qc:${g.done?'#7fe0b0':'#cfe3f2'}">${g.done?'✓ ':''}${g.n>1?'みんなで':''}${G.n} ${v}/${g.t}</span>`}
+/* ---------- 階の気まぐれ: one rule per floor from B2, each with an upside and a downside ---------- */
+const QUIRKS={
+  rapid:{n:'急流',g:'急',col:'#6fd3ff',d:'ミノの落下が速い。そのかわりボスへのダメージ×1.25'},
+  gold:{n:'金脈',g:'金',col:'#f2c14e',d:'ゴールドが1.5倍。そのかわりボスと雑魚のHPが1.2倍'},
+  frost:{n:'凍る床',g:'床',col:'#9fd8ff',d:'15秒ごとに足元が1段せり上がる。そのかわり経験値1.5倍'},
+  narrow:{n:'細い道',g:'細',col:'#b9a3ff',d:'Iミノが来ない。そのかわりT-SPINのダメージ×2'},
+  fog:{n:'霧',g:'霧',col:'#a8b8c8',d:'NEXTが1つしか見えない。そのかわり経験値1.5倍'},
+  quiet:{n:'静寂',g:'静',col:'#7fe0b0',d:'ボスがスキルを使わない。そのかわり強撃の間隔が短い'},
+  fever:{n:'連鎖の熱',g:'熱',col:'#ff9b6f',d:'連続消し（REN）中のダメージ×1.5。そのかわりゴミ列が速く来る'},
+  heavy:{n:'重い氷',g:'重',col:'#c58cff',d:'ホールドが使えない。そのかわりボスと雑魚のHPが0.8倍'}
+};
+const QK=Object.keys(QUIRKS);
+const quirk=k=>S&&S.quirk===k;
+// the line map's floors get a seeded sequence; on the branch map each path carries its own quirk
+function quirkLine(rng){const out=[null,null];let bag=[];for(let f=2;f<=40;f++){if(!bag.length)bag=shuffleWith(QK.slice(),rng);let q=bag.pop();if(q===out[f-1]&&bag.length){bag.unshift(q);q=bag.pop()}out.push(q)}return out}
+function quirkOpts(f){const r=mulberry((S.seed^Math.imul(f,0x9e3779b1))|0);return shuffleWith(QK.slice(),r).slice(0,3)}
+const quirkFor=f=>{if(f<2)return'';const v=(S.qPick&&S.qPick[f])||(S.qLine&&S.qLine[f])||'';return QUIRKS[v]?v:''};
+function quirkTag(q){const Q=QUIRKS[q];return Q?`<span class="qtag" style="--qc:${Q.col}">${Q.g} ${Q.n}</span>`:''}
+function enterQuirk(){
+  const q=quirkFor(S.floor);if(S.quirk===q)return;S.quirk=q;S.frostAcc=0;hc.prog='';
+  if(!q)return;const Q=QUIRKS[q];
+  setTimeout(()=>{if(S&&S.quirk===q){pop(['気まぐれ',Q.n],Q.col,1);toast(`この階の気まぐれ「${Q.n}」：${Q.d}`);logPush(`気まぐれ「${Q.n}」`,Q.d.split('。')[0],Q.col)}},700);
+}
 // time-based HP damage: cold while exploring (from floor 3), boss strikes during boss fights
 const cloakMul=()=>1+0.2*lv('cloak');
 const coldMs=()=>S.floor>=(lv('c_heart')?1:D().cold[2]-(rk(3)?1:0))?D().cold[0]*cloakMul():Infinity;
-const strikeMs=()=>{const a=D().strike;return Math.max(a[2],a[0]-a[1]*(S.floor-1))*cloakMul()*(S.boss&&S.boss.p2?0.8:1)*BX().strike};
+const strikeMs=()=>{const a=D().strike;return Math.max(a[2],a[0]-a[1]*(S.floor-1))*(quirk('quiet')?0.8:1)*cloakMul()*(S.boss&&S.boss.p2?0.8:1)*BX().strike};
 // block chance stacks hyperbolically: 1 - 1/(1+a). The guardian alone is 25%; it approaches but never reaches 100%.
 const blockChance=extra=>{const a=(S.cls==='tank'?1/3:0)+0.2*(lv('guard')+(extra||0));return a>0?1-1/(1+a):0};
 const rot=(m,dir)=>dir>0?m[0].map((_,i)=>m.map(r=>r[i]).reverse()):m[0].map((_,i)=>m.map(r=>r[r.length-1-i]));
@@ -1508,7 +1582,7 @@ function collide(m,x,y){
 }
 function refill(){
   while(S.queue.length<8){
-    if(!S.bag.length){S.bag=['I','O','T','S','Z','J','L'];for(let i=0;i<lv('iwell');i++)S.bag.push('I');shuffleWith(S.bag,RB)}
+    if(!S.bag.length){S.bag=['I','O','T','S','Z','J','L'];for(let i=0;i<lv('iwell');i++)S.bag.push('I');shuffleWith(S.bag,RB);if(quirk('narrow'))S.bag=S.bag.filter(t=>t!=='I')}
     S.queue.push(S.bag.pop());
   }
 }
@@ -1532,13 +1606,15 @@ function newRun(coop,epoch,cls,diff,practice,map,rank){
      score:0,gold:0,totalGold:0,level:1,xp:0,pendingLv:0,
      timeLeft:STAGE_MS,phase:'play',boss:null,weaken:false,bossKills:0,afterReward:null,readyFloor:0,
      coop:!!coop,epoch:epoch||0,watching:false,
-     st:{d:0,t:0,r:0,h:0,s:0,f:0,v:0},dmgBossId:-1,dmgSeen:0,skillLines:0,healCount:0,reviveCount:0,buffCount:0,buffUntil:0,hitAcc:0,lastLeech:-1e9,endless:false,
+     st:{d:0,t:0,r:0,h:0,s:0,f:0,v:0,c:0,q:0},lcN:0,lastClrAt:-1e9,linkK:0,dmgBossId:-1,dmgSeen:0,skillLines:0,healCount:0,reviveCount:0,buffCount:0,buffUntil:0,hitAcc:0,lastLeech:-1e9,endless:false,
      blocked:0,hitsTaken:0,shield:0,regenAcc:0,skCharge:0,skUses:0,tf:{},tfNew:null,skUp:['','',''],bakuC:0,incoming:[],offsetTotal:0,digC:0,digRows:0,evo:{},core:'',coreN:0,coreAcc:0,frenzyN:0,allyBuffMul:1.5,calmUntil:0,calmN:0,lastSkAt:-1e9,lastLinkAt:-1e9,freezeMul:1.3,echoFrom:0,echoUntil:0,rageUntil:0,immuneUntil:0,freezeUntil:0,blindUntil:0,webUntil:0,galeUntil:0,
      totalLines:0,relics:{},bag:[],queue:[],cur:null,hold:null,canHold:true,combo:-1,
      bombC:0,sandC:0,dropAcc:0,lockAcc:0,lockResets:0,mode:'reward',fx:[]};
   if(daily){S.daily=daily.day;S.debug=false}
+  S.seed=(daily?daily.seed:coop?(epoch|0)^0x51ed27:Math.floor(Math.random()*2**31))|0;
+  {const qr=mulberry(S.seed^0x2545f491);S.bo=bossOrder(qr);S.qLine=quirkLine(qr);S.qPick={};S.quirk=''}
   refill();renderRelics();DKLOG.length=0;if($('dkTerms'))$('dkTerms').innerHTML='<span class="dkempty">列を消すと、ここに計算が出る</span>';if($('dkTot'))$('dkTot').textContent='-';
-  if(NET){NET.seen={};NET.dmg={};NET.rosterKey=''}
+  if(NET){NET.seen={};NET.dmg={};NET.allyClr={};NET.rosterKey=''}
   $('partyBox').hidden=!S.coop;
   $('skIco').innerHTML=clsBadge(S.cls,18,12);$('skillBtn').style.setProperty('--skc',c.col);hc.sk='';
   const chip=$('clsChip');chip.hidden=false;chip.innerHTML=ico(S.cls,'#0b1320',0,24);chip.style.background=c.col;chip.title=`${c.n}（${c.role}）`;
@@ -1595,6 +1671,7 @@ function hard(){
   S.score+=2*d;lockPiece();
 }
 function hold(){
+  if(quirk('heavy')){if(!S.heavyMsg||nowT()-S.heavyMsg>1500){S.heavyMsg=nowT();toast('重い氷でホールドが使えない')}return}
   if(!lv('hold')||!S.canHold)return;
   const t=S.cur.t;
   if(S.hold==null){S.hold=t;spawn()}
@@ -1602,6 +1679,7 @@ function hold(){
   S.canHold=false;
 }
 function act(a){
+  if(a==='skill'&&ghostOn()){ghostAct();return}
   if(!S||S.mode!=='play')return;
   ({left:()=>move(-1),right:()=>move(1),cw:()=>rotate(1),ccw:()=>rotate(-1),r180:rotate180,soft,hard,hold,skill:useSkill})[a]();
 }
@@ -1646,7 +1724,11 @@ function bossDmgDetail(n,ts,b2b,pc){
   if(lv('dig')&&S.digRows)add.push(['掘削',40*lv('dig')*S.digRows]);
   if(pc)add.push(['全消し',100]);
   const muls=dmgMuls();if(b2b)muls.unshift(['B2B',1.2]);
+  if(S.linkK)muls.push(['連携',Math.round((1+LINK_PER*S.linkK)*100)/100]);
   if(core('k_tspin'))muls.unshift(ts?['極意',3]:['極意',0.8]);
+  if(quirk('rapid'))muls.push(['急流',1.25]);
+  if(quirk('narrow')&&ts)muls.push(['細道',2]);
+  if(quirk('fever')&&S.combo>0)muls.push(['熱',1.5]);
   if(core('k_quad'))muls.unshift(n===4?['一撃',3]:['一撃',0.8]);
   if(core('k_ren')&&S.combo>0)muls.unshift(['連鎖',Math.round((1+0.2*S.combo)*100)/100]);
   const sum=base+add.reduce((a,x)=>a+x[1],0);
@@ -1784,7 +1866,7 @@ function lockPiece(){
     if(lines.length)pop(lines,color,size);
     sfx(pc?'pc':ts?'tspin':n===4?'quad':'clear'+Math.min(3,n));buzz(n>=4||ts||pc?[20,30,20]:15);
     if(S.combo>0)renSfx(S.combo);
-    if(ts)S.st.t++;
+    if(ts)S.st.t++;if(n>=4)S.st.q++;
     if(core('k_tspin')&&ts==='full')coreStack();
     if(core('k_quad')&&n===4)coreStack();
     if(core('k_ren')&&S.combo>0&&S.combo%5===0)coreStack();
@@ -1792,8 +1874,16 @@ function lockPiece(){
     if(lv('frenzy')&&S.boss&&!S.boss.dead)S.frenzyN=(S.frenzyN||0)+1;
     if(!S.practice&&!S.debug){if(ts)META.tspin++;if(n===4)META.quad++;if(pc)META.pc++;if(ts||n===4||pc)checkUnlocks()}
     if(pc||n===4||ts==='full')feel('large');else if(hardClear)shake(3);
+    // 連携: allies who cleared lines within LINK_MS before this clear multiply its damage
+    if(S.aim&&S.aim.tank==='me'&&!S.aim.cleared){S.aim.cleared=1;pop(['構えた'],'#8fe3ff',.95);sfx('block')}
+    else if(S.aim&&!S.aim.tank&&S.aim.tp===myPeer()&&!S.aim.dodge){S.aim.dodge=1;pop(['身構えた','ダメージ半減'],'#ffd0d5',.95)}
+    // only clears of 2+ rows (or any T-SPIN) count, and a player links at most once per LINK_CD
+    const big2=n>=2||!!ts,mates=S.coop&&big2&&nowT()>=(S.linkCdUntil||0)?linkMates():[];
+    if(big2){S.lcN++;S.lastClrAt=nowT();S.linkSeen=false}
+    if(mates.length)S.linkCdUntil=nowT()+LINK_CD;
+    if(mates.length&&S.boss&&!S.boss.dead){S.linkK=mates.length;S.st.c+=mates.length;linkFx(mates,true)}
     if(S.boss&&!S.boss.dead){
-      const det=bossDmgDetail(n,ts,b2b,pc),dmg=Math.round(det.d*(dt?1.3:1));
+      const det=bossDmgDetail(n,ts,b2b,pc),dmg=Math.round(det.d*(dt?1.3:1));S.linkK=0;
       S.boss.myDmg+=dmg;S.fx.push({k:'hit',t:0});
       dmgNum(dmg,hardClear||pc,det.f+(dt?' ×1.3':''));
       // the math panel shows while a REN is going, or for a hit worth 10%+ of the boss's HP
@@ -1844,7 +1934,8 @@ function addGarbage(n){
   return over;
 }
 const GARBAGE_DELAY=2600;
-function queueGarbage(rows){if(rows>0&&calmOn()){rows--;if(!rows){S.fx.push({k:'block',t:0});pop(['凪'],'#f2d06b',.9);sfx('block');return}}if(rows>0){S.incoming.push({rows,at:nowT()+GARBAGE_DELAY});sfx('warn')}}
+const garbDelay=()=>quirk('fever')?1600:GARBAGE_DELAY;
+function queueGarbage(rows){if(rows>0&&calmOn()){rows--;if(!rows){S.fx.push({k:'block',t:0});pop(['凪'],'#f2d06b',.9);sfx('block');return}}if(rows>0){S.incoming.push({rows,at:nowT()+garbDelay()});sfx('warn')}}
 function garbageTick(){
   while(S.incoming.length&&nowT()>=S.incoming[0].at){
     const g=S.incoming.shift();
@@ -1991,6 +2082,76 @@ function useSkill(){
   }
   hud(true);
 }
+/* ---------- 狙い撃ち: in a party the boss marks one player, then hits them hard 4 s later.
+   A living 守護者 always steps in; if the guardian clears a line during the countdown the hit is fully stopped and countered.
+   The host picks the target (g.mk) so every client runs the same countdown; each client resolves its own HP. ---------- */
+const AIM_MS=4000,AIM_GAP=24000,AIM_FIRST=12000,AIM_MUL=1.5;
+const myPeer=()=>NET&&NET.myPeer||'me';
+const tankAlly=()=>aliveAllies().find(p=>p.presence.cls==='tank');
+function aimPeerName(tp){if(tp===myPeer())return'あなた';const p=allies().find(x=>x.peer===tp);return p?nameOf(p):'仲間'}
+function aimStart(tp){
+  if(!S||!S.coop||!S.boss||S.boss.dead||S.boss.mob)return;
+  const meTank=S.cls==='tank'&&S.mode!=='over',ta=tankAlly();
+  S.aim={tp,at:nowT()+AIM_MS,cleared:0,tank:meTank?'me':ta?ta.peer:''};
+  const mine=tp===myPeer();
+  if(meTank)pop(['かばえ！',`${aimPeerName(tp)}が狙われている`],'#8fe3ff',1.15);
+  else if(mine)pop(['狙われている！',S.aim.tank?'守護者がかばってくれる':'構えろ'],'#ff6f7f',1.15);
+  sfx('warn');aimUi();
+}
+function aimUi(){
+  const a=S&&S.aim,ban=$('aimBan'),wrap=document.querySelector('.boardwrap');
+  allies().slice(0,MAXP-1).forEach((p,i)=>{const m=$('mate'+i);if(m)m.classList.toggle('aimed',!!a&&a.tp===p.peer)});
+  if(!a){ban.hidden=true;wrap.classList.remove('aimed','cover');return}
+  const sec=Math.max(0,Math.ceil((a.at-nowT())/1000)),mine=a.tp===myPeer(),meTank=a.tank==='me';
+  wrap.classList.toggle('aimed',mine&&!meTank);wrap.classList.toggle('cover',meTank);
+  ban.hidden=!(mine||meTank);ban.classList.toggle('cover',meTank);
+  const txt=meTank?(a.cleared?`かばう準備OK<b>${sec}</b>`:`${esc(aimPeerName(a.tp))}をかばう<b>${sec}</b>列を消すと完全に防ぐ`):a.tank?`狙われている<b>${sec}</b>守護者がかばう`:a.dodge?`身構えた<b>${sec}</b>ダメージ半減`:`狙い撃ち<b>${sec}</b>列を消すと半減`;
+  if(ban.innerHTML!==txt)ban.innerHTML=txt;
+}
+function aimTick(){
+  const a=S&&S.aim;if(!a)return;
+  if(!S.boss||S.boss.dead){S.aim=null;aimUi();return}
+  if(nowT()<a.at){aimUi();return}
+  S.aim=null;aimUi();
+  const mine=a.tp===myPeer(),alive=S.mode==='play';
+  const ta=a.tank==='me'?null:allies().find(p=>p.peer===a.tank&&p.presence.a);
+  if(a.tank==='me'&&alive){
+    const d=Math.round(strikeDmg()*AIM_MUL*(a.cleared?0:0.5));
+    S.blocked++;giftOut('かばう');
+    if(a.cleared){const c=Math.round(S.boss.max*0.05);S.boss.myDmg+=c;S.fx.push({k:'block',t:0},{k:'hit',t:0});dmgNum(c,true,'反撃');pop(['完璧にかばった',`反撃 ${c}`],'#8fe3ff',1.3);feel('large');sfx('block');logPush('完璧にかばった',`${aimPeerName(a.tp)}を守った`,'#8fe3ff')}
+    else{S.fx.push({k:'block',t:0});pop(['かばった'],'#8fe3ff',1.1);feel('medium');sfx('block');takeHit(d,'狙い撃ちをかばった');logPush('かばった',`${aimPeerName(a.tp)}を守った`,'#8fe3ff')}
+    return;
+  }
+  if(a.tank&&a.tank!=='me'&&ta){if(mine||S.mode==='play'){toast(`${nameOf(ta)}（守護者）が${mine?'あなた':aimPeerName(a.tp)}をかばった`);if(mine){giftIn(ta,'かばう');S.fx.push({k:'block',t:0})}}return}
+  if(mine&&alive){S.fx.push({k:'atk',t:0});feel('large');takeHit(Math.round(strikeDmg()*AIM_MUL*(a.dodge?0.5:1)),`${S.boss.name}の狙い撃ち`)}
+  else if(S.mode==='play')toast(`${aimPeerName(a.tp)}に狙い撃ちが直撃`);
+}
+// host: schedule the next mark while a real boss is up and at least two players stand
+function aimHost(now){
+  const b=S.boss;
+  if(!b||b.dead||b.mob||S.phase!=='play'){S.mkNext=0;return}
+  if(S.mkBoss!==b.id){S.mkBoss=b.id;S.mkNext=now+AIM_FIRST;return}
+  if(!S.mkNext)S.mkNext=now+AIM_FIRST;
+  if(now<S.mkNext)return;
+  S.mkNext=now+AIM_GAP;
+  const cand=[...(S.mode!=='over'?[myPeer()]:[]),...aliveAllies().filter(p=>!isStale(p)).map(p=>p.peer)];
+  if(cand.length<2)return;
+  const tp=cand[Math.floor(Math.random()*cand.length)];
+  S.mkN=(S.mkN||0)+1;S.mkTp=tp;S.aimSeen=S.mkN;aimStart(tp);
+}
+/* ---------- 連携: line clears from 2+ players within LINK_MS of each other ---------- */
+const LINK_MS=3000,LINK_PER=0.3,LINK_CD=8000;
+function linkMates(){
+  if(!NET||!NET.allyClr)return[];const t=nowT(),out=[];
+  for(const k in NET.allyClr){const c=NET.allyClr[k];if(t-c.t<=LINK_MS&&!c.used){c.used=true;out.push(c.who)}}
+  return out;
+}
+function linkFx(names,mine){
+  const n=names.length+1;
+  sfx('link');feel(n>=3?'large':'medium');
+  pop([`${n}人連携！`,mine?`×${Math.round((1+LINK_PER*names.length)*100)/100}`:`${names[0]}が続いた`],n>=3?'#ffd36b':'#8fe3ff',n>=3?1.35:1.2);
+  logPush(`${n}人連携`,names.join('・'),'#8fe3ff');
+}
 // link skill: you and an ally fire skills within 3 seconds of each other
 function linkSkill(who){
   if(nowT()-S.lastLinkAt<3000)return;S.lastLinkAt=nowT();
@@ -2005,6 +2166,7 @@ function startFreeze(dur,mul,echo){
 }
 /* ---------- boss skills ---------- */
 function castBossSkill(b){
+  if(quirk('quiet'))return;
   const k=nextBossSk(b);b.skN++;
   const anti=Object.keys(RELICS).find(r=>RELICS[r].anti===k&&lv(r));
   if(anti&&k!=='quake'){pop([b.name,BSK[k].n],'#b9a3ff',1.1);toast(`${RELICS[anti].n}で無効にした`);return}
@@ -2033,11 +2195,25 @@ function hitInterval(){
   if(!S.boss&&S.phase==='play'&&isFinite(coldMs()))return coldMs();
   return 0;
 }
-function revive(by){
+function revive(by,hp,msg){
   hide('ovOver');hide('ovPause');
-  S.watching=false;S.hp=REVIVE_HP;S.board=emptyBoard();S.combo=-1;
+  S.watching=false;S.hp=hp||REVIVE_HP;S.board=emptyBoard();S.combo=-1;S.incoming=[];
   S.mode='play';spawn();
-  toast(`${by}が蘇生してくれた`);
+  toast(msg||`${by}が蘇生してくれた`);
+}
+/* ---------- 氷霊: a fallen party member keeps helping, and comes back on the next floor ---------- */
+const GHOST_CD=15000,GHOST_HEAL=6,GHOST_PUSH=2500;
+const ghostOn=()=>!!(S&&S.coop&&S.mode==='over'&&S.hp<=0&&!S.overAllDead&&coopOn());
+const ghostLeft=()=>Math.max(0,(S.ghAt||0)+GHOST_CD-nowT());
+function ghostAct(){
+  if(ghostLeft()>0){toast(`氷霊の祈り：あと${Math.ceil(ghostLeft()/1000)}秒`);return}
+  S.ghAt=nowT();S.ghN=(S.ghN||0)+1;
+  pop(['氷霊の祈り',`仲間にHP+${GHOST_HEAL}・強撃を遅らせる`],'#bfe8ff',1.1);sfx('skill');giftOut('祈り');hud(true);
+}
+function floorRevive(){
+  if(!S.coop||S.mode!=='over'||S.hp>0||S.overAllDead)return;
+  S.floorRev=(S.floorRev||0)+1;revive('',Math.max(REVIVE_HP,Math.round(S.maxHp*0.4)),'氷霊が体に戻った（次の階で復活）');
+  pop(['復活'],'#bfe8ff',1.2);
 }
 function makeBoss(id,name,max){
   if(id>=1000){
@@ -2045,8 +2221,8 @@ function makeBoss(id,name,max){
     S.hitAcc=0;pop(['雑魚',name],'#9fd8ff',0.95);sfx('hit');hud(true);return;
   }
   const el=id>=100?ELITES[id%ELITES.length]:null;
-  const sk=el?el.sk:BOSS_SK[(id-1)%BOSS_SK.length];
-  const b={id,name,max,hp:max,atk:0,myDmg:0,dead:false,sk,sk2:BOSS_SK[id%7]===sk?'bite':BOSS_SK[id%7],skAcc:0,skN:0,warned:false,p2:false,elite:!!el};
+  const bi=el?0:bossIdx(id),sk=el?el.sk:BOSS_SK[bi],s2=BOSS_SK[el?id%7:(bi+1)%7];
+  const b={id,name,max,hp:max,atk:0,myDmg:0,dead:false,sk,sk2:s2===sk?'bite':s2,skAcc:0,skN:0,warned:false,p2:false,elite:!!el};
   if(S.weaken){b.myDmg=Math.round(max*0.15);S.weaken=false}
   S.boss=b;S.hitAcc=0;floorShield();pop(['BOSS',name],'#ff6f7f',1.15);sfx('boss');shake(5,300);hud(true);
 }
@@ -2315,7 +2491,7 @@ function openSkillUp(ti){
 }
 function pickRelic(k,first){
   applyRelic(k);hide('ovReward');renderRelics();layout();
-  if(first){S.mode='play';spawn();hud(true);toast(`地下${S.floor}階`);announceTransform();if(S.pendingLv)openReward(false);return}
+  if(first){S.mode='play';spawn();enterQuirk();enterGoal();hud(true);toast(`地下${S.floor}階`);announceTransform();if(S.pendingLv)openReward(false);return}
   announceTransform();
   levelPicked();
 }
@@ -2345,7 +2521,8 @@ function shopItems(){
 }
 function openShop(){
   S.mode='shop';S.shop={items:shopItems(),rerolls:0};
-  $('shSub').textContent=`${S.lastBoss}を倒した · 地下${S.floor+1}階の前`;
+  {const nq=S.map!=='branch'?quirkFor(S.floor+1):'',nb=S.floor+1<=FINAL?bossName(S.floor+1):'';
+   $('shSub').innerHTML=`${esc(S.lastBoss)}を倒した · 地下${S.floor+1}階の前`+(nb||nq?`<br><span class="qline">次の階：${nb?`ボス「${nb}」`:''}${nq?' '+quirkTag(nq)+QUIRKS[nq].d:''}</span>`:'')}
   renderShop();show('ovShop');
 }
 const rerollCost=()=>8+6*S.shop.rerolls;
@@ -2451,19 +2628,63 @@ function genNodes(){
   while(out.length<3&&pool.length){let t=pool.reduce((a,k)=>a+w[k],0),r=R()*t,i=0;while(i<pool.length-1&&r>=w[pool[i]]){r-=w[pool[i]];i++}out.push(pool.splice(i,1)[0])}
   return out;
 }
+/* ---------- route vote (party, branch map): the host deals the paths, everyone alive votes, majority wins ---------- */
+const ROUTE_VOTE_MS=20000;
+const voting=()=>S.coop&&coopOn()&&aliveAllies().length>0;
+function routeCards(nodes,qo,onPick){
+  const box=$('routeCards');box.innerHTML='';
+  nodes.forEach((k,i)=>{const n=NODES[k],q=qo[i],Q=QUIRKS[q],b=document.createElement('button');b.type='button';b.className='card node';b.style.color=n.col;
+    b.innerHTML=`<span class="g" style="color:${n.col}">${n.g}</span><span class="n" style="color:var(--fg)">${n.n}<span class="votes" data-i="${i}"></span></span><span class="d">${n.d}${Q?`<br><span class="qline">${quirkTag(q)}地下${S.floor+1}階：${Q.d}</span>`:''}</span>`;
+    b.onclick=()=>onPick(i);box.appendChild(b)});
+}
+function castVote(i){
+  if(!S.rt)return;S.rv={f:S.floor,i};sfx('rotate');renderVotes();
+}
+function voteList(){
+  const out=[];if(!S.rt)return out;
+  if(S.mode!=='over'&&S.rv&&S.rv.f===S.floor)out.push({who:'あなた',i:S.rv.i,me:true});
+  for(const p of aliveAllies()){const v=p.presence.rv;if(v&&+v.f===S.floor&&+v.i>=0&&+v.i<3)out.push({who:nameOf(p),i:+v.i})}
+  return out;
+}
+function renderVotes(){
+  if($('ovRoute').hidden||!S.rt)return;
+  const vs=voteList(),k=JSON.stringify(vs);if(S.rtKey===k&&S.rtSec===Math.ceil(((S.rt.dl||0)-nowT())/1000))return;S.rtKey=k;
+  document.querySelectorAll('#routeCards .votes').forEach(el=>{const i=+el.dataset.i,w=vs.filter(v=>v.i===i);
+    el.innerHTML=w.length?' '+w.map(v=>`<i class="vchip${v.me?' me':''}">${esc(v.who)}</i>`).join(''):''});
+  document.querySelectorAll('#routeCards .card').forEach((b,i)=>b.classList.toggle('voted',!!(S.rv&&S.rv.f===S.floor&&S.rv.i===i)));
+  if(S.rt.dl){S.rtSec=Math.ceil((S.rt.dl-nowT())/1000);$('routeSub').textContent=`地下${S.floor+1}階への道をみんなで決める（多い票の道へ進む・あと${Math.max(0,S.rtSec)}秒）`}
+}
+// host: close the vote when every living player voted, or at the deadline
+function routeHost(now){
+  if(!S.rt||S.nodePicked||S.mode!=='route')return;
+  const vs=voteList(),voters=(S.mode!=='over'?1:0)+aliveAllies().filter(p=>!isStale(p)).length;
+  renderVotes();
+  if(vs.length<voters&&nowT()<S.rt.dl)return;
+  const cnt=[0,0,0];vs.forEach(v=>cnt[v.i]++);const top=Math.max(...cnt);
+  let w=cnt.indexOf(top);const mine=S.rv&&S.rv.f===S.floor?S.rv.i:-1;if(mine>=0&&cnt[mine]===top)w=mine;
+  if(!vs.length)w=0;
+  S.votesDone=(S.votesDone||0)+1;S.lastVote=vs.length;toast(`投票で「${NODES[S.rt.n[w]].n}」に決まった`);pickNode(S.rt.n[w],S.rt.q[w]);
+}
+function showRouteVote(rt){
+  S.rt=rt;S.rv=null;S.rtKey='';$('routeSub').textContent=`地下${S.floor+1}階への道をみんなで決める（多い票の道へ進む）`;
+  $('routePath').innerHTML=S.route.length?S.route.map((k,i)=>`<span>${i+2}階前：${NODES[k].n}</span>`).join(''):'<span>まだ道を選んでいない</span>';
+  routeCards(rt.n,rt.q,castVote);hide('ovWait');show('ovRoute');renderVotes();
+}
 function openRoute(){
   S.mode='route';S.phase=S.coop?'route':S.phase;
-  const nodes=genNodes();
+  const nodes=genNodes(),qo=quirkOpts(S.floor+1);
+  if(voting()){S.rt={f:S.floor,n:nodes,q:qo,dl:nowT()+ROUTE_VOTE_MS};showRouteVote(S.rt);S.rt.dl=nowT()+ROUTE_VOTE_MS;return}
+  S.rt=null;
   $('routeSub').textContent=`地下${S.floor+1}階へ降りる前に、進む道を選ぶ${S.coop?'（パーティ全員がこの道を進む）':''}`;
   $('routePath').innerHTML=S.route.length?S.route.map((k,i)=>`<span>${i+2}階前：${NODES[k].n}</span>`).join(''):'<span>まだ道を選んでいない</span>';
   const box=$('routeCards');box.innerHTML='';
-  nodes.forEach(k=>{const n=NODES[k],b=document.createElement('button');b.type='button';b.className='card node';b.style.color=n.col;
-    b.innerHTML=`<span class="g" style="color:${n.col}">${n.g}</span><span class="n" style="color:var(--fg)">${n.n}</span><span class="d">${n.d}</span>`;
-    b.onclick=()=>pickNode(k);box.appendChild(b)});
+  nodes.forEach((k,i)=>{const n=NODES[k],q=qo[i],Q=QUIRKS[q],b=document.createElement('button');b.type='button';b.className='card node';b.style.color=n.col;
+    b.innerHTML=`<span class="g" style="color:${n.col}">${n.g}</span><span class="n" style="color:var(--fg)">${n.n}</span><span class="d">${n.d}<br><span class="qline">${quirkTag(q)}地下${S.floor+1}階：${Q.d}</span></span>`;
+    b.onclick=()=>pickNode(k,q);box.appendChild(b)});
   show('ovRoute');
 }
-function pickNode(k){
-  hide('ovRoute');S.nodePicked=true;S.route.push(k);S.nodeKind=k;
+function pickNode(k,q){
+  hide('ovRoute');S.rt=null;S.nodePicked=true;S.route.push(k);S.nodeKind=k;if(QUIRKS[q])S.qPick[S.floor+1]=q;
   if(S.coop)S.phase=k==='elite'?'play':'node';
   resolveNode(k);
 }
@@ -2562,7 +2783,7 @@ function runEvent(){
 function advanceFloor(){
   S.altarDone=false;S.incoming=[];S.nodePicked=false;S.readyNode=0;S.nodeSeen=false;hide('ovRoute');
   S.floor++;noteDeep();S.timeLeft=stageMs();S.mobWait=MOB_FIRST;S.boss=null;S.phase='play';S.readyFloor=0;S.hitAcc=0;S.kickVote='';S.waitAt=0;
-  floorShield();
+  floorShield();enterQuirk();enterGoal();floorRevive();
   hide('ovWait');
   if(S.mode==='wait'||S.mode==='shop')resumePlay();
   hud(true);
@@ -2600,7 +2821,7 @@ function gameOver(){
 const RES_STATS=[
   ['d','与えたダメージ','火力王'],['l','消した列','列消し職人'],['t','T-SPIN','技巧派'],['r','最大REN','連鎖王'],
   ['h','回復した量','癒しの要'],['s','張ったシールド','守りの盾'],['f','鼓舞・調べ','盛り上げ役'],['b','防いだ強撃','鉄壁'],
-  ['k','受けたダメージ','体を張った'],['v','蘇生','救世主']
+  ['k','受けたダメージ','体を張った'],['v','蘇生','救世主'],['c','連携','息ぴったり']
 ];
 const CORE_STATS=['d','l','t','r'];
 function myResult(){return{me:true,nm:myNick||'あなた',cls:S.cls,a:S.mode!=='over',st:{...S.st,l:S.totalLines,k:S.hitsTaken||0,b:S.blocked||0,lv:S.level}}}
@@ -2632,7 +2853,7 @@ function showOver(){
   const allDead=!coopOn()||!anyAllyAlive();
   $('goTitle').textContent=coopOn()?(allDead?'全員力尽きた':'力尽きた'):'力尽きた';
   $('goNote').hidden=!coopOn()&&!S.daily;
-  $('goNote').textContent=coopOn()?(allDead?'ここまでの潜行の記録です。':'仲間はまだ戦っている。癒し手の「雪解けの奇跡」で蘇生できる。'):'';
+  $('goNote').textContent=coopOn()?(allDead?'ここまでの潜行の記録です。':'仲間はまだ戦っている。次の階に進めば復活する（癒し手の「雪解けの奇跡」ならすぐ蘇生）。観戦中はスキルボタンで「氷霊の祈り」を送って仲間を助けられる。'):'';
   const c=clsOf(S.cls);
   $('goKick').textContent=`RUN OVER · 地下${S.floor}階`;
   $('goCause').textContent=S.cause?`${S.cause}。HPが尽きた。`:'';
@@ -2941,7 +3162,7 @@ function renderCodex(){
   if(codexTab==='core')rows=Object.keys(CORES).map(k=>{const c=CORES[k],l=lockOf(k);return{seen:!!(SEEN.core&&SEEN.core[k]),g:c.g,col:c.col,n:c.n,d:(l?`【未解放：${l.d}】`:'')+c.d+`（${c.tag}）`,locked:!!l}});
   else if(codexTab==='evo')rows=Object.keys(EVOS).map(k=>{const e=EVOS[k],b=RELICS[e.base],c=RELICS[e.cat];return{seen:true,g:SEEN.ev[k]?e.g:'？',col:e.col,n:SEEN.ev[k]?e.n:'？？？（まだ進化させていない）',d:`${b.n}（最大Lv${b.max}）＋${c.n}`+(SEEN.ev[k]?`：${e.d}`:'')}});
   else if(codexTab==='tf')rows=Object.keys(TAGS).map(t=>({seen:!!SEEN.tf[t],g:t,col:TAGS[t].col,n:TAGS[t].tf,d:`${t}タグの遺物を3つ集める：${TAGS[t].d}`}));
-  else if(codexTab==='boss')rows=BOSSES.map((n,i)=>{const k=BOSS_SK[i];return{seen:!!SEEN.b[n],g:`B${i+1}`,col:'#ff6f7f',n,d:k==='king'?'すべてのスキルを順に使う':`スキル「${BSK[k].n}」：${BSK[k].d}`}});
+  else if(codexTab==='boss')rows=BOSSES.map((n,i)=>{const k=BOSS_SK[i];return{seen:!!SEEN.b[n],g:i===7?'B8':i<4?'浅':'深',col:'#ff6f7f',n,d:k==='king'?'すべてのスキルを順に使う':`スキル「${BSK[k].n}」：${BSK[k].d}`}});
   else{
     const keys=Object.keys(RELICS).filter(k=>k!=='potion'&&(codexTab==='duo'?RELICS[k].duo:codexTab==='cursed'?RELICS[k].cursed:!RELICS[k].duo&&!RELICS[k].cursed));
     rows=keys.map(k=>{const r=RELICS[k],l=lockOf(k);return{seen:!!SEEN.r[k],g:r.g,col:relicCol(r),n:r.n,d:(l?`【未解放：${l.d}】`:'')+r.d+(r.t?`（${r.t}）`:''),locked:!!l}});
@@ -3067,7 +3288,7 @@ function enemyTrail(b){
 function hud(force){
   if(!S||S.mode==='title')return;
   setText('floor',S.floor===FINAL?`地下${S.floor}階 最下層`:`地下${S.floor}階`);
-  {const rt=(S.rank?`・氷層${S.rank}`:'')+(S.daily?'・今日のお題':''),k=S.floor+'/'+S.endless+'/'+S.diff+'/'+S.map+rt;if(hc.prog!==k){hc.prog=k;$('prog').innerHTML=S.floor>FINAL||S.endless?`踏破済み・${DIFFS[S.diff].n}${S.map==='branch'?'・分岐':''}${rt}`:`クリアまで <b>${S.floor}/${FINAL}</b>・${DIFFS[S.diff].n}${S.map==='branch'?'・分岐':''}${rt}`}}
+  {const rt=(S.rank?`・氷層${S.rank}`:'')+(S.daily?'・今日のお題':''),k=S.floor+'/'+S.endless+'/'+S.diff+'/'+S.map+rt+'/'+S.quirk+'/'+(S.goal?goalProg()+(S.goal.done?'d':''):'');if(hc.prog!==k){hc.prog=k;$('prog').innerHTML=(S.quirk?quirkTag(S.quirk):'')+goalTag()+(S.floor>FINAL||S.endless?`踏破済み・${DIFFS[S.diff].n}${S.map==='branch'?'・分岐':''}${rt}`:`クリアまで <b>${S.floor}/${FINAL}</b>・${DIFFS[S.diff].n}${S.map==='branch'?'・分岐':''}${rt}`)}}
   setText('score',S.score.toLocaleString());
   setText('gold',S.gold+'G');
   setText('lv','Lv '+S.level);
@@ -3098,8 +3319,10 @@ function hud(force){
   }
   {
     const need=skNeed(),ch=Math.min(need,S.skCharge||0),rd=ch>=need,sb=$('skillBtn');
-    const k=rd+'/'+ch+'/'+need+'/'+S.cls;
-    if(hc.sk!==k){hc.sk=k;sb.style.setProperty('--chg',(ch/need*100).toFixed(0)+'%');sb.classList.toggle('ready',rd);$('skTxt').textContent=rd?clsOf(S.cls).sk.n:`${ch}/${need}`}
+    const go=ghostOn(),gl=go?Math.ceil(ghostLeft()/1000):0;
+    const k=rd+'/'+ch+'/'+need+'/'+S.cls+'/'+go+gl;
+    if(go){if(hc.sk!==k){hc.sk=k;sb.style.setProperty('--chg',(100-ghostLeft()/GHOST_CD*100).toFixed(0)+'%');sb.classList.toggle('ready',!gl);$('skTxt').textContent=gl?`祈り ${gl}`:'氷霊の祈り'}}
+    else if(hc.sk!==k){hc.sk=k;sb.style.setProperty('--chg',(ch/need*100).toFixed(0)+'%');sb.classList.toggle('ready',rd);$('skTxt').textContent=rd?clsOf(S.cls).sk.n:`${ch}/${need}`}
   }
   holdC.classList.toggle('off',!lv('hold'));
   $('holdBtn').disabled=!lv('hold');
@@ -3438,8 +3661,8 @@ function deskHud(){
   const c=clsOf(S.cls),b=S.boss;
   if(hc.dkCls!==S.cls){hc.dkCls=S.cls;$('dkCls').innerHTML=ico(S.cls,'#0b1320',0,46);$('dkCls').style.background=c.col;$('dkSkill').style.setProperty('--skc',c.col)}
   setText('dkFloor',S.floor===FINAL?`地下${S.floor}階 最下層`:`地下${S.floor}階`);
-  {const k=S.cls+S.diff+S.floor+S.endless+(S.rank||0)+(S.daily||'')+S.level+(S.coop?1:0);if(hc.dkProg!==k){hc.dkProg=k;
-    $('dkProg').innerHTML=`${c.n} · ${DIFFS[S.diff].n}${S.rank?' · 氷層'+S.rank:''}${S.daily?' · 今日のお題':''} · ${S.floor>FINAL||S.endless?'踏破済み':`クリアまで <b>${S.floor}/${FINAL}</b>`}`}}
+  {const k=S.cls+S.diff+S.floor+S.endless+(S.rank||0)+(S.daily||'')+S.level+(S.coop?1:0)+S.quirk+(S.goal?goalProg()+(S.goal.done?'d':''):'');if(hc.dkProg!==k){hc.dkProg=k;
+    $('dkProg').innerHTML=(S.quirk?quirkTag(S.quirk)+' ':'')+goalTag()+`${c.n} · ${DIFFS[S.diff].n}${S.rank?' · 氷層'+S.rank:''}${S.daily?' · 今日のお題':''} · ${S.floor>FINAL||S.endless?'踏破済み':`クリアまで <b>${S.floor}/${FINAL}</b>`}`}}
   {const hp=Math.max(0,S.hp),mx=S.maxHp,sh=S.shield||0,k=hp+'/'+mx+'/'+sh;if(hc.dkHp!==k){hc.dkHp=k;const tot=Math.max(mx,hp+sh);
     $('dkHpT').innerHTML=`${hp}<small>/${mx}</small>${sh?`<em>+${sh}</em>`:''}`;$('dkHpB').style.width=(hp/tot*100)+'%';$('dkShB').style.left=(hp/tot*100)+'%';$('dkShB').style.width=(sh/tot*100)+'%';$('dkHp').classList.toggle('low',hp<=mx*0.3)}}
   setText('dkLv','Lv '+S.level);setW('dkXp',S.pendingLv?100:S.xp/xpNeed(S.level)*100);
@@ -3773,9 +3996,14 @@ function absorbAllies(){
       if(!cur||cur.i!==q.d.i)NET.dmg[key]={i:q.d.i,v};else if(v>cur.v)cur.v=v;
     }
     const hcN=+q.hc||0,hrN=+q.hr||0,bcN=+q.bc||0,skN=+q.sk||0;
-    const chN=+q.ch||0,emN=q.em&&+q.em.n||0,cnN=+q.cn||0;
+    const chN=+q.ch||0,emN=q.em&&+q.em.n||0,cnN=+q.cn||0,lcN=+q.lc||0;
     let sn=NET.seen[pkey(p)];
-    if(!sn){NET.seen[pkey(p)]={hc:hcN,hr:hrN,bc:bcN,sk:skN,ch:chN,em:emN,cn:cnN};continue}
+    if(!sn){NET.seen[pkey(p)]={hc:hcN,hr:hrN,bc:bcN,sk:skN,ch:chN,em:emN,cn:cnN,lc:lcN};continue}
+    const ghN=+q.gh||0;if(sn.gh==null)sn.gh=ghN;
+    if(ghN>sn.gh){sn.gh=ghN;if(S.mode==='play'){heal(GHOST_HEAL);S.hitAcc-=GHOST_PUSH;S.fx.push({k:'heal',t:0});toast(`${nameOf(p)}の氷霊の祈り HP+${GHOST_HEAL}・強撃が遅れた`);giftIn(p,'祈り');hud(true)}}
+    if(lcN>(sn.lc||0)){sn.lc=lcN;NET.allyClr=NET.allyClr||{};NET.allyClr[pkey(p)]={t:nowT(),used:false,who:nameOf(p)};
+      // an ally answered my clear: they get the bonus, I get the moment
+      if(S.mode==='play'&&q.a&&nowT()-S.lastClrAt<=LINK_MS&&!S.linkSeen){S.linkSeen=true;linkFx([nameOf(p)],false)}}
     if(cnN>(sn.cn||0)){sn.cn=cnN;if(S.mode==='play'){const ms=Math.max(1000,Math.min(12000,+q.cm||5000));calmStart(ms);toast(`${nameOf(p)}の凪の太鼓 ${ms/1000}秒間ゴミ列-1`);giftIn(p,'凪')}}
     if(chN>sn.ch){sn.ch=chN;if(S.mode==='play'){smallShield(4);S.skCharge=Math.min(skNeed(),(S.skCharge||0)+1);toast(`${nameOf(p)}の応援 シールド+4・スキル+1`);giftIn(p,'応援')}}
     if(emN>sn.em){sn.em=emN;const i=Math.max(0,Math.min(EMOTES.length-1,+q.em.i|0));NET.bubble[pkey(p)]={txt:EMOTES[i],until:nowT()+2800};toast(`${nameOf(p)}「${EMOTES[i]}」`)}
@@ -3885,7 +4113,7 @@ function netTick(now){
         S.altarDone=false;S.incoming=[];
         if(!(fresh&&S.mode==='reward')&&S.mode!=='wait'&&S.mode!=='over'&&S.mode!=='play'&&S.mode!=='pause')leftBehind();
         S.floor=+g.f;S.boss=null;S.mobWait=MOB_FIRST;S.phase='play';S.readyFloor=0;S.hitAcc=0;S.kickVote='';floorShield();
-        S.nodePicked=false;S.readyNode=0;S.nodeSeen=false;S.inNodeShop=false;
+        S.nodePicked=false;S.readyNode=0;S.nodeSeen=false;S.inNodeShop=false;enterQuirk();enterGoal();floorRevive();
         if(S.mode==='wait'){hide('ovWait');resumePlay();toast(`地下${S.floor}階`)}
         if(fresh)catchUp();
       }
@@ -3893,10 +4121,15 @@ function netTick(now){
       S.synced=true;
       if(+g.f===S.floor){
         S.timeLeft=+g.t||0;
+        if(g.ph==='route'&&g.rt&&+g.rt.f===S.floor&&!S.nodePicked&&S.mode==='wait'&&S.rtShown!==S.floor&&Array.isArray(g.rt.n)&&g.rt.n.length===3&&g.rt.n.every(k=>NODES[k])){
+          S.rtShown=S.floor;const q=Array.isArray(g.rt.q)?g.rt.q.map(x=>QUIRKS[x]?x:''):['','',''];showRouteVote({f:S.floor,n:g.rt.n.slice(0,3),q})}
+        if(!$('ovRoute').hidden&&S.mode==='wait')renderVotes();
+        if(g.mk&&+g.mk.n&&+g.mk.n!==S.aimSeen){S.aimSeen=+g.mk.n;if(typeof g.mk.tp==='string')aimStart(g.mk.tp.slice(0,64))}
+        if(typeof g.q==='string'&&(g.q===''||QUIRKS[g.q])&&g.q!==S.quirk){S.qPick[S.floor]=g.q||'none';enterQuirk()}
         if(['play','shop','route','node'].includes(g.ph))S.phase=(S.boss&&S.boss.dead)?(S.boss.elite?'node':'shop'):g.ph;
         if(g.ph==='route'&&S.mode==='wait')$('waitMsg').textContent='ホストが次の道を選んでいます';
         if(g.node&&+g.node.f===S.floor&&!S.nodeSeen&&NODES[g.node.k]&&(S.mode==='wait'||S.mode==='over')){
-          S.nodeSeen=true;S.nodePicked=true;S.route.push(g.node.k);S.nodeKind=g.node.k;hide('ovWait');
+          S.nodeSeen=true;S.nodePicked=true;S.route.push(g.node.k);S.nodeKind=g.node.k;hide('ovWait');hide('ovRoute');S.rt=null;if(QUIRKS[g.node.q])S.qPick[S.floor+1]=g.node.q;
           if(S.mode==='wait')S.mode='play';
           toast(`ホストが「${NODES[g.node.k].n}」を選んだ`);resolveNode(g.node.k);
         }
@@ -3904,6 +4137,7 @@ function netTick(now){
         if(g.boss&&(!S.boss||S.boss.id!==g.boss.id)&&+g.boss.id!==S.deadMob)makeBoss(+g.boss.id,String(g.boss.n).slice(0,24),Math.max(1,+g.boss.m|0));
       }
     }
+    if(L==='me'){aimHost(now);routeHost(now)}
     if(L==='me'&&S.phase==='shop'){
       const t=waitTarget(),kick=kickPassed(t);
       // the leader itself can be the one left behind (idle in the shop while the others vote)
@@ -3940,10 +4174,10 @@ function netTick(now){
   let pres;
   if(coopOn()){
     pres={r:NET.isHost?'host':'guest',e:S.epoch,cls:S.cls,a:S.mode!=='over'?1:0,hp:S.hp,mh:S.maxHp,lv:S.level,
-      b:boardStr(),d:S.boss?{i:S.boss.id,v:S.boss.myDmg}:(S.deadMobD||null),rd:S.readyFloor,
+      b:boardStr(),d:S.boss?{i:S.boss.id,v:S.boss.myDmg}:(S.deadMobD||null),rd:S.readyFloor,lc:S.lcN,rv:S.rv&&S.rv.f===S.floor?S.rv:null,gh:S.ghN||0,
       hc:S.healCount,hr:S.reviveCount,rn:S.readyNode,sk:S.skUses,su:(su(0)||'-')+(su(1)||'-')+(su(2)||'-'),skv:{ws:wallSh(),hh:mirHeal(),hs:mirSh(),fm:songMs(),fx:songMul()},im:immune()?1:0,cl:lv('purify'),ha:healAmt(),bm:evo('e_drum')?1.8:1.5,hs:6*lv('aegis'),sh:S.shield,bc:S.buffCount,bd:buffDur(),cn:S.calmN||0,cm:calmMs(),ll:lv('lullaby'),kv:S.kickVote||'',hb:Math.floor(now/3000),st:{...S.st,l:S.totalLines,k:S.hitsTaken||0,b:S.blocked||0,lv:S.level},l:null};
     pres.g=NET.isHost?{ph:S.phase,f:S.floor,t:Math.round(S.timeLeft/100)*100,
-      boss:S.boss?{id:S.boss.id,n:S.boss.name,m:S.boss.max}:null,node:S.nodePicked?{f:S.floor,k:S.nodeKind}:null}:null;
+      boss:S.boss?{id:S.boss.id,n:S.boss.name,m:S.boss.max}:null,node:S.nodePicked?{f:S.floor,k:S.nodeKind,q:S.qPick[S.floor+1]||''}:null,q:S.quirk||'',mk:S.mkN?{n:S.mkN,tp:S.mkTp}:null,rt:S.rt&&!S.nodePicked?{f:S.rt.f,n:S.rt.n,q:S.rt.q}:null}:null;
   }else pres={r:NET.isHost?'host':'guest',l:1,cls:myCls,e:null,g:null};
   pres.nm=myNick;pres.uid=MYUID;pres.ui=MYID||'';if(S&&S.coop)pres.sc=S.score;
   if(coopOn()){pres.ch=S.cheers||0;pres.em={n:S.emN||0,i:S.emI||0}}
@@ -3994,6 +4228,7 @@ addEventListener('keydown',e=>{
   const a=keymap[e.code];
   if(a==='pause'){if(!e.repeat)S&&S.mode==='pause'?resume():pause();e.preventDefault();return}
   if(S&&coopOn()&&/^Digit[1-4]$/.test(e.code)&&!a){sendEmote(+e.code.slice(5)-1);return}
+  if(a==='skill'&&ghostOn()&&!e.repeat){e.preventDefault();ghostAct();return}
   if(!a||!S||S.mode!=='play')return;
   e.preventDefault();
   if(e.repeat)return;
@@ -4100,6 +4335,7 @@ function gpPoll(){
     }
     return;
   }
+  if(ghostOn()&&!gpOpenSheet()&&actDown('skill')){ghostAct();return}
   for(const a in held)if(held[a].src==='gp')stopRepeat(a);
   if(!Object.keys(now).length&&!Object.keys(prev).length)return;
   // menus: d-pad or stick, with key-repeat while held
@@ -4263,7 +4499,7 @@ $('classBack').onclick=()=>{pickMode='run';hide('ovClass');show('ovTitle')};
 $('againBtn').onclick=()=>{if(S&&S.daily&&!S.coop){hide('ovOver');openDaily();return}if(S&&S.coop){if(S.overAllDead&&NET&&NET.room)backToRoom();else toTitle()}else{hide('ovOver');openClassPick()}};
 $('goTitleBtn').onclick=toTitle;
 $('winRoomBtn').onclick=backToRoom;
-$('watchBtn').onclick=()=>{hide('ovOver');S.watching=true};
+$('watchBtn').onclick=()=>{hide('ovOver');S.watching=true;hc.sk='';toast('氷霊になった。スキルで仲間を助けられる');hud(true)};
 $('deeperBtn').onclick=()=>{hide('ovWin');S.endless=true;S.mode=S.winFrom==='reward'?'reward':'play';if(S.mode==='reward'){show('ovReward');S.afterReward='shop'}else afterBoss()};
 $('winTitleBtn').onclick=toTitle;
 $('coopBtn').onclick=openCoop;
@@ -4322,7 +4558,10 @@ function frame(now){
       if(!b.mob&&!b.warned&&b.skAcc>=curSkMs(b)-3000){b.warned=true;toast(`${b.name}が「${BSK[nextBossSk(b)].n}」の構え`)}
       if(!b.mob&&b.skAcc>=curSkMs(b)&&S.mode==='play'){b.skAcc=0;b.warned=false;castBossSkill(b)}
     }
-    if(S.mode==='play'){hpTick(dt);garbageTick()}
+    if(S.coop&&S.aim)aimTick();
+    if(S.goal&&!S.goal.done)goalTick();
+    if(S.mode==='play'){hpTick(dt);garbageTick();
+      if(quirk('frost')&&S.phase==='play'&&!frozen()){S.frostAcc=(S.frostAcc||0)+dt;if(S.frostAcc>=15000){S.frostAcc=0;S.fx.push({k:'atk',t:0});sfx('warn');pop(['凍る床'],QUIRKS.frost.col,.85);if(addGarbage(1)){topOut()}}}}
     bossHpTick();
   }
   netTick(now);

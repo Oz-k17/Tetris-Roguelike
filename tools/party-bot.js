@@ -5,7 +5,7 @@ const fs=require('fs'),vm=require('vm'),path=require('path');
 const HTML=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
 let SRC=[...HTML.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]).sort((a,b)=>b.length-a.length)[0].trim();
 SRC=SRC.slice(SRC.indexOf('{')+1,SRC.lastIndexOf('})'));
-SRC+=`;globalThis.G={get S(){return S},get NET(){return NET},collide,rot,hard,useSkill,skNeed,leaveShop,buy,W,H,
+SRC+=`;globalThis.G={get S(){return S},get NET(){return NET},collide,rot,hard,useSkill,skNeed,leaveShop,buy,W,H,ghostOn,ghostLeft,ghostAct,castVote,
   setCls:c=>{myCls=c},setDiff:d=>{myDiff=d},setMap:m=>{myMap=m},hostStart,cheer:()=>{try{$('cheerBtn2').onclick()}catch(e){}}};`;
 const SKILLS={beginner:{think:1250,err:0.5},average:{think:830,err:0.3},skilled:{think:500,err:0.1}};
 let T=0;
@@ -73,6 +73,7 @@ function act(P,opt){
   const G=P.G,S=G.S,rnd=P.rnd;if(!S)return;
   if(S.incoming){P.seenG=P.seenG||new WeakSet();for(const g of S.incoming)if(!P.seenG.has(g)){P.seenG.add(g);S.botGarb=(S.botGarb||0)+g.rows}}
   {const top=S.board.findIndex(r=>r.some(v=>v));const h=top<0?0:G.H-top;S.botMaxH=Math.max(S.botMaxH||0,h)}
+  if(S.mode==='route'&&!S.rt){const k=(P.els.routeCards&&P.els.routeCards.kids||[]).filter(c=>c.onclick);if(k.length){k[Math.floor(rnd()*k.length)].onclick();return}}
   if(S.mode==='reward'){
     const btns=(P.els.cards&&P.els.cards.kids||[]).filter(c=>c.onclick&&!c.disabled);
     if(btns.length){btns[Math.floor(rnd()*Math.min(btns.length,3))].onclick();return}
@@ -85,7 +86,8 @@ function act(P,opt){
     if(rel.length&&rnd()<0.8){G.buy(rel[Math.floor(rnd()*rel.length)].i);return}
     G.leaveShop();return;
   }
-  if(S.mode==='over'){if(!S.botCheer||T-S.botCheer>8000){S.botCheer=T;G.cheer()}return}
+  if(S.mode==='over'){if(G.ghostOn()&&G.ghostLeft()===0)G.ghostAct();if(!S.botCheer||T-S.botCheer>8000){S.botCheer=T;G.cheer()}return}
+  if(S.rt&&!(S.rv&&S.rv.f===S.floor)&&rnd()<0.05)G.castVote(Math.floor(rnd()*3));
   if(S.mode!=='play'||!S.cur)return;
   if((S.skCharge||0)>=G.skNeed()){
     const fight=S.boss&&!S.boss.dead;
@@ -108,7 +110,7 @@ async function runParty(classes,diff,opt,seed){
   const ps=classes.map((c,i)=>makePlayer(hub.api(),seed*7919+i*104729+1));
   const flush=async()=>{for(let i=0;i<3;i++){await null;hub.deliver();await null}};
   for(const P of ps){P.tick()}await flush();
-  ps.forEach((P,i)=>{P.G.setCls(classes[i]);P.G.setDiff(diff);P.G.setMap('line')});
+  ps.forEach((P,i)=>{P.G.setCls(classes[i]);P.G.setDiff(diff);P.G.setMap(process.env.MAP||'line')});
   ps[0].els.createBtn.onclick();await flush();
   const code=ps[0].G.NET.code;
   for(const P of ps.slice(1)){P.els.codeIn.value=code;P.els.joinBtn.onclick();await flush()}
@@ -122,8 +124,9 @@ async function runParty(classes,diff,opt,seed){
     if(process.env.D&&n%3750===0)console.log(Math.round((T-t0)/60000),ps.map(P=>{const S=P.G.S;return `${S.cls}:${S.mode}/${S.phase} f${S.floor} hp${S.hp} g${S.botGarb||0} hits${S.hitsTaken||0} lines${S.totalLines} hmax${S.botMaxH||0} ${S.boss?S.boss.name+(S.boss.dead?'x':'')+S.boss.hp:'-'} t${Math.round(S.timeLeft/1000)} host${P.G.NET&&P.G.NET.isHost} oth${(P.G.NET&&P.G.NET.others||[]).map(o=>o.presence&&o.presence.r+':'+(o.presence.g?o.presence.g.f+o.presence.g.ph:'-')).join(',')}`}).join(' | '));
     const Ss=ps.map(P=>P.G.S);
     Ss.forEach((S,i)=>{if(S.mode==='over'&&!S.botDead){S.botDead=1;deaths.push(`${S.cls}@F${S.floor}:${S.cause}${S.wardN?'(加護'+S.wardN+')':''}`)}if(S.mode!=='over')S.botDead=0});
-    if(Ss.some(S=>S.mode==='win'))return{win:true,deaths,floor:Ss[0].floor,ps:Ss.map(S=>({cls:S.cls,lv:S.level,hits:S.hitsTaken||0,dead:S.mode==='over'})),min:Math.round((T-t0)/60000)};
-    if(Ss.every(S=>S.mode==='over'))return{win:false,deaths,floor:Math.max(...Ss.map(S=>S.floor)),min:Math.round((T-t0)/60000)};
+    const co=()=>({vote:Ss.reduce((a,S)=>a+(S.votesDone||0),0),voters:Ss.reduce((a,S)=>a+(S.lastVote||0),0),goal:Ss.reduce((a,S)=>a+(S.goalsDone||0),0),ghost:Ss.reduce((a,S)=>a+(S.ghN||0),0),revive:Ss.reduce((a,S)=>a+(S.floorRev||0),0),link:Ss.reduce((a,S)=>a+((S.st&&S.st.c)||0),0),aim:Math.max(...Ss.map(S=>S.mkN||0)),lines:Ss.reduce((a,S)=>a+S.totalLines,0)});
+    if(Ss.some(S=>S.mode==='win'))return{co:co(),win:true,deaths,floor:Ss[0].floor,ps:Ss.map(S=>({cls:S.cls,lv:S.level,hits:S.hitsTaken||0,dead:S.mode==='over'})),min:Math.round((T-t0)/60000)};
+    if(Ss.every(S=>S.mode==='over'))return{co:co(),win:false,deaths,floor:Math.max(...Ss.map(S=>S.floor)),min:Math.round((T-t0)/60000)};
   }
   return{win:false,floor:ps[0].G.S.floor,cause:'timeout',min:75};
 }
@@ -135,6 +138,7 @@ if(require.main===module){
     const off=+(process.env.SEED||0);for(let i=0;i<+runs;i++)rs.push(await runParty(classes,diff,opt,off+i+1));
     const floors=rs.map(r=>r.win?9:r.floor);
     console.log(`${cls.padEnd(19)} ${diff} ${sk}  clear ${rs.filter(r=>r.win).length}/${runs}  avgFloor ${(floors.reduce((a,b)=>a+b,0)/rs.length).toFixed(1)}  floors ${floors.join(',')}`);
+    const cs=rs.filter(r=>r.co);if(cs.length){const sum=k=>cs.reduce((a,r)=>a+r.co[k],0);console.log(`  co-op: 連携 ${(sum('link')/cs.length).toFixed(1)}/run (${(100*sum('link')/Math.max(1,sum('lines'))).toFixed(1)}% of clears-lines)  狙い撃ち ${(sum('aim')/cs.length).toFixed(1)}/run  連携/分 ${(sum('link')/Math.max(1,cs.reduce((a,r)=>a+r.min,0))).toFixed(2)}  目標達成 ${(sum('goal')/cs.length).toFixed(1)}/run(人)  氷霊の祈り ${(sum('ghost')/cs.length).toFixed(1)}  階で復活 ${(sum('revive')/cs.length).toFixed(1)}  投票 ${(sum('vote')/cs.length).toFixed(1)}/run`)}
     if(process.env.V)rs.forEach(r=>console.log(JSON.stringify(r)));
   })();
 }
