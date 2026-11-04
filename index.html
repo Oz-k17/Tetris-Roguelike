@@ -938,7 +938,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='69',UPDATED='2026-11-02 17:26';
+const VERSION='70',UPDATED='2026-11-04 11:16';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -2663,18 +2663,43 @@ function pause(){
 }
 function resume(){hide('ovPause');resumePlay()}
 /* ---------- sound ---------- */
-let AC=null,SFXG=null,BGMG=null,bgmTimer=0;
+/* Audio graph (audio-design): every source goes into a bus, the buses into one master limiter.
+     sfx(k) → per-sound trim → SFXG (effects slider) ┐
+     generated music → BGMG (music slider) → DUCK ────┼→ MASTER (limiter, catches stacked hits) → speakers
+   Recorded music plays on <audio> elements; it gets the same duck through duckMul() in mixTick. */
+let AC=null,SFXG=null,BGMG=null,DUCK=null,MASTER=null,bgmTimer=0;
 function audioInit(){
   if(AC)return;
-  try{AC=new (window.AudioContext||window.webkitAudioContext)();SFXG=AC.createGain();BGMG=AC.createGain();SFXG.connect(AC.destination);BGMG.connect(AC.destination);applyVol();bgmStart()}catch(e){AC=null}
+  try{AC=new (window.AudioContext||window.webkitAudioContext)();
+    MASTER=softClip(AC);MASTER.connect(AC.destination);
+    SFXG=AC.createGain();BGMG=AC.createGain();DUCK=AC.createGain();SFXG.connect(MASTER);BGMG.connect(DUCK);DUCK.connect(MASTER);
+    applyVol();bgmStart()}catch(e){AC=null}
 }
 /* Loudness: every music source is brought to MUSIC_LUFS (measured integrated loudness, EBU R128).
    Recorded tracks carry their own measured lufs in MUSIC; the generated loop measures GEN_LUFS at gain 1. */
 const MUSIC_LUFS=-26,GEN_LUFS=-14.6,FADE_MS=1500;
 const dbGain=db=>Math.pow(10,db/20);
+/* master safety: a soft clipper, transparent below -3 dBFS, rounding off only what would clip when many sounds stack.
+   (A DynamicsCompressor was tried and measured: it cut short clicks by 8-10 dB, so it is not used.) */
+function softClip(ctx){
+  const ws=ctx.createWaveShaper(),n=2048,c=new Float32Array(n),th=0.7;
+  for(let i=0;i<n;i++){const x=i/(n-1)*2-1,a=Math.abs(x);c[i]=a<=th?x:Math.sign(x)*(th+(1-th)*Math.tanh((a-th)/(1-th)))}
+  ws.curve=c;ws.oversample='2x';return ws;
+}
+// effects slider: squared so the whole travel is audible (70% → 0.343, about the old level)
+const sfxGain=()=>Math.pow(SET.sfx/100,2)*0.7;
+// music duck: big moments dip the music a few dB, then it comes back (never touches the music slider)
+let duckM=1,duckUntil=0;
+function duckMusic(db,holdMs){
+  const m=dbGain(db),now=performance.now();
+  if(now<duckUntil&&m>=duckM){duckUntil=Math.max(duckUntil,now+holdMs);return}
+  duckM=m;duckUntil=now+holdMs;
+  if(AC&&DUCK){const t=AC.currentTime;DUCK.gain.cancelScheduledValues(t);DUCK.gain.setTargetAtTime(m,t,0.02);DUCK.gain.setTargetAtTime(1,t+holdMs/1000,0.25)}
+}
+const duckMul=()=>{const now=performance.now();if(now<duckUntil)return duckM;const k=1-Math.exp(-(now-duckUntil)/250);return duckM+(1-duckM)*Math.min(1,k)};
 const GEN_LVL=dbGain(MUSIC_LUFS-GEN_LUFS);
 const trackVol=src=>{const m=Object.values(MUSIC).find(x=>x.src===src);return dbGain(MUSIC_LUFS-((m&&m.lufs)||-16))};
-function applyVol(){if(TRACK.preview)TRACK.preview.volume=Math.min(1,(Math.max(SET.bgm,20)/100)*trackVol(TRACK.preview.dataset.src));if(!AC)return;SFXG.gain.value=(SET.sfx/100)*0.5;BGMG.gain.value=(SET.bgm/100)*GEN_LVL}
+function applyVol(){if(TRACK.preview)TRACK.preview.volume=Math.min(1,(Math.max(SET.bgm,20)/100)*trackVol(TRACK.preview.dataset.src));if(!AC)return;SFXG.gain.value=sfxGain();BGMG.gain.value=(SET.bgm/100)*GEN_LVL}
 /* Recorded music: the scene (difficulty x exploring/boss, or elite) picks a MUSIC entry from SET.music.
    Exploring tracks resume where they left off; boss/elite tracks start from the top each fight.
    'auto', or a file that can't load or play, falls back to the generated loop. Switching is done by mixTick (crossfade). */
@@ -2713,7 +2738,7 @@ function mixTick(){
         if(v.g<=st&&musicSlot()!==`${S.diff}.explore`)v.el.currentTime=0; // boss/elite music starts from the top
         const pr=v.el.play();if(pr&&pr.catch)pr.catch(()=>{TRACK.failed[k]=1});
       }
-      v.el.volume=Math.max(0,Math.min(1,v.g*v.g*trackVol(k)*SET.bgm/100)); // squared: an equal-power-ish curve
+      v.el.volume=Math.max(0,Math.min(1,v.g*v.g*trackVol(k)*SET.bgm/100*duckMul())); // squared: an equal-power-ish curve
       if(!tgt&&v.g===0&&!v.el.paused)v.el.pause();
     }else if(AC){
       v.gain.gain.setTargetAtTime(v.g*v.g,AC.currentTime,0.05);
@@ -2744,13 +2769,13 @@ function previewPlay(src,btn){
 }
 function tone(f,d,type,v,slide,at){
   if(!AC||!SET.sfx)return;const t=(at||AC.currentTime);
-  const o=AC.createOscillator(),g=AC.createGain();o.type=type||'square';o.frequency.setValueAtTime(f,t);
+  const o=AC.createOscillator(),g=AC.createGain();o.type=type||'square';o.frequency.setValueAtTime(f,t);if(VARY_DET)o.detune.value=VARY_DET;
   if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f*slide),t+d);
   g.gain.setValueAtTime(v||0.3,t);g.gain.exponentialRampToValueAtTime(0.001,t+d);o.connect(g);g.connect(SFXG);o.start(t);o.stop(t+d+0.02);
 }
 function noise(d,v,hp){
   if(!AC||!SET.sfx)return;const t=AC.currentTime,n=AC.createBufferSource(),b=AC.createBuffer(1,Math.ceil(AC.sampleRate*d),AC.sampleRate),a=b.getChannelData(0);
-  for(let i=0;i<a.length;i++)a[i]=Math.random()*2-1;n.buffer=b;const g=AC.createGain(),f=AC.createBiquadFilter();f.type='highpass';f.frequency.value=hp||800;
+  for(let i=0;i<a.length;i++)a[i]=Math.random()*2-1;n.buffer=b;if(VARY_DET)n.playbackRate.value=Math.pow(2,VARY_DET/1200);const g=AC.createGain(),f=AC.createBiquadFilter();f.type='highpass';f.frequency.value=hp||800;
   g.gain.setValueAtTime(v||0.25,t);g.gain.exponentialRampToValueAtTime(0.001,t+d);n.connect(f);f.connect(g);g.connect(SFXG);n.start(t);
 }
 const SFX={
@@ -2771,7 +2796,29 @@ const SFX={
   link:()=>[523,784,1047,1568].forEach((f,i)=>tone(f,0.15,'square',0.14,1,AC&&AC.currentTime+i*0.04))
 };
 function buzz(ms){if(SET.haptic&&navigator.vibrate)try{navigator.vibrate(ms)}catch(e){}}
-function sfx(k){try{if(AC&&SFX[k])SFX[k]()}catch(e){}}
+/* Mix of the effects (measured with an EBU R128 meter, effects at 70%):
+   three tiers by importance — small (moves, locks) ≈ -48 LUFS, medium (clears, block, warning) ≈ -37,
+   large (quad, T-spin, kill, transform) ≈ -31. SFX_DB trims each sound into its tier.
+   Measured after the change: move/rotate ≈ -50, lock ≈ -45, clears and block ≈ -37…-39, big moments ≈ -28…-31. */
+const SFX_DB={move:4,rotate:4,hold:1,lock:-2,hard:-2,block:7,warn:4.5,level:4,clear1:2,skill:4.5,boss:2,tspin:4};
+// small random pitch (±1 semitone) and level (±1.5 dB) on sounds that repeat a lot, so they don't sound like a machine gun
+const SFX_VARY={move:1,rotate:1,lock:1,hard:1,hurt:1,block:1,hold:1};
+// a sound can't retrigger faster than this (ms): auto-repeat or a wall slide stays one click, not a pile-up
+const SFX_GAP={move:28,rotate:28,lock:40,warn:120};
+// big moments dip the music [dB, ms]
+const SFX_DUCK={kill:[-7,450],quad:[-5,300],pc:[-8,600],tspin:[-5,300],transform:[-6,500],boss:[-6,500],unlock:[-5,400],link:[-4,300]};
+let VARY_DET=0;const sfxLast={};
+function sfx(k){try{
+  if(!AC||!SFX[k])return;
+  const now=AC.currentTime*1000;if(SFX_GAP[k]&&now-(sfxLast[k]??-1e9)<SFX_GAP[k])return;sfxLast[k]=now;
+  let db=SFX_DB[k]||0,det=0;
+  if(SFX_VARY[k]){db+=(Math.random()*2-1)*1.5;det=(Math.random()*2-1)*100}
+  const g=AC.createGain();g.gain.value=dbGain(db);g.connect(SFXG);
+  const bus=SFXG;SFXG=g;VARY_DET=det;
+  try{SFX[k]()}finally{SFXG=bus;VARY_DET=0}
+  setTimeout(()=>{try{g.disconnect()}catch(e){}},3000);
+  if(SFX_DUCK[k])duckMusic(...SFX_DUCK[k]);
+}catch(e){}}
 // REN chime: starts on the line-clear note (G5, same square tone) and climbs the major scale one step per combo, tops out two octaves up and stays there
 const REN_STEPS=[0,2,4,5,7,9,11,12,14,16,17,19,21,23,24];
 function renSfx(c){try{
