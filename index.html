@@ -147,7 +147,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .dbggrp{margin:8px 0 2px;font-size:11px;color:#c58cff;font-weight:700}
 .ov{position:fixed;inset:0;background:rgba(6,11,19,.86);display:flex;align-items:center;justify-content:center;z-index:20;
   padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
-.sheet{width:100%;max-width:420px;max-height:100%;overflow:auto;display:flex;flex-direction:column;gap:14px}
+.sheet{width:100%;max-width:420px;max-height:100%;overflow:auto;display:flex;flex-direction:column;gap:14px;zoom:var(--uiz,1)}
+.toast{zoom:var(--uiz,1)}
+.uizrow{display:flex;gap:6px;grid-column:1/-1}.uizrow .dbtn{flex:1}
 .sheet h1,.sheet h2{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance}
 .sheet h1{font-size:38px;letter-spacing:.06em;color:var(--ice)}
 .sheet h2{font-size:24px}
@@ -206,7 +208,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .card.shopcard .d{grid-column:2 / 4}
 /* shop: 2 columns of compact cards (glyph + name / price, then the full description underneath) */
 /* shop: relic list + item tiles + one detail panel with the buy button (fits one phone screen) */
-.shop2{gap:10px}
+.rarelb{display:inline-block;margin-right:6px;padding:0 6px;border-radius:3px;background:linear-gradient(90deg,#f2c14e,#ff9bd2);color:var(--bg);font-size:11px;font-weight:700;line-height:16px;vertical-align:1px}
+.shop2{gap:10px}.shop2>*{flex-shrink:0}
 .shlbl{font-size:11px;letter-spacing:.16em;color:var(--muted);margin-bottom:-4px}
 .shrel{display:flex;flex-direction:column;gap:6px}
 .shrow{display:flex;align-items:center;gap:10px;min-height:50px;padding:4px 12px 4px 8px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--fg);font-family:var(--body);text-align:left;cursor:pointer}
@@ -238,7 +241,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .shdet .d .dk.add{background:#6f9cf5}.shdet .d .dk.mul{background:var(--gold)}
 .shdet .d .dd{font-weight:700}
 .shdet .ev{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:8px;background:#1a0f17;font-size:12px;line-height:1.5}
-.shdet .buy{margin-top:auto;height:52px;border:none;border-radius:10px;background:var(--gold);color:var(--bg);font-family:var(--display);font-size:19px;letter-spacing:.06em;cursor:pointer}
+.shdet .buy{margin-top:auto;min-height:52px;padding:6px 10px;line-height:1.2;border:none;border-radius:10px;background:var(--gold);color:var(--bg);font-family:var(--display);font-size:19px;letter-spacing:.06em;cursor:pointer}
 .shdet .buy:disabled{background:#2c4560;color:#9fb6c9;cursor:default}
 .shfoot{display:grid;grid-template-columns:1fr 1.3fr;gap:8px}
 .shfoot .ghostbtn,.shfoot .cta{height:48px;font-size:13px}
@@ -944,7 +947,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='71',UPDATED='2026-11-04 11:33';
+const VERSION='72',UPDATED='11/4 11:50';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -1141,7 +1144,7 @@ const MUSIC={
 };
 const MUSIC_SLOTS=[['easy.explore','簡単：探索中'],['easy.boss','簡単：ボス戦'],['normal.explore','普通：探索中'],['normal.boss','普通：ボス戦'],['hard.explore','難しい：探索中'],['hard.boss','難しい：ボス戦'],['elite','エリート戦（分岐マップ）']];
 const MUSIC_DEF={'easy.explore':'auto','easy.boss':'auto','normal.explore':'auto','normal.boss':'t1757','hard.explore':'auto','hard.boss':'t1757','elite':'auto'};
-const SET_DEF={sfx:70,bgm:45,das:150,arr:33,sdf:25,shake:1,ghost:1,swipe:1,haptic:1,keys:KEY_DEF,pad:PAD_DEF,music:MUSIC_DEF};
+const SET_DEF={uiz:100,sfx:70,bgm:45,das:150,arr:33,sdf:25,shake:1,ghost:1,swipe:1,haptic:1,keys:KEY_DEF,pad:PAD_DEF,music:MUSIC_DEF};
 const cloneSet=()=>JSON.parse(JSON.stringify(SET_DEF));
 let SET=cloneSet();
 try{const sv=JSON.parse(localStorage.getItem('hyokutsu-set')||'{}');
@@ -1149,6 +1152,10 @@ try{const sv=JSON.parse(localStorage.getItem('hyokutsu-set')||'{}');
   for(const k of ['keys','pad'])if(sv[k]){for(const [a] of ACTS)if(Array.isArray(sv[k][a]))SET[k][a]=[sv[k][a][0]||'',sv[k][a][1]||''];delete sv[k]}
   Object.assign(SET,sv)}catch(e){}
 const saveSet=()=>{try{localStorage.setItem('hyokutsu-set',JSON.stringify(SET))}catch(e){}};
+// text size for menus/toasts: CSS zoom on every .sheet, so the sheet reflows instead of overflowing
+const UIZ=[[100,'標準'],[115,'大'],[130,'特大']];
+function applyUiz(){if(!UIZ.some(([v])=>v===SET.uiz))SET.uiz=100;const de=document.documentElement;if(de&&de.style)de.style.setProperty('--uiz',SET.uiz/100)}
+applyUiz();
 /* ---------- meta progression: lifetime stats unlock relics ---------- */
 let META={tspin:0,quad:0,pc:0,kills:{},deep:0,tankDeep:0,clsDeep:{},goldTotal:0,rankMax:{},clears:{},coresUsed:{},maxRen:0,blocked:0,bombBlocks:0,unlocked:{}};
 try{Object.assign(META,JSON.parse(localStorage.getItem('hyokutsu-meta')||'{}'))}catch(e){}
@@ -2182,7 +2189,12 @@ function showWin(){
   show('ovWin');
 }
 
-/* ---------- relic picking (class-weighted) ---------- */
+/* ---------- relic picking (class-weighted, depth-scaled by rarity tier) ---------- */
+// tier: r = rare (deep-only, floor-gated, duo, or priced 60+), u = uncommon (priced 50+), c = common.
+// RT_W[floor] multiplies each tier's weight: early floors are mostly commons, deep floors lean to uncommons/rares.
+const relicTier=k=>{const r=RELICS[k];return r.deep||r.from||r.duo||r.p>=60?'r':r.p>=50?'u':'c'};
+const RT_W=[null,{c:1,u:.6,r:.3},{c:1,u:.7,r:.4},{c:1,u:.9,r:.6},{c:1,u:1,r:.8},{c:.85,u:1.15,r:1},{c:.8,u:1.2,r:1.15},{c:.7,u:1.25,r:1.3},{c:.6,u:1.3,r:1.45}];
+const rtW=k=>(RT_W[Math.min(8,Math.max(1,S.floor|0))]||RT_W[1])[relicTier(k)];
 function pickRelics(n,ok){
   const pool=Object.keys(RELICS).filter(k=>{
     const r=RELICS[k];
@@ -2197,7 +2209,7 @@ function pickRelics(n,ok){
   const out=[];
   while(out.length<n&&pool.length){
     const ct=S.core&&CORES[S.core]&&CORES[S.core].tag;
-    const ws=pool.map(k=>{const r=RELICS[k];if(r.duo)return 3;const c=r.c;return(c===S.cls?4:c?0.25:1.5)*(r.w||1)*(ct&&r.t===ct?2.5:1)});
+    const ws=pool.map(k=>{const r=RELICS[k];if(r.duo)return 3*rtW(k);const c=r.c;return(c===S.cls?4:c?0.25:1.5)*(r.w||1)*(ct&&r.t===ct?2.5:1)*rtW(k)});
     let t=ws.reduce((a,b)=>a+b,0),r=R()*t,i=0;
     while(i<ws.length-1&&r>=ws[i]){r-=ws[i];i++}
     out.push(pool.splice(i,1)[0]);
@@ -2208,8 +2220,9 @@ function pickRelics(n,ok){
 function relicBits(k){
   const r=RELICS[k];if(!SEEN.r[k]){SEEN.r[k]=1;saveSeen()}
   const lvTxt=!r.once&&lv(k)?`Lv${lv(k)}→${lv(k)+1}`:'';
-  const ct=r.cursed?`<span class="ct" style="color:#c58cff">代償つき</span>`:r.duo?`<span class="ct duo">デュオ <b style="color:${CLASSES[r.duo[0]].col}">${CLASSES[r.duo[0]].n}</b>×<b style="color:${CLASSES[r.duo[1]].col}">${CLASSES[r.duo[1]].n}</b></span>`:
-    r.c?`<span class="ct" style="color:${CLASSES[r.c].col}">${r.only?CLASSES[r.c].n+'専用':CLASSES[r.c].role+'向け'}</span>`:'';
+  const rare=!r.cursed&&!r.once&&relicTier(k)==='r'?`<span class="rarelb">まれ</span>`:'';
+  const ct=rare+(r.cursed?`<span class="ct" style="color:#c58cff">代償つき</span>`:r.duo?`<span class="ct duo">デュオ <b style="color:${CLASSES[r.duo[0]].col}">${CLASSES[r.duo[0]].n}</b>×<b style="color:${CLASSES[r.duo[1]].col}">${CLASSES[r.duo[1]].n}</b></span>`:
+    r.c?`<span class="ct" style="color:${CLASSES[r.c].col}">${r.only?CLASSES[r.c].n+'専用':CLASSES[r.c].role+'向け'}</span>`:'');
   let tg='';
   if(r.t){const have=tagCount(r.t),owned=lv(k)>0;tg=`<span class="tg" style="--tc:${TAGS[r.t].col}">${r.t}${tf(r.t)?' 変身済み':` ${have}${owned?'':'→'+(have+1)}/3`}</span>`}
   const dkc=r.dk?`<span class="dk ${r.dk==='+'?'add':'mul'}">${r.dk==='+'?'＋ダメージ':'×ダメージ'}</span>`:'';
@@ -2836,7 +2849,7 @@ const BGM_EXP={tempo:0.21,root:[0,0,-3,-5],scale:[0,2,4,7,9,12,14,16]};
 const BGM_BOSS={tempo:0.16,root:[0,-2,-4,-5],scale:[0,3,5,7,10,12,15,17]};
 function bgmStart(){if(bgmTimer)return;bgmTimer=setInterval(mixTick,60)}
 function btone(vx,f,d,type,v){const o=AC.createOscillator(),g=AC.createGain(),t=vx.next;o.type=type;o.frequency.value=f;g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(v,t+0.02);g.gain.exponentialRampToValueAtTime(0.001,t+d);o.connect(g);g.connect(vx.gain);o.start(t);o.stop(t+d+0.05)}
-addEventListener('pointerdown',audioInit,{once:true});addEventListener('pointerdown',()=>{if(typeof gpSetFocus==='function')gpSetFocus(null)});addEventListener('keydown',audioInit,{once:true});
+addEventListener('pointerdown',audioInit,{once:true});addEventListener('pointerdown',()=>{lastIn='ptr';if(typeof gpSetFocus==='function')gpSetFocus(null)});addEventListener('keydown',audioInit,{once:true});
 /* ---------- juice: callouts, particles, shake ---------- */
 const RM=(()=>{try{return matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){return false}})();
 function pop(lines,color,size){
@@ -2949,10 +2962,12 @@ const SET_UI=[
 const SET_FLAGS=[['ghost','ゴースト（落下位置）を表示'],['swipe','盤面のスワイプ操作（スマホ）'],['haptic','振動（対応するスマホのみ）'],['shake','画面の揺れ']];
 function openSettings(from){setFrom=from;hide(from);renderSettings();show('ovSet')}
 function renderSettings(){
-  $('setList').innerHTML=SET_UI.map(([k,n,u,mn,mx,st,d])=>`<div class="setrow"><label for="set-${k}">${n}</label><output id="out-${k}">${SET[k]}${u}</output><input type="range" id="set-${k}" min="${mn}" max="${mx}" step="${st}" value="${SET[k]}">${d?`<small>${d}</small>`:''}</div>`).join('')+
+  $('setList').innerHTML=`<div class="setrow"><label id="uizLb">文字の大きさ（メニュー）</label><div class="uizrow" role="group" aria-labelledby="uizLb">${UIZ.map(([v,n])=>`<button type="button" class="dbtn${SET.uiz===v?' on':''}" data-uiz="${v}" aria-pressed="${SET.uiz===v}">${n}</button>`).join('')}</div></div>`+SET_UI.map(([k,n,u,mn,mx,st,d])=>`<div class="setrow"><label for="set-${k}">${n}</label><output id="out-${k}">${SET[k]}${u}</output><input type="range" id="set-${k}" min="${mn}" max="${mx}" step="${st}" value="${SET[k]}">${d?`<small>${d}</small>`:''}</div>`).join('')+
     SET_FLAGS.map(([k,n])=>`<div class="setrow"><label for="set-${k}">${n}</label><input type="checkbox" id="set-${k}" ${SET[k]?'checked':''}></div>`).join('');
   SET_UI.forEach(([k,,u])=>{$('set-'+k).oninput=e=>{SET[k]=+e.target.value;$('out-'+k).textContent=SET[k]+u;saveSet();applyVol();if(k==='sfx')sfx('rotate')}});
   SET_FLAGS.forEach(([k])=>{$('set-'+k).onchange=e=>{SET[k]=e.target.checked?1:0;saveSet();if(k==='haptic'&&SET[k])buzz(20)}});
+  $('setList').querySelectorAll('[data-uiz]').forEach(b=>b.onclick=()=>{SET.uiz=+b.dataset.uiz;saveSet();applyUiz();sfx('rotate');
+    $('setList').querySelectorAll('[data-uiz]').forEach(x=>{const on=+x.dataset.uiz===SET.uiz;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on)})});
   CAP=null;renderKeys();renderMusic();
 }
 function renderMusic(){
@@ -3964,6 +3979,18 @@ addEventListener('keydown',e=>{
   if(e.target&&e.target.tagName==='INPUT'&&e.target.type!=='range'&&e.target.type!=='checkbox')return;
   if(!$('dbgPanel').hidden&&e.code==='Escape'){e.preventDefault();dbgClose();return}
   {const tk={ArrowLeft:'L',ArrowRight:'R',KeyB:'B',KeyA:'A'}[e.code];if(!$('ovTitle').hidden&&!e.repeat){if(tk){if(dbgKey(tk)){e.preventDefault();return}}else dbgBuf=[]}}
+  {const ov=gpOpenSheet();
+   if(ov&&!CAP){
+    const nav={ArrowUp:'u',ArrowDown:'d',ArrowLeft:'l',ArrowRight:'r'}[e.code];
+    const inSel=e.target&&e.target.tagName==='SELECT';
+    if(nav&&!(inSel&&(nav==='u'||nav==='d')&&e.altKey)){e.preventDefault();lastIn='key';gpMove(nav);gpSheet=ov;return}
+    if(e.code==='Tab'){e.preventDefault();lastIn='key';const l=gpFocusables(ov);if(l.length){const i=l.indexOf(gpFocusEl);gpSetFocus(l[(i+(e.shiftKey?-1:1)+l.length)%l.length])}gpSheet=ov;return}
+    if(e.code==='Escape'||e.code==='Backspace'){e.preventDefault();lastIn='key';gpBack();return}
+    if((e.code==='Enter'||e.code==='Space')&&!e.repeat){e.preventDefault();lastIn='key';
+      if(!gpFocusEl||!ov.contains(gpFocusEl)){const d=gpDefault(ov);if(d)gpSetFocus(d);gpSheet=ov;return}
+      if(gpFocusEl.type==='checkbox'){gpFocusEl.click();return}
+      if(gpFocusEl.type!=='range'&&gpFocusEl.tagName!=='SELECT')gpFocusEl.click();return}
+   }}
   const a=keymap[e.code];
   if(a==='pause'){if(!e.repeat)S&&S.mode==='pause'?resume():pause();e.preventDefault();return}
   if(S&&coopOn()&&/^Digit[1-4]$/.test(e.code)&&!a){sendEmote(+e.code.slice(5)-1);return}
@@ -3995,12 +4022,13 @@ function gpOpenSheet(){
   return ovs[ovs.length-1]||null;
 }
 function gpFocusables(root){
-  return[...root.querySelectorAll('button,input[type=range],input[type=checkbox],select,summary')].filter(el=>!el.disabled&&!el.hidden&&el.getClientRects().length&&getComputedStyle(el).visibility!=='hidden');
+  return[...root.querySelectorAll('button,input[type=range],input[type=checkbox],input[type=text],input:not([type]),select,summary')].filter(el=>!el.disabled&&!el.hidden&&el.getClientRects().length&&getComputedStyle(el).visibility!=='hidden');
 }
 function gpSetFocus(el){
   if(gpFocusEl)gpFocusEl.classList.remove('gpfocus');
   gpFocusEl=el;if(!el)return;
   el.classList.add('gpfocus');try{el.focus({preventScroll:true})}catch(e){}
+  {const ov=gpOpenSheet();if(ov&&ov.contains(el)){const i=gpFocusables(ov).indexOf(el);if(i>=0)gpIdx=i}}
   el.scrollIntoView({block:'nearest'});
 }
 // spatial navigation: pick the nearest focusable in the pressed direction
@@ -4024,6 +4052,27 @@ function gpMove(dir){
   if(!best){const i=list.indexOf(gpFocusEl);best=list[(i+(dir==='u'||dir==='l'?-1:1)+list.length)%list.length]}
   gpSetFocus(best);sfx('move');
 }
+// which device the player used last: 'ptr' (mouse/touch) hides the focus ring, 'key'/'pad' keep one on every screen
+let lastIn='ptr',gpSheet=null,gpIdx=0;
+const GP_FIRST={ovReward:1,ovRoute:1,ovShop:1,ovClass:1,ovSet:1};
+const gpMem=new Map(); // screen -> the control that had focus when it was covered, restored on return
+function gpDefault(ov){
+  const list=gpFocusables(ov);if(!list.length)return null;
+  if(!GP_FIRST[ov.id]){const c=list.find(el=>el.classList.contains('cta'));if(c)return c}
+  return list[0];
+}
+// every frame while a key/pad is in use: give a newly opened screen its focus, and keep focus when a list re-renders
+function gpWatch(){
+  if(lastIn==='ptr')return;
+  const ov=gpOpenSheet();
+  if(!ov){gpSheet=null;return}
+  if(ov!==gpSheet){
+    if(gpSheet&&gpFocusEl&&gpSheet.contains(gpFocusEl))gpMem.set(gpSheet,gpFocusEl);
+    const m=gpMem.get(ov);gpMem.delete(ov);const d=m&&m.isConnected&&m.getClientRects().length&&!m.disabled?m:gpDefault(ov);
+    if(d){gpSheet=ov;gpSetFocus(d)}return}
+  if(gpFocusEl&&ov.contains(gpFocusEl)&&gpFocusEl.isConnected&&gpFocusEl.getClientRects().length&&!gpFocusEl.disabled)return;
+  const list=gpFocusables(ov);if(list.length)gpSetFocus(list[Math.min(Math.max(gpIdx,0),list.length-1)]);
+}
 function gpBack(){
   const ov=gpOpenSheet();if(!ov)return;
   if(ov.id==='ovPause'){resume();return}
@@ -4034,6 +4083,8 @@ function gpBack(){
 function gpPoll(){
   requestAnimationFrame(gpPoll);
   const now=gpRead(),prev=gpPrev;gpPrev=now;
+  if(Object.keys(now).some(k=>!prev[k]))lastIn='pad';
+  gpWatch();
   const dn=k=>now[k]&&!prev[k];
   if(CAP&&CAP.dev==='pad'){
     if(performance.now()-CAP.t<250)return; // ignore the A press that opened the slot
