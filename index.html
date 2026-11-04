@@ -59,6 +59,12 @@ header{display:flex;flex-direction:column;gap:5px}
 .lv{font-family:var(--display);font-size:14px;color:var(--xp)}
 .bar{flex:1;height:6px;background:var(--panel);border-radius:3px;overflow:hidden}
 .bar b{display:block;height:100%;width:0;background:var(--ice)}
+#phaseBarWrap,.dkebar{position:relative}
+#phaseBarWrap b,.dkebar b{position:relative}
+.bar .trail,.dkebar .trail{position:absolute;left:0;top:0;bottom:0;width:0;background:#ffd0d6;opacity:.7}
+.hitflash{animation:hitfl .16s ease-out}
+@keyframes hitfl{0%{filter:brightness(2.2)}100%{filter:none}}
+@media (prefers-reduced-motion:reduce){.hitflash{animation:none}}
 .bar.xp b{background:var(--xp);transition:width .2s}
 .bar.boss b{background:var(--danger);transition:width .2s}
 .bar.skill b{transition:width .2s}
@@ -608,7 +614,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
       <button class="iconbtn" id="pauseBtn" aria-label="一時停止"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="2" y="1" width="3.5" height="12" fill="currentColor"/><rect x="8.5" y="1" width="3.5" height="12" fill="currentColor"/></svg></button>
     </div>
     <div class="meter"><span class="lv"><i data-ico="xp" data-f="#b9a3ff"></i><i id="lv">Lv 1</i></span><div class="bar xp"><b id="xpbar"></b></div><span class="gold"><i data-ico="gold" data-f="#f2d06b" data-f2="#8a6d1f"></i><i id="gold">0G</i></span><span class="score" id="score">0</span></div>
-    <div class="meter" id="phase"><div class="ph"><i class="btag"><i data-ico="boss" data-f="#0b1320"></i>BOSS</i><span id="phaseLbl">ボスまで</span><span class="val" id="phaseVal">1:20</span></div><div class="bar" id="phaseBarWrap"><b id="phaseBar"></b></div></div>
+    <div class="meter" id="phase"><div class="ph"><i class="btag"><i data-ico="boss" data-f="#0b1320"></i>BOSS</i><span id="phaseLbl">ボスまで</span><span class="val" id="phaseVal">1:20</span></div><div class="bar" id="phaseBarWrap"><i class="trail" id="phaseTrail"></i><b id="phaseBar"></b></div></div>
     <div class="meter" id="skillRow" hidden><span id="skillLbl">癒し</span><div class="bar skill"><b id="skillBar"></b></div><span class="val" id="skillVal">0/10</span></div>
   </header>
   <main>
@@ -670,7 +676,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
     <section class="dkcol dkm">
       <div class="dkenemy" id="dkEnemy">
         <div class="dkeh"><span class="btag" id="dkETag"><i data-ico="boss" data-f="#0b1320"></i><i id="dkETagT">BOSS</i></span><b id="dkEName"></b><span class="v" id="dkEVal"></span></div>
-        <div class="dkebar"><b id="dkEBar"></b></div>
+        <div class="dkebar"><i class="trail" id="dkETrail"></i><b id="dkEBar"></b></div>
         <div class="dkleg" id="dkELeg" hidden></div>
         <div class="dktimers">
           <div id="dkT1"><span><i id="dkT1L"></i><i id="dkT1V"></i></span><div class="dkbar st"><b id="dkT1B"></b></div></div>
@@ -938,7 +944,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='70',UPDATED='2026-11-04 11:16';
+const VERSION='71',UPDATED='2026-11-04 11:33';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -1778,7 +1784,7 @@ function lockPiece(){
     if(core('k_guard'))smallShield(2);
     if(lv('frenzy')&&S.boss&&!S.boss.dead)S.frenzyN=(S.frenzyN||0)+1;
     if(!S.practice&&!S.debug){if(ts)META.tspin++;if(n===4)META.quad++;if(pc)META.pc++;if(ts||n===4||pc)checkUnlocks()}
-    if(hardClear||pc)shake(pc?7:n===4||ts==='full'?5:3,220);
+    if(pc||n===4||ts==='full')feel('large');else if(hardClear)shake(3);
     if(S.boss&&!S.boss.dead){
       const det=bossDmgDetail(n,ts,b2b,pc),dmg=Math.round(det.d*(dt?1.3:1));
       S.boss.myDmg+=dmg;S.fx.push({k:'hit',t:0});
@@ -1886,7 +1892,7 @@ function applyDamage(n,pierce){
   if(core('k_guard')){S.coreAcc=(S.coreAcc||0)+ab+n;while(S.coreAcc>=10){S.coreAcc-=10;coreStack()}}
   S.hp-=n;S.hitsTaken+=n;
   S.fx.push({k:ab&&!n?'block':'hurt',t:0});
-  if(n){shake(Math.min(7,3+n/4),260);sfx('hurt');buzz(45)}else sfx('block');
+  if(n){shake(Math.min(7,3+n/4));if(n>=10)hitStop(45);sfx('hurt');buzz(45)}else sfx('block');
   hud(true);
   return{dead:S.hp<=0,taken:n,absorbed:ab};
 }
@@ -2054,7 +2060,7 @@ function mobDefeated(b){
   const g=earn(MOB_GOLD[0]+MOB_GOLD[1]*S.floor);
   gainXp(MOB_XP*floorXp());
   S.score+=Math.round(250*S.floor*mult());
-  pop([b.name,'撃破',`+${g}G`],'#9fd8ff',1.05);sfx('kill');toast(`${b.name}を倒した`);logPush(`${b.name}を倒した`,`+${g}G`,'#f2d06b');hud(true);
+  pop([b.name,'撃破',`+${g}G`],'#9fd8ff',1.05);feel('medium');sfx('kill');toast(`${b.name}を倒した`);logPush(`${b.name}を倒した`,`+${g}G`,'#f2d06b');hud(true);
 }
 function bossHpTick(){
   const b=S.boss;if(!b)return;
@@ -2096,7 +2102,7 @@ function bossDefeated(){
   // short victory beat before menus open
   if(S.mode==='play'){
     S.mode='cele';
-    pop([name,'撃破！'],'#f2d06b',1.35);shake(6,320);sfx('kill');
+    pop([name,'撃破！'],'#f2d06b',1.35);feel('large');hitStop(160);sfx('kill');
     for(let y=H-1;y>=H-6;y--)burst(y,Array(W).fill('O'),1);
     setTimeout(()=>{if(S&&S.mode==='cele'){S.mode='play';finishBoss()}},1200);
     return;
@@ -2853,7 +2859,7 @@ function calcFx(det,dt,total){
   document.body.appendChild(el);calcEl=el;
   // each term ticks a little higher (like Balatro's scoring), then the total lands with a thump
   if(!RM&&AC&&SET.sfx)terms.forEach((_,i)=>tone(520*Math.pow(2,Math.min(i,12)/12),0.07,'square',0.07,1,AC.currentTime+i*STEP/1000));
-  setTimeout(()=>{if(calcEl===el){sfx(total>=1000?'kill':'quad');shake(Math.min(10,4+total/250),260);buzz(total>=1000?[30,40,40]:25)}},end);
+  setTimeout(()=>{if(calcEl===el){sfx(total>=1000?'kill':'quad');shake(Math.min(10,4+total/250));if(total>=1000)hitStop(80);buzz(total>=1000?[30,40,40]:25)}},end);
   // after the total has landed, let the board show through so play isn't blocked
   setTimeout(()=>{if(calcEl===el)el.classList.add('dim')},end+700);
   calcT=setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),350)},end+1900);
@@ -2871,7 +2877,19 @@ function burst(y,row,mul){
   }
   if(P.length>400)P.splice(0,P.length-400);
 }
-function shake(mag,dur){if(RM||!SET.shake)return;S.shake={mag,dur,t:0}}
+/* Game feel (game-feel skill).
+   Shake: hits ADD trauma (0..1); it decays on its own and the board moves by trauma² along smooth sines,
+   so small events barely nudge and big ones punch. Only the board's CSS transform moves, never the game.
+   Hit-stop: the game clock (gravity, lock delay, timers, enemy attacks) pauses for a few frames on big
+   impacts; input still moves the piece. Tiers keep everything proportional. */
+const easeOutBack=k=>{const c1=1.70158,c3=c1+1,m=k-1;return 1+c3*m*m*m+c1*m*m};
+const easeOutCubic=k=>1-Math.pow(1-k,3);
+function shake(mag){if(RM||!SET.shake||!S)return;S.trauma=Math.min(1,(S.trauma||0)+mag/10)}
+let stopUntil=0;
+function hitStop(ms){if(!S||S.practice)return;stopUntil=Math.max(stopUntil,performance.now()+(RM?ms/2:ms))}
+// small: routine; medium: a clear hit (kill a minion, take a big hit); large: boss down, quad / T-spin / perfect clear
+const FEEL={small:[2,0],medium:[5,50],large:[9,110]};
+function feel(tier){const f=FEEL[tier];if(!f)return;shake(f[0]);if(f[1])hitStop(f[1])}
 let toastT=0;
 function toast(msg){logPush(msg);const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),1300)}
 /* party rematch: back to the same room's lobby. The host starts again from there; anyone still
@@ -3016,6 +3034,21 @@ function renderCoopCls(){
 const hc={};
 function setText(id,v){if(hc[id]!==v){hc[id]=v;const e=$(id);if(e)e.textContent=v}}
 function setW(id,pct){const v=Math.max(0,Math.min(100,pct)).toFixed(1)+'%';if(hc['w'+id]!==v){hc['w'+id]=v;$(id).style.width=v}}
+// enemy HP trail: lost HP shows as a pale strip for a moment, then drains (ease-out); the bar flashes on each hit
+const ET={id:-1,hp:0,trail:0,hold:0,t:0};
+function enemyTrail(b){
+  const now=performance.now(),dt=Math.min(100,now-(ET.t||now));ET.t=now;
+  let w=0;
+  if(b&&b.max){
+    w=b.hp/b.max*100;
+    if(ET.id!==b.id){ET.id=b.id;ET.hp=b.hp;ET.trail=w}
+    if(b.hp<ET.hp){ET.hold=now+280;for(const id of ['phaseBarWrap','dkEnemy']){const e=$(id);if(e){e.classList.remove('hitflash');void e.offsetWidth;e.classList.add('hitflash')}}}
+    ET.hp=b.hp;
+    if(ET.trail<w)ET.trail=w;else if(now>ET.hold)ET.trail=w+(ET.trail-w)*Math.exp(-dt/180);
+  }else{ET.id=-1;ET.trail=0}
+  const v=ET.trail.toFixed(1)+'%';
+  if(hc.etrail!==v){hc.etrail=v;for(const id of ['phaseTrail','dkETrail']){const e=$(id);if(e)e.style.width=v}}
+}
 function hud(force){
   if(!S||S.mode==='title')return;
   setText('floor',S.floor===FINAL?`地下${S.floor}階 最下層`:`地下${S.floor}階`);
@@ -3028,6 +3061,7 @@ function hud(force){
   $('buffTag').hidden=!buffOn();
   $('phase').classList.toggle('bossing',!!b&&!b.mob);
   $('phaseBarWrap').classList.toggle('boss',!!b&&!b.mob);
+  enemyTrail(b);
   if(b&&b.mob){setText('phaseLbl',`${b.name}・ボスまで ${fmtTime(S.timeLeft)}`);setW('phaseBar',b.hp/b.max*100);setText('phaseVal',`${b.hp} / ${b.max}`)}
   else if(b){setText('phaseLbl',b.name+(b.p2&&!b.dead?'・第2形態':''));setW('phaseBar',b.hp/b.max*100);setText('phaseVal',b.dead?'討伐':`${b.hp} / ${b.max}`)}
   else if(S.practice){setText('phaseLbl','練習モード（ボスなし・ダメージなし）');setW('phaseBar',100);setText('phaseVal','∞')}
@@ -3228,9 +3262,9 @@ function drawBoard(dt){
   if(S.nums&&S.nums.length){
     S.nums=S.nums.filter(q=>{
       q.t+=dt;const life=900;if(q.t>=life)return false;
-      const a=q.t/life,fs=Math.floor(s*(q.big?1.3:0.95));
+      const a=q.t/life,pop=easeOutBack(Math.min(1,q.t/140)),fs=Math.max(1,Math.floor(s*(q.big?1.3:0.95)*(0.55+0.45*pop)));
       bctx.font=`${fs}px DotGothic16, monospace`;bctx.textAlign='center';bctx.textBaseline='middle';
-      const x=W*s*q.x,y=s*(2.4-a*1.6);
+      const x=W*s*q.x,y=s*(2.4-easeOutCubic(a)*1.6);
       {const tw=Math.max(bctx.measureText('-'+q.v).width,q.f?q.f.length*s*0.45:0)/2,bot=y+fs*(q.f?1.1:0.5);
        const over=boardBusy((x-tw)/s,(y-fs/2)/s,(x+tw)/s,bot/s);
        bctx.globalAlpha=(a>.6?(1-a)/.4:1)*(over?0.35:1)}
@@ -3376,7 +3410,7 @@ function calcTerms(det,dt){return[[String(det.base),'b','基本'],...det.add.map
 function calcSound(n,total){
   const STEP=RM?0:120,end=n*STEP+80;
   if(!RM&&AC&&SET.sfx)for(let i=0;i<n;i++)tone(520*Math.pow(2,Math.min(i,12)/12),0.07,'square',0.07,1,AC.currentTime+i*STEP/1000);
-  setTimeout(()=>{sfx(total>=1000?'kill':'quad');shake(Math.min(10,4+total/250),260);buzz(total>=1000?[30,40,40]:25)},end);
+  setTimeout(()=>{sfx(total>=1000?'kill':'quad');shake(Math.min(10,4+total/250));if(total>=1000)hitStop(80);buzz(total>=1000?[30,40,40]:25)},end);
 }
 function deskCalc(det,dt,total,lbl,big){
   const terms=calcTerms(det,dt);
@@ -4208,7 +4242,8 @@ function demo(){
 }
 let last=performance.now();
 function frame(now){
-  const dt=Math.min(50,now-last);last=now;
+  const rdt=Math.min(50,now-last);last=now;
+  const dt=now<stopUntil?0:rdt; // game time; frozen during a hit-stop
   dbgVisible();
   if(S&&S.mode==='play'&&S.cur){
     S.dropAcc+=dt;const g=gravityMs();
@@ -4240,12 +4275,12 @@ function frame(now){
     bossHpTick();
   }
   netTick(now);
-  if(S&&S.shake){
-    const sh=S.shake;sh.t+=dt;
-    if(sh.t>=sh.dur){S.shake=null;board.style.transform=''}
-    else{const m=sh.mag*(1-sh.t/sh.dur);board.style.transform=`translate(${((Math.random()*2-1)*m).toFixed(1)}px,${((Math.random()*2-1)*m).toFixed(1)}px)`}
+  if(S&&S.trauma>0){
+    S.trauma=Math.max(0,S.trauma-1.4*rdt/1000);
+    const k=S.trauma*S.trauma,t=now/1000*30;
+    board.style.transform=S.trauma?`translate(${(12*k*(0.6*Math.sin(t*1.7)+0.4*Math.sin(t*3.1+1))).toFixed(1)}px,${(9*k*(0.6*Math.sin(t*2.3+2)+0.4*Math.sin(t*3.7))).toFixed(1)}px) rotate(${(0.8*k*Math.sin(t*1.1)).toFixed(2)}deg)`:'';
   }
-  if(S){drawBoard(dt);drawSide();hud();calcSee()}
+  if(S){drawBoard(rdt);drawSide();hud();calcSee()}
   requestAnimationFrame(frame);
 }
 demo();layout();
