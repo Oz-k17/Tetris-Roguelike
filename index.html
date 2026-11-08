@@ -959,7 +959,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='73',UPDATED='2026-11-04 12:56';
+const VERSION='74',UPDATED='2026-11-09 01:07';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -984,18 +984,24 @@ const CLASSES={
     sk:{n:'氷刃乱舞',need:14,d:'盤面の下から2段を砕き、砕いたブロック1個につきボスに3ダメージ（剣士の1.5倍が乗る）。剣士専用の遺物とスキル強化で大きく伸びる。'}}
 };
 const CLS_KEYS=['tank','heal','buff','atk'];
-const BOSSES=['氷牙の狼','雪女','氷柱の大蜘蛛','霜の巨人','氷晶の魔女','吹雪の双頭鷲','氷竜','永久凍土の王'];
+// index 7 is always the last boss; 8+ were added later and join the shuffled pools (BOSS_EARLY/BOSS_LATE)
+const BOSSES=['氷牙の狼','雪女','氷柱の大蜘蛛','霜の巨人','氷晶の魔女','吹雪の双頭鷲','氷竜','永久凍土の王','鏡氷の妖精','つららの雪鬼','霧氷の亡霊','凍て星の騎士'];
 // each boss has its own skill; the last boss cycles through the others
-const BOSS_SK=['bite','blind','web','quake','curse','gale','breath','king'];
+const BOSS_SK=['bite','blind','web','quake','curse','gale','breath','king','mirror','icicle','shroud','rush'];
+const NONKING_SK=BOSS_SK.filter(k=>k!=='king');
 const BSK={bite:{n:'連続噛みつき',d:'強撃を2連続で放つ'},blind:{n:'吹雪の帳',d:'8秒間NEXTとHOLDが見えなくなる'},web:{n:'蜘蛛の糸',d:'7秒間ハードドロップできない'},
   quake:{n:'地響き',d:'ゴミ列を一度に2段送り込む（ほかのスキルより発動が遅い）'},curse:{n:'呪いの氷晶',d:'次の3つのミノがS・Zになる'},gale:{n:'暴風',d:'8秒間ミノの落下が速くなる'},
-  breath:{n:'凍てつく息吹',d:'守護者でも引き受けられない全体攻撃'}};
+  breath:{n:'凍てつく息吹',d:'守護者でも引き受けられない全体攻撃'},
+  mirror:{n:'反転の鏡',d:'6秒間、左右の移動が逆になる'},
+  icicle:{n:'つらら落とし',d:'積んだブロックの上に、つららが3本落ちてくる'},
+  shroud:{n:'霧の盾',d:'6秒間、ボスへのダメージが4割になる（大技は待つのが得）'},
+  rush:{n:'氷の拍車',d:'7秒間、ミノが着地するとすぐ固まる（滑らせる時間がほとんどない）'}};
 // per-skill interval multiplier: heavy skills come less often
 const BSK_SLOW={quake:1.3};
 // in phase 2 a boss alternates its own skill with a borrowed one (sk2); the last boss keeps cycling
 const nextBossSk=b=>b.sk==='king'?KING_CYCLE[b.skN%KING_CYCLE.length]:(b.p2&&b.skN%2===1?b.sk2:b.sk);
 const curSkMs=b=>bossSkMs()*(BSK_SLOW[nextBossSk(b)]||1)*(b.p2?0.8:1);
-const KING_CYCLE=['quake','blind','breath','web','curse','gale','bite'];
+const KING_CYCLE=['quake','blind','breath','web','curse','gale','bite','shroud','icicle'];
 // c: class it leans toward. For that class it is 4x as likely as a neutral relic is 1.5x; other classes' relics drop to 0.25x. only: exclusive to that class.
 const RARE_FLOOR=5,COIN_STEP=10,COIN_PER=0.02,COIN_MAX=1.5,OVERHEAL_K=30,MIRROR_K=4;
 const RELICS={
@@ -1049,6 +1055,10 @@ const RELICS={
   goggles:{n:'雪眼鏡',g:'眼',d:'「吹雪の帳」が効かなくなる',max:1,p:30,t:'技',anti:'blind'},
   anchor:{n:'重しの錨',g:'錨',d:'「暴風」が効かなくなる',max:1,p:30,t:'技',anti:'gale'},
   amulet:{n:'魔除けの鈴',g:'鈴',d:'「呪いの氷晶」が効かなくなる',max:1,p:30,t:'技',anti:'curse'},
+  compass:{n:'方位の羅針盤',g:'針',d:'「反転の鏡」が効かなくなる',max:1,p:30,t:'技',anti:'mirror'},
+  helmet:{n:'雪鬼の兜',g:'兜',d:'「つらら落とし」のつららが1本になる',max:1,p:30,t:'盾',anti:'icicle'},
+  lantern:{n:'霧払いのランタン',g:'灯',d:'「霧の盾」が効かなくなる',max:1,p:30,t:'刃',anti:'shroud'},
+  horseshoe:{n:'凍らぬ蹄鉄',g:'蹄',d:'「氷の拍車」が効かなくなる',max:1,p:30,t:'技',anti:'rush'},
   stake:{n:'地鎮の杭',g:'杭',d:'「地響き」のゴミ列が1段になる',max:1,p:30,t:'盾',anti:'quake'},
   // cursed relics: only offered by the cursed altar after a boss, each a strong upside with a real cost
   c_crown:{n:'割れた王冠',g:'冠',d:'スキルに必要な列数-30%。ただし受ける回復が半分',max:1,p:0,cursed:true},
@@ -1409,13 +1419,13 @@ const GOLD_LINE=[0,0,1,2,4],GOLD_BOSS=[25,6];
 const relicPrice=k=>Math.round((RELICS[k].p+5*S.floor+15*lv(k))*priceMul());
 // boss order is shuffled per run (seeded, so a party or a daily run sees the same order):
 // B1-B3 take 3 of the 4 lighter bosses, B4-B7 the leftover one plus the 3 heavier ones, B8 is always the king
-const BOSS_EARLY=[0,1,2,3],BOSS_LATE=[4,5,6];
+const BOSS_EARLY=[0,1,2,3,8,9],BOSS_LATE=[4,5,6,10,11];
 function bossOrder(rng){
   const e=shuffleWith(BOSS_EARLY.slice(),rng),l=shuffleWith([e[3],...BOSS_LATE],rng);
-  return[e[0],e[1],e[2],...l,7];
+  return[e[0],e[1],e[2],l[0],l[1],l[2],l[3],7];
 }
-const bossIdx=f=>{const o=S&&S.bo;return o?o[(f-1)%o.length]:(f-1)%BOSSES.length};
-const bossName=f=>BOSSES[bossIdx(f)]+(f>BOSSES.length?'・改':'');
+const bossIdx=f=>{const o=S&&S.bo;return o?o[(f-1)%o.length]:(f-1)%FINAL};
+const bossName=f=>BOSSES[bossIdx(f)]+(f>FINAL?'・改':'');
 /* ---------- 階の目標: one shared goal per floor (party totals in co-op); reaching it pays everyone ---------- */
 const GOALS={
   lines:{n:'列を消す',u:'列',k:'l',t:n=>12+6*(n-1)},
@@ -1607,7 +1617,7 @@ function newRun(coop,epoch,cls,diff,practice,map,rank){
      timeLeft:STAGE_MS,phase:'play',boss:null,weaken:false,bossKills:0,afterReward:null,readyFloor:0,
      coop:!!coop,epoch:epoch||0,watching:false,
      st:{d:0,t:0,r:0,h:0,s:0,f:0,v:0,c:0,q:0},lcN:0,lastClrAt:-1e9,linkK:0,dmgBossId:-1,dmgSeen:0,skillLines:0,healCount:0,reviveCount:0,buffCount:0,buffUntil:0,hitAcc:0,lastLeech:-1e9,endless:false,
-     blocked:0,hitsTaken:0,shield:0,regenAcc:0,skCharge:0,skUses:0,tf:{},tfNew:null,skUp:['','',''],bakuC:0,incoming:[],offsetTotal:0,digC:0,digRows:0,evo:{},core:'',coreN:0,coreAcc:0,frenzyN:0,allyBuffMul:1.5,calmUntil:0,calmN:0,lastSkAt:-1e9,lastLinkAt:-1e9,freezeMul:1.3,echoFrom:0,echoUntil:0,rageUntil:0,immuneUntil:0,freezeUntil:0,blindUntil:0,webUntil:0,galeUntil:0,
+     blocked:0,hitsTaken:0,shield:0,regenAcc:0,skCharge:0,skUses:0,tf:{},tfNew:null,skUp:['','',''],bakuC:0,incoming:[],offsetTotal:0,digC:0,digRows:0,evo:{},core:'',coreN:0,coreAcc:0,frenzyN:0,allyBuffMul:1.5,calmUntil:0,calmN:0,lastSkAt:-1e9,lastLinkAt:-1e9,freezeMul:1.3,echoFrom:0,echoUntil:0,rageUntil:0,immuneUntil:0,freezeUntil:0,blindUntil:0,webUntil:0,galeUntil:0,mirrorUntil:0,rushUntil:0,shroudUntil:0,
      totalLines:0,relics:{},bag:[],queue:[],cur:null,hold:null,canHold:true,combo:-1,
      bombC:0,sandC:0,dropAcc:0,lockAcc:0,lockResets:0,mode:'reward',fx:[]};
   if(daily){S.daily=daily.day;S.debug=false}
@@ -1680,6 +1690,7 @@ function hold(){
 }
 function act(a){
   if(a==='skill'&&ghostOn()){ghostAct();return}
+  if((a==='left'||a==='right')&&mirrored())a=a==='left'?'right':'left';
   if(!S||S.mode!=='play')return;
   ({left:()=>move(-1),right:()=>move(1),cw:()=>rotate(1),ccw:()=>rotate(-1),r180:rotate180,soft,hard,hold,skill:useSkill})[a]();
 }
@@ -1724,6 +1735,7 @@ function bossDmgDetail(n,ts,b2b,pc){
   if(lv('dig')&&S.digRows)add.push(['掘削',40*lv('dig')*S.digRows]);
   if(pc)add.push(['全消し',100]);
   const muls=dmgMuls();if(b2b)muls.unshift(['B2B',1.2]);
+  if(shrouded())muls.push(['霧の盾',0.4]);
   if(S.linkK)muls.push(['連携',Math.round((1+LINK_PER*S.linkK)*100)/100]);
   if(core('k_tspin'))muls.unshift(ts?['極意',3]:['極意',0.8]);
   if(quirk('rapid'))muls.push(['急流',1.25]);
@@ -2169,7 +2181,7 @@ function castBossSkill(b){
   if(quirk('quiet'))return;
   const k=nextBossSk(b);b.skN++;
   const anti=Object.keys(RELICS).find(r=>RELICS[r].anti===k&&lv(r));
-  if(anti&&k!=='quake'){pop([b.name,BSK[k].n],'#b9a3ff',1.1);toast(`${RELICS[anti].n}で無効にした`);return}
+  if(anti&&k!=='quake'&&k!=='icicle'){pop([b.name,BSK[k].n],'#b9a3ff',1.1);toast(`${RELICS[anti].n}で無効にした`);return}
   pop([b.name,BSK[k].n],'#b9a3ff',1.1);
   const t=nowT();
   if(k==='bite'){
@@ -2188,7 +2200,23 @@ function castBossSkill(b){
     queueGarbage(lv('stake')?1:2);
   }
   else if(k==='breath')takeHit(Math.round(strikeDmg()*1.2),BSK[k].n);
+  else if(k==='mirror')S.mirrorUntil=t+6000;
+  else if(k==='shroud')S.shroudUntil=t+6000;
+  else if(k==='rush')S.rushUntil=t+7000;
+  else if(k==='icicle'){
+    if(immune()){S.fx.push({k:'block',t:0});toast('氷壁でつららを防いだ');return}
+    S.fx.push({k:'atk',t:0});shake(4,250);icicles(lv('helmet')?1:3);
+  }
 }
+// drop n single blocks onto the tops of n different columns (never into the two hidden spawn rows)
+function icicles(n){
+  const cols=shuffleWith([...Array(W).keys()],Math.random);let put=0;
+  for(const x of cols){if(put>=n)break;let y=0;while(y<H&&!S.board[y][x])y++;y--;if(y<2)continue;S.board[y][x]='G';put++}
+  if(S.cur&&collide(S.cur.m,S.cur.x,S.cur.y))S.cur.y=Math.max(0,S.cur.y-1);
+}
+const mirrored=()=>!!(S&&S.mirrorUntil&&until('mirrorUntil')>0);
+const rushing=()=>!!(S&&S.rushUntil&&until('rushUntil')>0);
+const shrouded=()=>!!(S&&S.shroudUntil&&until('shroudUntil')>0);
 function hitInterval(){
   const b=S.boss&&!S.boss.dead?S.boss:null;
   if(b)return taunted()?0:strikeMs();
@@ -2221,7 +2249,7 @@ function makeBoss(id,name,max){
     S.hitAcc=0;pop(['雑魚',name],'#9fd8ff',0.95);sfx('hit');hud(true);return;
   }
   const el=id>=100?ELITES[id%ELITES.length]:null;
-  const bi=el?0:bossIdx(id),sk=el?el.sk:BOSS_SK[bi],s2=BOSS_SK[el?id%7:(bi+1)%7];
+  const bi=el?0:bossIdx(id),sk=el?el.sk:BOSS_SK[bi],s2=NONKING_SK[el?id%NONKING_SK.length:(NONKING_SK.indexOf(sk)+1)%NONKING_SK.length];
   const b={id,name,max,hp:max,atk:0,myDmg:0,dead:false,sk,sk2:s2===sk?'bite':s2,skAcc:0,skN:0,warned:false,p2:false,elite:!!el};
   if(S.weaken){b.myDmg=Math.round(max*0.15);S.weaken=false}
   S.boss=b;S.hitAcc=0;floorShield();pop(['BOSS',name],'#ff6f7f',1.15);sfx('boss');shake(5,300);hud(true);
@@ -3162,7 +3190,7 @@ function renderCodex(){
   if(codexTab==='core')rows=Object.keys(CORES).map(k=>{const c=CORES[k],l=lockOf(k);return{seen:!!(SEEN.core&&SEEN.core[k]),g:c.g,col:c.col,n:c.n,d:(l?`【未解放：${l.d}】`:'')+c.d+`（${c.tag}）`,locked:!!l}});
   else if(codexTab==='evo')rows=Object.keys(EVOS).map(k=>{const e=EVOS[k],b=RELICS[e.base],c=RELICS[e.cat];return{seen:true,g:SEEN.ev[k]?e.g:'？',col:e.col,n:SEEN.ev[k]?e.n:'？？？（まだ進化させていない）',d:`${b.n}（最大Lv${b.max}）＋${c.n}`+(SEEN.ev[k]?`：${e.d}`:'')}});
   else if(codexTab==='tf')rows=Object.keys(TAGS).map(t=>({seen:!!SEEN.tf[t],g:t,col:TAGS[t].col,n:TAGS[t].tf,d:`${t}タグの遺物を3つ集める：${TAGS[t].d}`}));
-  else if(codexTab==='boss')rows=BOSSES.map((n,i)=>{const k=BOSS_SK[i];return{seen:!!SEEN.b[n],g:i===7?'B8':i<4?'浅':'深',col:'#ff6f7f',n,d:k==='king'?'すべてのスキルを順に使う':`スキル「${BSK[k].n}」：${BSK[k].d}`}});
+  else if(codexTab==='boss')rows=[...BOSS_EARLY,...BOSS_LATE,7].map(i=>{const n=BOSSES[i],k=BOSS_SK[i];return{seen:!!SEEN.b[n],g:i===7?'B8':BOSS_EARLY.includes(i)?'浅':'深',col:'#ff6f7f',n,d:k==='king'?'すべてのスキルを順に使う':`スキル「${BSK[k].n}」：${BSK[k].d}`}});
   else{
     const keys=Object.keys(RELICS).filter(k=>k!=='potion'&&(codexTab==='duo'?RELICS[k].duo:codexTab==='cursed'?RELICS[k].cursed:!RELICS[k].duo&&!RELICS[k].cursed));
     rows=keys.map(k=>{const r=RELICS[k],l=lockOf(k);return{seen:!!SEEN.r[k],g:r.g,col:relicCol(r),n:r.n,d:(l?`【未解放：${l.d}】`:'')+r.d+(r.t?`（${r.t}）`:''),locked:!!l}});
@@ -3443,7 +3471,7 @@ function drawBoard(dt){
   if(b&&!b.mob&&!frozen()){const f=Math.min(1,b.skAcc/curSkMs(b));bctx.fillStyle=f>.85?'rgba(185,163,255,.95)':'rgba(185,163,255,.45)';bctx.fillRect(0,5,W*s*f,3)}
   // active status effects, bottom-left
   if(S.mode!=='over'){
-    const st=[['氷壁','immuneUntil','#8fe3ff'],['凍結','freezeUntil','#f2d06b'],['吹雪','blindUntil','#e4eff8'],['蜘蛛の糸','webUntil','#c7d6e3'],['暴風','galeUntil','#b9a3ff']]
+    const st=[['氷壁','immuneUntil','#8fe3ff'],['凍結','freezeUntil','#f2d06b'],['吹雪','blindUntil','#e4eff8'],['蜘蛛の糸','webUntil','#c7d6e3'],['暴風','galeUntil','#b9a3ff'],['左右反転','mirrorUntil','#ff9bd2'],['拍車','rushUntil','#ff9b6f'],['霧の盾','shroudUntil','#a8b8c8']]
       .filter(([,k])=>S[k]&&until(k)>0);
     if(st.length){
       bctx.font=`${Math.floor(s*0.5)}px DotGothic16, monospace`;bctx.textAlign='left';bctx.textBaseline='bottom';
@@ -4199,7 +4227,7 @@ function hostStart(){
 const held={};
 function startRepeat(a,src){
   stopRepeat(a);
-  const rep=()=>{if(a==='soft')act('soft');else if(SET.arr<=0){if(S&&S.mode==='play')while(move(a==='left'?-1:1)){}}else act(a)};
+  const rep=()=>{if(a==='soft')act('soft');else if(SET.arr<=0){if(S&&S.mode==='play')while(move((a==='left')!==mirrored()?-1:1)){}}else act(a)};
   held[a]={src,t1:setTimeout(()=>{rep();held[a].t2=setInterval(rep,a==='soft'?SET.sdf:Math.max(16,SET.arr))},a==='soft'?Math.min(90,SET.das):SET.das)};
 }
 function stopRepeat(a){const h=held[a];if(h){clearTimeout(h.t1);clearInterval(h.t2);delete held[a]}}
@@ -4535,7 +4563,7 @@ function frame(now){
   if(S&&S.mode==='play'&&S.cur){
     S.dropAcc+=dt;const g=gravityMs();
     while(S.dropAcc>=g){S.dropAcc-=g;if(!grounded()){S.cur.y++;S.lastRot=false}else{S.dropAcc=0;break}}
-    if(grounded()){S.lockAcc+=dt;if(S.lockAcc>=500)lockPiece()}else S.lockAcc=0;
+    if(grounded()){S.lockAcc+=dt;if(S.lockAcc>=(rushing()?150:500))lockPiece()}else S.lockAcc=0;
   }
   if(S&&S.mode!=='title'){
     // solo: the clock stops behind menus. party: the leader's clock keeps running for everyone.

@@ -94,8 +94,8 @@ function runOne(cls,diff,opt){
     if(S.boss&&S.boss.mob){if(S.boss!==res._mob){res._mob=S.boss;res.mobs=(res.mobs||0)+1}}
     else if(S.boss&&S.boss===curBoss){const d=S.boss.myDmg-(curBoss.lastSeen||0);if(d>0){res.maxHit=Math.max(res.maxHit||0,d);if(S.floor>=6)res.lateHit=Math.max(res.lateHit||0,d)}curBoss.lastSeen=S.boss.myDmg}
     if(S.boss&&!S.boss.mob&&S.boss!==curBoss){curBoss=S.boss;bossStart=t;curBoss.lastSeen=S.boss.myDmg}
-    if(curBoss&&curBoss.dead&&!curBoss.counted){curBoss.counted=true;res.bossT.push(Math.round((t-bossStart)/1000));(res.bossTF=res.bossTF||[]).push([S.floor,Math.round((t-bossStart)/1000),S.gold])}
-    if(S.mode==='over'){res.cause=S.cause||'?';break}
+    if(curBoss&&curBoss.dead&&!curBoss.counted){curBoss.counted=true;res.bossT.push(Math.round((t-bossStart)/1000));(res.bossTF=res.bossTF||[]).push([S.floor,Math.round((t-bossStart)/1000),S.gold,curBoss.name.replace('・改','')])}
+    if(S.mode==='over'){res.cause=S.cause||'?';res.deathBoss=S.boss&&!S.boss.mob&&!S.boss.dead?S.boss.name:'';res.deathFloor=S.floor;break}
     if(S.mode==='win'){res.win=true;break}
   }
   res.core=S.core;res.coreN=S.coreN;res.floor=S.floor;res.kills=S.bossKills;res.lv=S.level;res.gameT=Math.round((t-t0)/1000);res.hpMax=S.maxHp;res.relics=Object.keys(S.relics).length;
