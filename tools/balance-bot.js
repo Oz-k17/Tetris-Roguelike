@@ -98,7 +98,7 @@ function runOne(cls,diff,opt){
     if(S.mode==='over'){res.cause=S.cause||'?';res.deathBoss=S.boss&&!S.boss.mob&&!S.boss.dead?S.boss.name:'';res.deathFloor=S.floor;break}
     if(S.mode==='win'){res.win=true;break}
   }
-  res.core=S.core;res.coreN=S.coreN;res.floor=S.floor;res.kills=S.bossKills;res.lv=S.level;res.gameT=Math.round((t-t0)/1000);res.hpMax=S.maxHp;res.relics=Object.keys(S.relics).length;
+  res.ddLog=S.ddLog||[];res.core=S.core;res.coreN=S.coreN;res.floor=S.floor;res.kills=S.bossKills;res.lv=S.level;res.gameT=Math.round((t-t0)/1000);res.hpMax=S.maxHp;res.relics=Object.keys(S.relics).length;
   return res;
 }
 module.exports={runOne,G};

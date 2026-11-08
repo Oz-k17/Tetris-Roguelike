@@ -1166,7 +1166,7 @@ const MUSIC={
 };
 const MUSIC_SLOTS=[['easy.explore','簡単：探索中'],['easy.boss','簡単：ボス戦'],['normal.explore','普通：探索中'],['normal.boss','普通：ボス戦'],['hard.explore','難しい：探索中'],['hard.boss','難しい：ボス戦'],['elite','エリート戦（分岐マップ）']];
 const MUSIC_DEF={'easy.explore':'auto','easy.boss':'auto','normal.explore':'auto','normal.boss':'t1757','hard.explore':'auto','hard.boss':'t1757','elite':'auto'};
-const SET_DEF={uiz:100,sfx:70,bgm:45,das:150,arr:33,sdf:25,shake:1,ghost:1,swipe:1,haptic:1,keys:KEY_DEF,pad:PAD_DEF,music:MUSIC_DEF};
+const SET_DEF={dda:1,uiz:100,sfx:70,bgm:45,das:150,arr:33,sdf:25,shake:1,ghost:1,swipe:1,haptic:1,keys:KEY_DEF,pad:PAD_DEF,music:MUSIC_DEF};
 const cloneSet=()=>JSON.parse(JSON.stringify(SET_DEF));
 let SET=cloneSet();
 try{const sv=JSON.parse(localStorage.getItem('hyokutsu-set')||'{}');
@@ -1352,7 +1352,7 @@ const buffOn=()=>{const t=performance.now();return!!((S.buffUntil&&t<S.buffUntil
 const gravityMs=()=>Math.max(55,850*Math.pow(D().gravity,S.floor-1))*(quirk('rapid')?0.7:1)*Math.pow(1.15,lv('slow'))*(S.galeUntil&&until('galeUntil')>0?0.4:1)*(lv('c_sand')?1.3:1)*(1+0.12*lullLv())*(evo('e_slow')?1.3:1);
 const LATE_HP=1.15; // per floor past 4
 const bossBaseHp=()=>Math.round((D().bossHp[0]+D().bossHp[1]*(S.floor-1))*Math.pow(LATE_HP,Math.max(0,S.floor-4))*(rk(1)?1.1:1)*(quirk('gold')?1.2:quirk('heavy')?0.8:1));
-const strikeDmg=()=>Math.round((D().strikeDmg[0]+D().strikeDmg[1]*(S.floor-1))*(rk(6)?1.2:1)*BX().dmg);
+const strikeDmg=()=>Math.round((D().strikeDmg[0]+D().strikeDmg[1]*(S.floor-1))*(rk(6)?1.2:1)*BX().dmg*DD().d);
 const coldDmg=()=>D().cold[1]+Math.max(0,S.floor-D().cold[2])+(lv('c_heart')?3:0);
 // topping out costs a share of max HP (at least 12) and cannot be blocked
 const topoutDmg=()=>Math.max(12,Math.round(S.maxHp*D().topout));
@@ -1426,6 +1426,44 @@ function bossOrder(rng){
 }
 const bossIdx=f=>{const o=S&&S.bo;return o?o[(f-1)%o.length]:(f-1)%FINAL};
 const bossName=f=>BOSSES[bossIdx(f)]+(f>FINAL?'・改':'');
+/* ---------- 自動調整 (dynamic difficulty): each boss fight is scored on how fast it fell and how low HP got;
+   a running "form" value then scales the next boss. Weak runs get a lot of help (HP -30%, slower and softer strikes);
+   strong runs only get a little extra boss HP (+25% at most) so a broken build still feels broken. ---------- */
+const DDA_T={atk:25,buff:38,tank:70,heal:95},DDA_D={easy:0.55,normal:1,hard:1.7};
+const ddaOn=()=>!!(SET.dda&&S&&!S.daily&&!S.practice&&!S.debug);
+function ddaTarget(){
+  const cls=[S.cls,...(S.coop?aliveAllies().map(p=>p.presence.cls).filter(c=>DDA_T[c]):[])];
+  const n=cls.length,avg=cls.reduce((a,c)=>a+DDA_T[c],0)/n;
+  return avg*(DDA_D[S.diff]||1)*(1+0.6*(n-1))/n*(0.7+0.1*Math.min(8,S.floor));
+}
+// multipliers from form f in [-1,1]
+function ddaMul(f){
+  f=Math.max(-1,Math.min(1,f||0));
+  return f<0?{h:1+0.3*f,s:1-0.25*f,d:1+0.15*f}:{h:1+0.25*f,s:1,d:1};
+}
+const DD=()=>S&&S.dd&&ddaOn()?S.dd:{h:1,s:1,d:1};
+// live ease inside a fight: low HP or a tall stack slows the boss's strikes and garbage by up to 30%
+function ddaPressTick(dt){
+  if(!ddaOn()||!S.boss||S.boss.dead){S.ddP=Math.max(0,(S.ddP||0)-dt/2000);return}
+  let top=S.board.findIndex(r=>r.some(v=>v));const h=top<0?0:H-top;
+  const want=Math.min(1,Math.max(0,(0.4-S.hp/Math.max(1,S.maxHp))/0.4)+Math.max(0,(h-12)/8));
+  S.ddP=(S.ddP||0)+(want-(S.ddP||0))*(1-Math.exp(-dt/1500));
+}
+const ddaEase=()=>ddaOn()?1+0.3*(S.ddP||0):1;
+function ddaLabel(){const d=DD();if(Math.abs(d.h-1)<0.04)return'';const p=Math.round((d.h-1)*100);return p<0?`手加減${p}%`:`本気+${p}%`}
+// called when a real boss falls (host or solo); also tracks the lowest HP seen in the fight
+function ddaSample(b){
+  if(!ddaOn()||!b||b.mob||b.elite||!b.bornAt)return;
+  const sec=Math.max(1,(nowT()-b.bornAt)/1000);
+  let hpF=(S.fightMinHp!=null?S.fightMinHp:S.hp)/Math.max(1,S.maxHp);
+  if(S.coop){const al=aliveAllies(),dead=allies().length-al.length+(S.mode==='over'?1:0);
+    const fr=[...(S.mode!=='over'?[hpF]:[]),...al.map(p=>(+p.presence.hp||0)/Math.max(1,+p.presence.mh||1))];
+    hpF=fr.length?fr.reduce((a,x)=>a+x,0)/fr.length-0.3*dead:0}
+  const rt=Math.max(-1,Math.min(1,Math.log(ddaTarget()/sec))),rh=Math.max(-1,Math.min(0.6,(hpF-0.5)*2));
+  const smp=0.6*rt+0.4*rh;
+  S.form=S.ddN?S.form*0.5+smp*0.5:smp*0.6;S.ddN=(S.ddN||0)+1;
+  S.dd=ddaMul(S.form);S.ddLog=(S.ddLog||[]).concat([[S.floor,Math.round(sec),Math.round(hpF*100),+S.form.toFixed(2)]]);
+}
 /* ---------- 階の目標: one shared goal per floor (party totals in co-op); reaching it pays everyone ---------- */
 const GOALS={
   lines:{n:'列を消す',u:'列',k:'l',t:n=>12+6*(n-1)},
@@ -1483,7 +1521,7 @@ function enterQuirk(){
 // time-based HP damage: cold while exploring (from floor 3), boss strikes during boss fights
 const cloakMul=()=>1+0.2*lv('cloak');
 const coldMs=()=>S.floor>=(lv('c_heart')?1:D().cold[2]-(rk(3)?1:0))?D().cold[0]*cloakMul():Infinity;
-const strikeMs=()=>{const a=D().strike;return Math.max(a[2],a[0]-a[1]*(S.floor-1))*(quirk('quiet')?0.8:1)*cloakMul()*(S.boss&&S.boss.p2?0.8:1)*BX().strike};
+const strikeMs=()=>{const a=D().strike;return Math.max(a[2],a[0]-a[1]*(S.floor-1))*(quirk('quiet')?0.8:1)*DD().s*ddaEase()*cloakMul()*(S.boss&&S.boss.p2?0.8:1)*BX().strike};
 // block chance stacks hyperbolically: 1 - 1/(1+a). The guardian alone is 25%; it approaches but never reaches 100%.
 const blockChance=extra=>{const a=(S.cls==='tank'?1/3:0)+0.2*(lv('guard')+(extra||0));return a>0?1-1/(1+a):0};
 const rot=(m,dir)=>dir>0?m[0].map((_,i)=>m.map(r=>r[i]).reverse()):m[0].map((_,i)=>m.map(r=>r[r.length-1-i]));
@@ -1963,6 +2001,7 @@ function bossAtkMs(){
     if(S.cls!=='tank'&&tankAlive())m*=1.6;
   }
   if(S.boss&&S.boss.p2)m*=0.75;
+  m*=ddaEase();
   if(rk(7))m*=0.85;
   if(evo('e_slow'))m*=1.2;
   return m*BX().atk;
@@ -2250,7 +2289,7 @@ function makeBoss(id,name,max){
   }
   const el=id>=100?ELITES[id%ELITES.length]:null;
   const bi=el?0:bossIdx(id),sk=el?el.sk:BOSS_SK[bi],s2=NONKING_SK[el?id%NONKING_SK.length:(NONKING_SK.indexOf(sk)+1)%NONKING_SK.length];
-  const b={id,name,max,hp:max,atk:0,myDmg:0,dead:false,sk,sk2:s2===sk?'bite':s2,skAcc:0,skN:0,warned:false,p2:false,elite:!!el};
+  const b={id,name,max,hp:max,atk:0,myDmg:0,dead:false,sk,sk2:s2===sk?'bite':s2,skAcc:0,skN:0,warned:false,p2:false,elite:!!el,bornAt:nowT()};S.fightMinHp=S.hp;
   if(S.weaken){b.myDmg=Math.round(max*0.15);S.weaken=false}
   S.boss=b;S.hitAcc=0;floorShield();pop(['BOSS',name],'#ff6f7f',1.15);sfx('boss');shake(5,300);hud(true);
 }
@@ -2259,7 +2298,7 @@ function spawnBoss(){
   if(S.boss&&S.boss.mob&&!S.boss.dead){S.deadMob=S.boss.id;toast(`${S.boss.name}は逃げていった`)}
   // the HP multiplier eases in: x2 on B1, x2.5 on B2, the full value from B3
   const hm=bx.hp>1?Math.min(bx.hp,1.5+0.5*S.floor):1;
-  makeBoss(S.floor,bossName(S.floor),Math.round(bossBaseHp()*hm*(1+0.6*Math.max(0,n-1))));
+  makeBoss(S.floor,bossName(S.floor),Math.round(bossBaseHp()*hm*(1+0.6*Math.max(0,n-1))*DD().h));
 }
 function spawnMob(){
   const n=1+aliveAllies().length-(S.mode==='over'?1:0);
@@ -2292,6 +2331,7 @@ function bossHpTick(){
     return;
   }
   if(b.hp<=0&&!b.dead){
+    if(!b.mob&&(!S.coop||isAuthority()))ddaSample(b);
     b.dead=true;S.phase=b.elite?'node':'shop';
     if(S.mode==='over')return;
     bossDefeated();
@@ -2737,7 +2777,7 @@ function resolveNode(k){
 }
 function spawnElite(){
   const n=1+aliveAllies().length-(S.mode==='over'?1:0),id=100+S.floor,e=ELITES[id%ELITES.length];
-  makeBoss(id,'精鋭・'+e.n,Math.round(bossBaseHp()*0.6*(1+0.6*Math.max(0,n-1))));
+  makeBoss(id,'精鋭・'+e.n,Math.round(bossBaseHp()*0.6*(1+0.6*Math.max(0,n-1))*DD().h));
 }
 function eliteDefeated(){
   const b=S.boss;
@@ -3208,7 +3248,7 @@ const SET_UI=[
   ['arr','移動の連射の間隔','ms',0,100,5,'0にすると押しっぱなしで壁まで一気に動く（ARR）'],
   ['sdf','ソフトドロップの速さ','ms',10,80,5,'小さいほど速く落ちる']
 ];
-const SET_FLAGS=[['ghost','ゴースト（落下位置）を表示'],['swipe','盤面のスワイプ操作（スマホ）'],['haptic','振動（対応するスマホのみ）'],['shake','画面の揺れ']];
+const SET_FLAGS=[['dda','ボスの強さを育ち具合に合わせて自動で調整する（今日のお題では使わない）'],['ghost','ゴースト（落下位置）を表示'],['swipe','盤面のスワイプ操作（スマホ）'],['haptic','振動（対応するスマホのみ）'],['shake','画面の揺れ']];
 function openSettings(from){setFrom=from;hide(from);renderSettings();show('ovSet')}
 function renderSettings(){
   $('setList').innerHTML=`<div class="setrow"><label id="uizLb">文字の大きさ（メニュー）</label><div class="uizrow" role="group" aria-labelledby="uizLb">${UIZ.map(([v,n])=>`<button type="button" class="dbtn${SET.uiz===v?' on':''}" data-uiz="${v}" aria-pressed="${SET.uiz===v}">${n}</button>`).join('')}</div></div>`+SET_UI.map(([k,n,u,mn,mx,st,d])=>`<div class="setrow"><label for="set-${k}">${n}</label><output id="out-${k}">${SET[k]}${u}</output><input type="range" id="set-${k}" min="${mn}" max="${mx}" step="${st}" value="${SET[k]}">${d?`<small>${d}</small>`:''}</div>`).join('')+
@@ -3327,7 +3367,7 @@ function hud(force){
   $('phaseBarWrap').classList.toggle('boss',!!b&&!b.mob);
   enemyTrail(b);
   if(b&&b.mob){setText('phaseLbl',`${b.name}・ボスまで ${fmtTime(S.timeLeft)}`);setW('phaseBar',b.hp/b.max*100);setText('phaseVal',`${b.hp} / ${b.max}`)}
-  else if(b){setText('phaseLbl',b.name+(b.p2&&!b.dead?'・第2形態':''));setW('phaseBar',b.hp/b.max*100);setText('phaseVal',b.dead?'討伐':`${b.hp} / ${b.max}`)}
+  else if(b){setText('phaseLbl',b.name+(b.p2&&!b.dead?'・第2形態':'')+(ddaLabel()?'・'+ddaLabel():''));setW('phaseBar',b.hp/b.max*100);setText('phaseVal',b.dead?'討伐':`${b.hp} / ${b.max}`)}
   else if(S.practice){setText('phaseLbl','練習モード（ボスなし・ダメージなし）');setW('phaseBar',100);setText('phaseVal','∞')}
   else{setText('phaseLbl','ボスまで');setW('phaseBar',S.timeLeft/STAGE_MS*100);setText('phaseVal',fmtTime(S.timeLeft))}
   if(S.cls==='heal'){setText('skillLbl','癒し');setW('skillBar',S.skillLines/healNeed()*100);setText('skillVal',`${S.skillLines}/${healNeed()}`)}
@@ -3708,7 +3748,7 @@ function deskHud(){
   setText('dkVer','ver '+VERSION);
   // enemy panel
   {const en=$('dkEnemy');let kind,tag='',name,val,w,t1=null,t2=null;
-    if(b){kind=b.mob?'mob':'boss';tag=b.mob?'雑魚':b.elite?'精鋭':'BOSS';name=b.name+(b.p2&&!b.dead?'・第2形態':'');val=b.dead?'討伐':`${b.hp.toLocaleString()} / ${b.max.toLocaleString()}`;w=b.hp/b.max*100;
+    if(b){kind=b.mob?'mob':'boss';tag=b.mob?'雑魚':b.elite?'精鋭':'BOSS';name=b.name+(b.p2&&!b.dead?'・第2形態':'')+(!b.mob&&ddaLabel()?'・'+ddaLabel():'');val=b.dead?'討伐':`${b.hp.toLocaleString()} / ${b.max.toLocaleString()}`;w=b.hp/b.max*100;
       if(!b.dead){
         if(frozen())t1=['凍結中','',0];
         else if(taunted())t1=['強撃 → 守護者がかばう','',0];
@@ -4152,6 +4192,7 @@ function netTick(now){
         if(g.ph==='route'&&g.rt&&+g.rt.f===S.floor&&!S.nodePicked&&S.mode==='wait'&&S.rtShown!==S.floor&&Array.isArray(g.rt.n)&&g.rt.n.length===3&&g.rt.n.every(k=>NODES[k])){
           S.rtShown=S.floor;const q=Array.isArray(g.rt.q)?g.rt.q.map(x=>QUIRKS[x]?x:''):['','',''];showRouteVote({f:S.floor,n:g.rt.n.slice(0,3),q})}
         if(!$('ovRoute').hidden&&S.mode==='wait')renderVotes();
+        if(g.dd&&typeof g.dd==='object'){const c=(v,a,z)=>Math.max(a,Math.min(z,+v||1));S.dd={h:c(g.dd.h,0.7,1.25),s:c(g.dd.s,1,1.25),d:c(g.dd.d,0.85,1)}}else if(g.dd===null)S.dd=null;
         if(g.mk&&+g.mk.n&&+g.mk.n!==S.aimSeen){S.aimSeen=+g.mk.n;if(typeof g.mk.tp==='string')aimStart(g.mk.tp.slice(0,64))}
         if(typeof g.q==='string'&&(g.q===''||QUIRKS[g.q])&&g.q!==S.quirk){S.qPick[S.floor]=g.q||'none';enterQuirk()}
         if(['play','shop','route','node'].includes(g.ph))S.phase=(S.boss&&S.boss.dead)?(S.boss.elite?'node':'shop'):g.ph;
@@ -4205,7 +4246,7 @@ function netTick(now){
       b:boardStr(),d:S.boss?{i:S.boss.id,v:S.boss.myDmg}:(S.deadMobD||null),rd:S.readyFloor,lc:S.lcN,rv:S.rv&&S.rv.f===S.floor?S.rv:null,gh:S.ghN||0,
       hc:S.healCount,hr:S.reviveCount,rn:S.readyNode,sk:S.skUses,su:(su(0)||'-')+(su(1)||'-')+(su(2)||'-'),skv:{ws:wallSh(),hh:mirHeal(),hs:mirSh(),fm:songMs(),fx:songMul()},im:immune()?1:0,cl:lv('purify'),ha:healAmt(),bm:evo('e_drum')?1.8:1.5,hs:6*lv('aegis'),sh:S.shield,bc:S.buffCount,bd:buffDur(),cn:S.calmN||0,cm:calmMs(),ll:lv('lullaby'),kv:S.kickVote||'',hb:Math.floor(now/3000),st:{...S.st,l:S.totalLines,k:S.hitsTaken||0,b:S.blocked||0,lv:S.level},l:null};
     pres.g=NET.isHost?{ph:S.phase,f:S.floor,t:Math.round(S.timeLeft/100)*100,
-      boss:S.boss?{id:S.boss.id,n:S.boss.name,m:S.boss.max}:null,node:S.nodePicked?{f:S.floor,k:S.nodeKind,q:S.qPick[S.floor+1]||''}:null,q:S.quirk||'',mk:S.mkN?{n:S.mkN,tp:S.mkTp}:null,rt:S.rt&&!S.nodePicked?{f:S.rt.f,n:S.rt.n,q:S.rt.q}:null}:null;
+      boss:S.boss?{id:S.boss.id,n:S.boss.name,m:S.boss.max}:null,node:S.nodePicked?{f:S.floor,k:S.nodeKind,q:S.qPick[S.floor+1]||''}:null,q:S.quirk||'',dd:S.dd&&ddaOn()?S.dd:null,mk:S.mkN?{n:S.mkN,tp:S.mkTp}:null,rt:S.rt&&!S.nodePicked?{f:S.rt.f,n:S.rt.n,q:S.rt.q}:null}:null;
   }else pres={r:NET.isHost?'host':'guest',l:1,cls:myCls,e:null,g:null};
   pres.nm=myNick;pres.uid=MYUID;pres.ui=MYID||'';if(S&&S.coop)pres.sc=S.score;
   if(coopOn()){pres.ch=S.cheers||0;pres.em={n:S.emN||0,i:S.emI||0}}
@@ -4588,6 +4629,8 @@ function frame(now){
     }
     if(S.coop&&S.aim)aimTick();
     if(S.goal&&!S.goal.done)goalTick();
+    if(S.boss&&!S.boss.mob&&!S.boss.dead&&S.fightMinHp!=null&&S.hp<S.fightMinHp)S.fightMinHp=S.hp;
+    if(S.mode==='play')ddaPressTick(dt);
     if(S.mode==='play'){hpTick(dt);garbageTick();
       if(quirk('frost')&&S.phase==='play'&&!frozen()){S.frostAcc=(S.frostAcc||0)+dt;if(S.frostAcc>=15000){S.frostAcc=0;S.fx.push({k:'atk',t:0});sfx('warn');pop(['凍る床'],QUIRKS.frost.col,.85);if(addGarbage(1)){topOut()}}}}
     bossHpTick();
