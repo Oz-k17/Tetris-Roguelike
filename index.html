@@ -220,6 +220,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .qline{display:block;margin-top:4px;font-size:12px;color:var(--muted)}
 .votes{display:inline}.vchip{display:inline-block;margin-left:4px;padding:0 6px;border-radius:8px;background:#2a3d55;color:var(--fg);font-style:normal;font-size:11px;font-weight:700;line-height:17px;vertical-align:2px}.vchip.me{background:var(--ice);color:var(--bg)}
 .card.node.voted{box-shadow:0 0 0 2px var(--ice)}
+.overacts{position:sticky;bottom:0;display:flex;gap:8px;padding:10px 0 2px;margin-top:auto;background:linear-gradient(transparent,var(--bg) 30%);z-index:1}
+.overacts>button{flex:1;min-width:0}
+.overacts>button[hidden]{display:none}
 .shop2{gap:10px}.shop2>*{flex-shrink:0}
 .shlbl{font-size:11px;letter-spacing:.16em;color:var(--muted);margin-bottom:-4px}
 .shrel{display:flex;flex-direction:column;gap:6px}
@@ -950,8 +953,10 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
     <div class="relrow" id="goRelics"></div>
     <button class="ghostbtn" id="watchBtn" hidden>仲間を観戦する</button>
     <button class="ghostbtn" id="cheerBtn2" type="button" hidden>応援を送る（仲間にシールド+4・スキル+1）</button>
-    <button class="cta" id="againBtn">もう一度潜る</button>
-    <button class="ghostbtn" id="goTitleBtn" type="button" hidden>タイトルに戻る</button>
+    <div class="overacts">
+      <button class="cta" id="againBtn">もう一度潜る</button>
+      <button class="ghostbtn" id="goTitleBtn" type="button" hidden>タイトルに戻る</button>
+    </div>
   </div>
 </div>
 
@@ -959,7 +964,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='75',UPDATED='2026-11-09 01:21';
+const VERSION='76',UPDATED='2026-11-09 13:04';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -2940,7 +2945,9 @@ function showOver(){
   $('goRelics').innerHTML=rk.map(k=>{const r=RELICS[k];return`<span class="dia" title="${r.n}" style="color:${relicCol(r)}"><i>${r.g}</i>${S.relics[k]>1?`<sup>${S.relics[k]}</sup>`:''}</span>`}).join('');
   $('watchBtn').hidden=!(coopOn()&&!allDead);
   $('againBtn').textContent=coopOn()?(allDead?'この部屋でもう一度':'タイトルに戻る'):'もう一度潜る';
-  $('goTitleBtn').hidden=!(coopOn()&&allDead);
+  // a second way out: solo and daily go back to mode select; a wiped party can leave the room
+  $('goTitleBtn').hidden=coopOn()&&!allDead;
+  $('goTitleBtn').textContent=coopOn()?'部屋を出てタイトルへ':'モード選択へ';
   S.overAllDead=allDead;
   if(S.daily&&S.coop&&allDead)dailyPartyDone(false);
   if(S.daily&&(!S.coop||allDead)){$('goNote').hidden=false;$('goNote').textContent=S.coop?`今日のお題（${S.daily}）のパーティ記録。合計スコアがパーティのランキングに載る`:`今日のお題（${S.daily}）の記録。ランキングはタイトルの「今日のお題」から`;if(!S.coop)$('againBtn').textContent='今日のお題をもう一度'}
