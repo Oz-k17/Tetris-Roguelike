@@ -18,7 +18,7 @@ global.localStorage={getItem:()=>null,setItem(){}};global.performance={now:()=>t
 global.setTimeout=(f,ms)=>{timers.push({at:t+(ms||0),f});return timers.length};global.clearTimeout=()=>{};global.setInterval=()=>0;global.clearInterval=()=>{};
 let raf;global.requestAnimationFrame=f=>{raf=f};global.Audio=function(){return{play(){return Promise.resolve()},pause(){},load(){},addEventListener(){},loop:false,volume:0,currentTime:0,paused:true,readyState:0}};
 let src=SRC.trim();src=src.slice(src.indexOf('{')+1,src.lastIndexOf('})'));
-src+=`;global.G={get S(){return S},newRun,collide,rot,hard,useSkill,skNeed,leaveShop,buy,DIFFS,CLASSES,RELICS,FINAL,W,H,lv,strikeDmg,bossBaseHp:typeof bossBaseHp==='function'?bossBaseHp:null};`;
+src+=`;global.G={get S(){return S},newRun,collide,rot,hard,useSkill,skNeed,leaveShop,buy,swapPick,slotKeys,bagKeys,keepWhy,sellPrice,isBag,DIFFS,CLASSES,RELICS,FINAL,W,H,lv,strikeDmg,bossBaseHp:typeof bossBaseHp==='function'?bossBaseHp:null};`;
 (0,eval)(src);
 const W=G.W,H=G.H;
 // ---- placement search (El-Tetris style features)
@@ -54,6 +54,12 @@ function act(opt){
   const S=G.S;
   // overlays: click something sensible
   const cards=els.cards&&els.cards.kids||[];
+  // full relic slots: usually swap out the cheapest relic, sometimes decline
+  if(S.swap){
+    const ks=(G.isBag(S.swap.k)?G.bagKeys():G.slotKeys()).filter(k=>!G.keepWhy(k)).sort((a,b)=>G.sellPrice(a)-G.sellPrice(b));
+    if(ks.length&&Math.random()<0.6)G.swapPick(ks[0]);else S.swap=null;
+    return;
+  }
   if(S.mode==='reward'){
     const btns=cards.filter(c=>c.onclick&&!c.disabled);
     if(btns.length){const pick=btns[Math.floor(Math.random()*Math.min(btns.length,3))];pick.onclick();return}

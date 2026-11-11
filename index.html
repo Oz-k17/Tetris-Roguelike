@@ -223,6 +223,11 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .overacts{position:sticky;bottom:0;display:flex;gap:8px;padding:10px 0 2px;margin-top:auto;background:linear-gradient(transparent,var(--bg) 30%);z-index:1}
 .overacts>button{flex:1;min-width:0}
 .overacts>button[hidden]{display:none}
+.swnew{padding:8px 10px;border:1px dashed var(--ice);border-radius:10px;color:var(--fg);font-size:13px;line-height:1.5}
+.swnew b{color:var(--ice)}
+#swList .shrow .price{color:var(--gold)}#swList .shrow[disabled]{opacity:.45;cursor:default}
+#swList .meta{white-space:normal}
+.slotn{display:inline-block;margin-right:4px;padding:0 5px;border-radius:3px;border:1px solid var(--line);color:var(--muted);font-size:10px;line-height:14px;vertical-align:middle;white-space:nowrap}.slotn.full{color:var(--gold);border-color:var(--gold)}
 .shop2{gap:10px}.shop2>*{flex-shrink:0}
 .shlbl{font-size:11px;letter-spacing:.16em;color:var(--muted);margin-bottom:-4px}
 .shrel{display:flex;flex-direction:column;gap:6px}
@@ -257,7 +262,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .shdet .ev{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:8px;background:#1a0f17;font-size:12px;line-height:1.5}
 .shdet .buy{margin-top:auto;min-height:52px;padding:6px 10px;line-height:1.2;border:none;border-radius:10px;background:var(--gold);color:var(--bg);font-family:var(--display);font-size:19px;letter-spacing:.06em;cursor:pointer}
 .shdet .buy:disabled{background:#2c4560;color:#9fb6c9;cursor:default}
-.shfoot{display:grid;grid-template-columns:1fr 1.3fr;gap:8px}
+.shfoot{display:grid;grid-template-columns:.8fr 1fr 1.2fr;gap:8px}
+#ovSwap{background:rgba(6,12,20,.97)}
 .shfoot .ghostbtn,.shfoot .cta{height:48px;font-size:13px}
 .shfoot .cta{background:none;border:1px solid var(--ice);color:var(--ice);font-size:16px}
 .card.clscard .g{border-color:currentColor}
@@ -736,6 +742,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
       <li>守護者・癒し手・鼓手・剣士の4クラス。ラインを消してためるクラススキル（SKILLボタン）があり、遺物もクラスに合ったものが出やすい</li>
       <li>ボスはそれぞれ固有のスキルを持つ。盤面上の紫の線が満ちると発動</li>
       <li>遺物には「刃・盾・癒・富・爆・技」のタグがある。同じタグの遺物を3つ集めると「化身」に変身する</li>
+      <li>持てる遺物は8種類まで（同じ遺物の重ねはLv3まで、枠は使わない）。ボス対策の遺物は別の小物袋に2つ。いっぱいのときは入れ替えるか、行商人に売る</li>
       <li>ボスのゴミ列は少し遅れてせり上がる。盤面左の赤い線が予告で、その間にラインを消すと相殺できる。ボスはHPが半分を切ると第2形態になる</li>
       <li>マップ「分岐の氷窟」では、階の間でエリート・イベント・休憩所・宝箱・行商人から道を選ぶ</li>
       <li>パーティでは「スタンプ」（1〜4キー）で気持ちを伝えられる。倒れても「応援を送る」で仲間を支えられる</li>
@@ -822,6 +829,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
     <div class="shgoods" id="shGoods"></div>
     <div class="shdet" id="shDet"></div>
     <div class="shfoot">
+      <button class="ghostbtn" id="sellBtn" type="button">売る</button>
       <button class="ghostbtn" id="rerollBtn">入れ替え</button>
       <button class="cta" id="leaveBtn">先へ進む</button>
     </div>
@@ -961,6 +969,16 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<div class="ov" id="ovSwap" hidden style="z-index:60">
+  <div class="sheet">
+    <h2 id="swTitle">枠がいっぱい</h2>
+    <p id="swSub"></p>
+    <div class="swnew" id="swNew" hidden></div>
+    <div class="shrel" id="swList"></div>
+    <button class="ghostbtn" id="swCancel" type="button">やめる</button>
+  </div>
+</div>
+
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
@@ -1094,6 +1112,26 @@ const RELICS={
   dig:{n:'霜の掘削機',g:'掘',d:'列消し8回ごとに、自分の盤面の下へ穴が1つのゴミ列が1段せり上がる。ゴミ列を消すと1段につきボスへのダメージ+40（重ねると間隔が2回短くなり、ダメージ+40）',max:3,p:45,t:'爆',dk:'+',dd:()=>`${digEvery()}回ごと・1段+${40*lv('dig')} → ${digEvery(1)}回ごと・1段+${40*(lv('dig')+1)}`},
   crit:{n:'会心の一撃',g:'会',d:'4列消しのボスへのダメージ+50',max:5,p:45,c:'atk',only:'atk',t:'刃',dk:'+'}
 };
+/* ---------- 装備枠: a run holds SLOT_MAX different relics (levels of one relic share its slot) plus BAG_MAX boss-counter
+   relics in a separate pouch. A full set forces a swap: the dropped relic pays its sell value. Levels cap at 3. ---------- */
+const SLOT_MAX=8,BAG_MAX=2,LV_CAP=3;
+for(const k in RELICS){const r=RELICS[k];if(!r.once&&r.max>LV_CAP)r.max=LV_CAP}
+RELICS.hold.free=1; // basic gear: no slot, can't be sold
+const isBag=k=>!!RELICS[k].anti,isFree=k=>!!RELICS[k].free;
+const slotKeys=()=>Object.keys(S.relics||{}).filter(k=>RELICS[k]&&!isBag(k)&&!isFree(k));
+const bagKeys=()=>Object.keys(S.relics||{}).filter(k=>RELICS[k]&&isBag(k));
+const needsRoom=k=>{const r=RELICS[k];if(r.once||lv(k)>0||isFree(k))return false;return isBag(k)?bagKeys().length>=BAG_MAX:slotKeys().length>=SLOT_MAX};
+const sellPrice=k=>Math.round(RELICS[k].p*0.5*(1+0.5*(lv(k)-1)));
+// why a relic can't be let go (empty: it can)
+const keepWhy=k=>{const r=RELICS[k];if(isFree(k))return'基本装備';if(r.cursed)return'代償は外せない';
+  if(Object.keys(EVOS).some(e=>evo(e)&&(EVOS[e].base===k||EVOS[e].cat===k)))return'進化済み';return''};
+function dropRelic(k){
+  const L=lv(k);if(!L)return 0;const g=sellPrice(k);
+  if(k==='heart'){S.maxHp=Math.max(10,S.maxHp-10*L);S.hp=Math.min(S.hp,S.maxHp)}
+  if(k==='vital'){S.maxHp=Math.max(10,S.maxHp-8*L);S.hp=Math.min(S.hp,S.maxHp)}
+  delete S.relics[k];S.gold+=g;S.sold=(S.sold||0)+1;
+  return g;
+}
 /* Evolutions (Vampire Survivors style): a base relic at its max level + any level of its catalyst relic.
    The next boss (or elite) you defeat evolves the base relic; the base keeps working and the evolution adds on top. */
 const EVOS={
@@ -2416,7 +2454,7 @@ function openAltar(keys){
   $('rwSub').textContent='強い力と、その代償。受け取らずに進んでもいい';
   const box=$('cards');box.innerHTML='';
   keys.forEach(k=>{const b=document.createElement('button');b.className='card';b.type='button';b.innerHTML=relicCardHtml(k);
-    b.onclick=()=>{applyRelic(k);hide('ovReward');renderRelics();layout();hud(true);S.mode='play';afterBoss()};box.appendChild(b)});
+    b.onclick=()=>withRoom(k,()=>{applyRelic(k);hide('ovReward');renderRelics();layout();hud(true);S.mode='play';afterBoss()});box.appendChild(b)});
   const skip=document.createElement('button');skip.className='ghostbtn';skip.type='button';skip.textContent='受け取らずに進む';
   skip.onclick=()=>{hide('ovReward');S.mode='play';afterBoss()};box.appendChild(skip);
   show('ovReward');
@@ -2501,6 +2539,46 @@ function boonCard(bn,after){
   return b;
 }
 function fillBoons(box,have,after){for(const bn of BOONS.slice(0,Math.max(0,3-have)))box.appendChild(boonCard(bn,after))}
+// run `go` once there is room for relic k; a full set first asks which relic to let go
+function withRoom(k,go){
+  if(!needsRoom(k)){go();return}
+  openSwap(k,go);
+}
+function swapRow(k,onPick){
+  const r=RELICS[k],col=relicCol(r),why=keepWhy(k),b=document.createElement('button');
+  b.type='button';b.className='shrow';b.style.setProperty('--sc',col);b.disabled=!!why;
+  b.innerHTML=`<span class="g dia" style="color:${col}"><i>${r.g}</i></span><span class="mid"><span class="nm">${r.n}${lv(k)>1?` Lv${lv(k)}`:''}</span><span class="meta">${r.t?`<span class="tg" style="--tc:${TAGS[r.t].col}">${r.t}</span>`:''}${r.d}</span></span><span class="price">${why||'+'+sellPrice(k)+'G'}</span>`;
+  if(!why)b.onclick=()=>onPick(k);
+  return b;
+}
+function openSwap(k,go){
+  const bag=isBag(k),keys=bag?bagKeys():slotKeys(),r=RELICS[k];
+  S.swap={k,go};
+  $('swTitle').textContent=bag?`小物袋がいっぱい（${keys.length}/${BAG_MAX}）`:`装備枠がいっぱい（${keys.length}/${SLOT_MAX}）`;
+  $('swSub').textContent='持つには、どれか1つを手放す。手放した遺物は売値のゴールドになる';
+  $('swNew').hidden=false;$('swNew').innerHTML=`新しく持つ：<b>${r.n}</b><br>${r.d}`;
+  const box=$('swList');box.innerHTML='';
+  keys.forEach(x=>box.appendChild(swapRow(x,swapPick)));
+  $('swCancel').textContent='やめる';
+  show('ovSwap');
+}
+function swapPick(x){
+  const sw=S.swap;if(!sw)return;
+  const g=dropRelic(x);S.swap=null;hide('ovSwap');sfx('buy');toast(`${RELICS[x].n}を手放した（+${g}G）`);
+  sw.go();renderRelics();hud(true);
+}
+function openSell(){
+  S.swap=null;
+  const keys=[...slotKeys(),...bagKeys()];
+  $('swTitle').textContent='遺物を売る';
+  $('swSub').textContent=`装備 ${slotKeys().length}/${SLOT_MAX}・小物袋 ${bagKeys().length}/${BAG_MAX}。売ると枠が空き、売値のゴールドが入る`;
+  $('swNew').hidden=true;
+  const box=$('swList');box.innerHTML='';
+  if(!keys.length)box.innerHTML='<p style="color:var(--muted);margin:0">売れる遺物を持っていない</p>';
+  keys.forEach(x=>box.appendChild(swapRow(x,k=>{const g=dropRelic(k);sfx('buy');toast(`${RELICS[k].n}を売った（+${g}G）`);renderRelics();hud(true);renderShop();openSell()})));
+  $('swCancel').textContent='閉じる';
+  show('ovSwap');
+}
 function openReward(first){
   S.mode='reward';
   const ti=first?-1:SKUP_LV.indexOf(S.level+1);
@@ -2519,7 +2597,7 @@ function openReward(first){
     const b=document.createElement('button');
     b.className='card';b.type='button';
     b.innerHTML=relicCardHtml(k);
-    b.onclick=()=>pickRelic(k,first);
+    b.onclick=()=>withRoom(k,()=>pickRelic(k,first));
     box.appendChild(b);
   }
   if(!first)fillBoons(box,keys.length+(rk(5)?1:0),()=>levelPicked());
@@ -2650,10 +2728,12 @@ function renderShop(){
   $('rerollBtn').innerHTML=`入れ替え <b style="font-family:var(--display);font-weight:400;color:var(--gold)">${rc}G</b>`;
   $('rerollBtn').disabled=S.gold<rc;
   $('leaveBtn').textContent='先へ進む';
+  {const n=slotKeys().length;$('sellBtn').innerHTML=`売る <b style="font-family:var(--display);font-weight:400;color:${n>=SLOT_MAX?'var(--gold)':'var(--muted)'}">${n}/${SLOT_MAX}</b>`}
 }
 function buy(i){
   const it=S.shop.items[i];
   if(it.sold||S.gold<it.price)return;
+  if(it.kind==='relic'&&needsRoom(it.k)){openSwap(it.k,()=>buy(i));return}
   S.gold-=it.price;it.sold=true;sfx('buy');
   if(it.kind==='relic'||it.kind==='up'){applyRelic(it.k);announceTransform()}
   else if(it.kind==='heal')heal(15);
@@ -2822,7 +2902,7 @@ function openRelicChoice(keys,title,sub,done){
   $('rwLv').innerHTML='';$('rwTitle').textContent=title;$('rwSub').textContent=sub;
   const box=$('cards');box.innerHTML='';
   keys.forEach(k=>{const b=document.createElement('button');b.className='card';b.type='button';b.innerHTML=relicCardHtml(k);
-    b.onclick=()=>{applyRelic(k);hide('ovReward');renderRelics();layout();hud(true);S.mode='play';announceTransform();done()};box.appendChild(b)});
+    b.onclick=()=>withRoom(k,()=>{applyRelic(k);hide('ovReward');renderRelics();layout();hud(true);S.mode='play';announceTransform();done()});box.appendChild(b)});
   fillBoons(box,keys.length,()=>{S.mode='play';done()});
   show('ovReward');
 }
@@ -2970,6 +3050,7 @@ function pause(){
   $('rlist').innerHTML=`<div>${clsBadge(S.cls,18,12)}<span>${c.n}（${c.role}）：${c.d} スキル「${c.sk.n}」：${c.sk.d}${ups.length?'<br>強化：'+ups.map(o=>`${o.n}（${o.d}）`).join('、'):''}</span></div>`+
     `<div><b>算</b><span>ボスへのダメージ＝（基本値＋「＋ダメージ」）×「×ダメージ」。いまの掛け算：${muls}</span></div>`+
     (S.core&&CORES[S.core]?`<div><b style="color:${CORES[S.core].col}">${CORES[S.core].g}</b><span>核「${CORES[S.core].n}」：${CORES[S.core].d}${CORES[S.core].per?`<br>いまの積み重ね：${S.coreN||0}回（${S.core==='k_bomb'?'爆弾':'全'}ダメージ ×${(1+CORES[S.core].per*(S.coreN||0)).toFixed(2)}）`:''}</span></div>`:'')+
+    `<div><b>枠</b><span>装備 ${slotKeys().length}/${SLOT_MAX}・小物袋（ボス対策） ${bagKeys().length}/${BAG_MAX}。いっぱいのときは、入れ替えるか店で売る</span></div>`+
     `<div><b>集</b><span>タグ（同じタグ3つで変身）：${tagLine}</span></div>`+tfs+
     Object.keys(EVOS).filter(k=>evo(k)||lv(EVOS[k].base)||lv(EVOS[k].cat)).map(k=>{const e=EVOS[k],b=RELICS[e.base],c=RELICS[e.cat];
       return`<div><b style="color:${e.col}">${evo(k)?e.g:'進'}</b><span>${evo(k)?`<b style="color:${e.col}">${e.n}</b>：${e.d}`:`進化まで：${b.n} Lv${lv(e.base)}/${b.max}${lv(e.base)>=b.max?'✓':''}＋${c.n}${lv(e.cat)?'✓':'（未所持）'} → ${e.n}${evoReady().includes(k)?'（次のボスを倒すと進化）':''}`}</span></div>`}).join('')+
@@ -3439,7 +3520,8 @@ function fillParty(al){
   });
 }
 function renderRelics(){
-  $('relics').innerHTML=(S&&S.core&&CORES[S.core]?`<span class="dia coreb" title="核：${CORES[S.core].n}（×${coreMul()}）：${CORES[S.core].d}" style="color:${CORES[S.core].col}"><i>${CORES[S.core].g}</i>${S.coreN?`<sup>${S.coreN}</sup>`:''}</span>`:'')+(S&&S.tf?Object.keys(S.tf).map(t=>`<span class="dia tfb" title="${TAGS[t].tf}：${TAGS[t].d}" style="color:${TAGS[t].col}"><i>${t}</i></span>`).join(''):'')+(S&&S.relics?Object.keys(S.relics).map(k=>{const r=RELICS[k],ev=evoOf(k);if(ev){const e=EVOS[ev];return`<span class="dia evob" title="${e.n}（${r.n}の進化）：${e.d}" style="color:${e.col}"><i>${e.g}</i></span>`}
+  const sn=S&&S.relics?slotKeys().length:0;
+  $('relics').innerHTML=(sn>=SLOT_MAX-2?`<span class="slotn${sn>=SLOT_MAX?' full':''}" title="装備枠">${sn}/${SLOT_MAX}</span>`:'')+(S&&S.core&&CORES[S.core]?`<span class="dia coreb" title="核：${CORES[S.core].n}（×${coreMul()}）：${CORES[S.core].d}" style="color:${CORES[S.core].col}"><i>${CORES[S.core].g}</i>${S.coreN?`<sup>${S.coreN}</sup>`:''}</span>`:'')+(S&&S.tf?Object.keys(S.tf).map(t=>`<span class="dia tfb" title="${TAGS[t].tf}：${TAGS[t].d}" style="color:${TAGS[t].col}"><i>${t}</i></span>`).join(''):'')+(S&&S.relics?Object.keys(S.relics).map(k=>{const r=RELICS[k],ev=evoOf(k);if(ev){const e=EVOS[ev];return`<span class="dia evob" title="${e.n}（${r.n}の進化）：${e.d}" style="color:${e.col}"><i>${e.g}</i></span>`}
   return`<span class="dia" title="${r.n}：${r.d}" style="color:${relicCol(r)}"><i>${r.g}</i>${S.relics[k]>1?`<sup>${S.relics[k]}</sup>`:''}</span>`}).join(''):'');
 }
 
@@ -4476,6 +4558,8 @@ document.querySelectorAll('#pad button').forEach(b=>{
 $('pauseBtn').onclick=()=>S&&S.mode==='pause'?resume():pause();
 $('resumeBtn').onclick=resume;
 $('rerollBtn').onclick=reroll;
+$('sellBtn').onclick=openSell;
+$('swCancel').onclick=()=>{if(S)S.swap=null;hide('ovSwap')};
 $('leaveBtn').onclick=leaveShop;
 $('quitBtn').onclick=()=>{hide('ovPause');if(S&&S.practice){toTitle();return}gameOver()};
 $('prClear').onclick=()=>{S.board=emptyBoard();S.incoming=[];resume()};

@@ -5,7 +5,7 @@ const fs=require('fs'),vm=require('vm'),path=require('path');
 const HTML=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
 let SRC=[...HTML.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]).sort((a,b)=>b.length-a.length)[0].trim();
 SRC=SRC.slice(SRC.indexOf('{')+1,SRC.lastIndexOf('})'));
-SRC+=`;globalThis.G={get S(){return S},get NET(){return NET},collide,rot,hard,useSkill,skNeed,leaveShop,buy,W,H,ghostOn,ghostLeft,ghostAct,castVote,
+SRC+=`;globalThis.G={get S(){return S},get NET(){return NET},collide,rot,hard,useSkill,skNeed,leaveShop,buy,swapPick,slotKeys,bagKeys,keepWhy,sellPrice,isBag,W,H,ghostOn,ghostLeft,ghostAct,castVote,
   setCls:c=>{myCls=c},setDiff:d=>{myDiff=d},setMap:m=>{myMap=m},hostStart,cheer:()=>{try{$('cheerBtn2').onclick()}catch(e){}}};`;
 const SKILLS={beginner:{think:1250,err:0.5},average:{think:830,err:0.3},skilled:{think:500,err:0.1}};
 let T=0;
@@ -73,6 +73,8 @@ function act(P,opt){
   const G=P.G,S=G.S,rnd=P.rnd;if(!S)return;
   if(S.incoming){P.seenG=P.seenG||new WeakSet();for(const g of S.incoming)if(!P.seenG.has(g)){P.seenG.add(g);S.botGarb=(S.botGarb||0)+g.rows}}
   {const top=S.board.findIndex(r=>r.some(v=>v));const h=top<0?0:G.H-top;S.botMaxH=Math.max(S.botMaxH||0,h)}
+  if(S.swap){const ks=(G.isBag(S.swap.k)?G.bagKeys():G.slotKeys()).filter(k=>!G.keepWhy(k)).sort((a,b)=>G.sellPrice(a)-G.sellPrice(b));
+    if(ks.length&&rnd()<0.6)G.swapPick(ks[0]);else S.swap=null;return}
   if(S.mode==='route'&&!S.rt){const k=(P.els.routeCards&&P.els.routeCards.kids||[]).filter(c=>c.onclick);if(k.length){k[Math.floor(rnd()*k.length)].onclick();return}}
   if(S.mode==='reward'){
     const btns=(P.els.cards&&P.els.cards.kids||[]).filter(c=>c.onclick&&!c.disabled);
