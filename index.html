@@ -988,7 +988,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='78',UPDATED='2026-11-12 00:45';
+const VERSION='79',UPDATED='2026-11-12 00:51';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -1336,7 +1336,7 @@ const PAD_DEF={left:['b14','sl'],right:['b15','sr'],soft:['b13','sd'],hard:['b12
 /* Music: every scene picks one entry from MUSIC. 'auto' is the generated loop (exploring or boss flavour).
    Add a recorded track by dropping an mp3 into bgm/ and listing it here. */
 const MUSIC={
-  auto:{n:'自動生成（いつもの）'},
+  auto:{n:'自動生成'},
   t1757:{n:'ボス曲（10/23 17:57）',src:'bgm/track-1757.mp3',lufs:-15.8},
   t1811:{n:'通常曲（10/23 18:11）',src:'bgm/track-1811.mp3',lufs:-16.8}
 };
@@ -3338,20 +3338,53 @@ function mixTick(){
       v.el.volume=Math.max(0,Math.min(1,v.g*v.g*trackVol(k)*SET.bgm/100*duckMul())); // squared: an equal-power-ish curve
       if(!tgt&&v.g===0&&!v.el.paused)v.el.pause();
     }else if(AC){
-      v.gain.gain.setTargetAtTime(v.g*v.g,AC.currentTime,0.05);
+      v.gain.gain.setTargetAtTime(v.g*v.g*(v.boss?1:EXP_VOL),AC.currentTime,0.05);
       if(v.g>0||tgt)genSchedule(v);else v.next=0;
     }
   }
 }
-function genSchedule(v){
-  const P=v.boss?BGM_BOSS:BGM_EXP;
+/* Generated exploring music: a bright, bouncy loop in C major at 120 BPM (one step = a 16th note).
+   Eight bars of I-V-vi-IV / I-IV-V-V under a pentatonic tune, a syncopated bass, a bell arpeggio and a light kick/hat.
+   The tune plays for two rounds and rests for the third, so a long floor doesn't hear the same 16 seconds forever.
+   The boss loop below keeps its darker minor pattern. */
+const EXP_STEP=0.125,EXP_C=261.63,EXP_VOL=1.4; // EXP_VOL: measured -22 LUFS raw vs the boss loop's -17.4; ×1.4 brings it to about -19
+const EXP_CH=[[0,4,7],[7,11,14],[9,12,16],[5,9,12],[0,4,7],[5,9,12],[7,11,14],[7,11,14]];
+const EXP_PENTA=[0,2,4,7,9,12,14,16];
+// [step, pentatonic index, length in steps]
+const EXP_TUNE=[
+  [[0,2,2],[2,3,2],[4,4,3],[8,3,2],[10,2,2],[12,1,4]],
+  [[0,4,3],[4,3,1],[6,2,2],[8,1,2],[10,2,2],[12,3,4]],
+  [[0,5,2],[2,4,2],[4,3,2],[6,4,2],[8,5,4],[12,4,2],[14,3,2]],
+  [[0,3,3],[4,2,3],[8,1,2],[10,0,2],[12,2,4]]];
+const EXP_ORDER=[0,1,0,3,2,1,2,3];
+const semi=n=>Math.pow(2,n/12);
+function genExplore(v){
+  const st=v.step%16,bar=(v.step>>4)%8,round=(v.step>>7)%3,ch=EXP_CH[bar],T=EXP_STEP;
+  // drums
+  if(st===0||st===8||(st===10&&bar%2===1))bkick(v,0.5);
+  if(st===4||st===12)bnoise(v,0.07,0.09,1800);
+  if(st%4===2)bnoise(v,0.03,0.06,6500);
+  // bass: root on a 3+3+2 pattern, the fifth as a pickup into the next bar
+  if(st===0||st===3||st===6||st===8||st===11)btone(v,EXP_C/2*semi(ch[0]%12),T*1.5,'triangle',0.42);
+  if(st===14)btone(v,EXP_C/2*semi((ch[0]+7)%12),T*1.5,'triangle',0.34);
+  // bell arpeggio on the 8th notes; one octave higher while the tune rests
+  if(st%2===0){const i=[0,1,2,1,0,2,1,2][st>>1],f=EXP_C*2*semi(ch[i])*(round===2&&st%4===0?2:1);
+    btone(v,f,T*1.7,'triangle',0.15);btone(v,f*2,T*0.9,'sine',0.05)}
+  // tune
+  if(round<2)for(const [s0,pi,len] of EXP_TUNE[EXP_ORDER[bar]])if(s0===st){const f=EXP_C*2*semi(EXP_PENTA[pi]);
+    btone(v,f,T*len*0.95,'square',0.085);btone(v,f,T*len*0.95,'triangle',0.11)}
+}
+function genSchedule(v,until){
   if(v.next<AC.currentTime)v.next=AC.currentTime+0.05;
-  while(v.next<AC.currentTime+0.25){
+  const end=until||AC.currentTime+0.25;
+  if(!v.boss){while(v.next<end){genExplore(v);v.next+=EXP_STEP;v.step++}return}
+  const P=BGM_BOSS;
+  while(v.next<end){
     const bar=(v.step>>3)%4,st=v.step%8,root=220*Math.pow(2,P.root[bar]/12);
     const mel=[0,2,4,2,5,4,2,1][(st+bar)%8];
     if(st%2===0){const f=root*Math.pow(2,P.scale[(mel+bar)%P.scale.length]/12);btone(v,f,P.tempo*1.6,'triangle',0.5)}
     if(st===0||st===4)btone(v,root/2,P.tempo*3.5,'sine',0.7);
-    if(v.boss&&st%2===1)btone(v,root*2*Math.pow(2,P.scale[(st+bar*2)%P.scale.length]/12),P.tempo*0.6,'square',0.18);
+    if(st%2===1)btone(v,root*2*Math.pow(2,P.scale[(st+bar*2)%P.scale.length]/12),P.tempo*0.6,'square',0.18);
     v.next+=P.tempo;v.step++;
   }
 }
@@ -3422,10 +3455,15 @@ function renSfx(c){try{
   if(!AC||c<1)return;const st=REN_STEPS[Math.min(c,REN_STEPS.length)-1],f=784*Math.pow(2,st/12),t=AC.currentTime+0.07;
   tone(f,0.13,'square',0.11,1,t);tone(f,0.16,'triangle',0.08,1,t);if(c>=REN_STEPS.length)tone(f*1.5,0.16,'triangle',0.08,1,t+0.05);
 }catch(e){}}
-// generative BGM: a calm pentatonic loop while exploring, a darker faster one in boss fights
-const BGM_EXP={tempo:0.21,root:[0,0,-3,-5],scale:[0,2,4,7,9,12,14,16]};
+// generative BGM: genExplore (bright, above) while exploring, a darker faster minor loop in boss fights
 const BGM_BOSS={tempo:0.16,root:[0,-2,-4,-5],scale:[0,3,5,7,10,12,15,17]};
 function bgmStart(){if(bgmTimer)return;bgmTimer=setInterval(mixTick,60)}
+// music drums: a pitched-down sine thump and a burst of filtered noise (one shared noise buffer per context)
+function bkick(vx,v){const o=AC.createOscillator(),g=AC.createGain(),t=vx.next;o.type='sine';o.frequency.setValueAtTime(120,t);o.frequency.exponentialRampToValueAtTime(45,t+0.11);
+  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.14);o.connect(g);g.connect(vx.gain);o.start(t);o.stop(t+0.16)}
+function bnoise(vx,d,v,hp){const t=vx.next;let b=AC._nz;if(!b){b=AC._nz=AC.createBuffer(1,Math.ceil(AC.sampleRate*0.2),AC.sampleRate);const a=b.getChannelData(0);for(let i=0;i<a.length;i++)a[i]=Math.random()*2-1}
+  const n=AC.createBufferSource(),g=AC.createGain(),f=AC.createBiquadFilter();n.buffer=b;f.type='highpass';f.frequency.value=hp;
+  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.001,t+d);n.connect(f);f.connect(g);g.connect(vx.gain);n.start(t);n.stop(t+d+0.02)}
 function btone(vx,f,d,type,v){const o=AC.createOscillator(),g=AC.createGain(),t=vx.next;o.type=type;o.frequency.value=f;g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(v,t+0.02);g.gain.exponentialRampToValueAtTime(0.001,t+d);o.connect(g);g.connect(vx.gain);o.start(t);o.stop(t+d+0.05)}
 addEventListener('pointerdown',audioInit,{once:true});addEventListener('pointerdown',()=>{lastIn='ptr';if(typeof gpSetFocus==='function')gpSetFocus(null)});addEventListener('keydown',audioInit,{once:true});
 /* ---------- juice: callouts, particles, shake ---------- */
