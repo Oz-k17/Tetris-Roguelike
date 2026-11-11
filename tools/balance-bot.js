@@ -62,6 +62,8 @@ function act(opt){
   }
   if(S.mode==='reward'){
     const btns=cards.filter(c=>c.onclick&&!c.disabled);
+    // 王の遺物 / 祭壇: a cautious player skips about half the time (the skip button is last)
+    if(btns.length>1&&/王の遺物|祭壇/.test(els.rwTitle&&els.rwTitle.textContent||'')&&Math.random()<0.5){btns[btns.length-1].onclick();return}
     if(btns.length){const pick=btns[Math.floor(Math.random()*Math.min(btns.length,3))];pick.onclick();return}
   }
   if(S.mode==='shop'){
