@@ -988,7 +988,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='79',UPDATED='2026-11-12 00:51';
+const VERSION='80',UPDATED='2026-11-12 00:54';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -3320,7 +3320,7 @@ function wantVoice(){
   return'gen:'+(S.boss&&!S.boss.dead&&!S.boss.mob?'boss':'explore');
 }
 function makeVoice(k){
-  if(k.startsWith('gen:')){if(!AC)return null;const g=AC.createGain();g.gain.value=0;g.connect(BGMG);return{g:0,gain:g,boss:k==='gen:boss',next:0,step:0}}
+  if(k.startsWith('gen:')){if(!AC)return null;const g=AC.createGain();g.gain.value=0;g.connect(BGMG);const boss=k==='gen:boss';return{g:0,gain:g,in:boss?null:genVoiceIn(g),boss,next:0,step:0}}
   return{g:0,el:trackEl(k)};
 }
 function mixTick(){
@@ -3343,36 +3343,36 @@ function mixTick(){
     }
   }
 }
-/* Generated exploring music: a bright, bouncy loop in C major at 120 BPM (one step = a 16th note).
-   Eight bars of I-V-vi-IV / I-IV-V-V under a pentatonic tune, a syncopated bass, a bell arpeggio and a light kick/hat.
-   The tune plays for two rounds and rests for the third, so a long floor doesn't hear the same 16 seconds forever.
-   The boss loop below keeps its darker minor pattern. */
-const EXP_STEP=0.125,EXP_C=261.63,EXP_VOL=1.4; // EXP_VOL: measured -22 LUFS raw vs the boss loop's -17.4; ×1.4 brings it to about -19
-const EXP_CH=[[0,4,7],[7,11,14],[9,12,16],[5,9,12],[0,4,7],[5,9,12],[7,11,14],[7,11,14]];
+/* Generated exploring music: a warm, unhurried loop in A major at 100 BPM (one step = a 16th note).
+   Eight bars of I-vi-IV-V / vi-IV-I-V under a soft pentatonic tune, a gentle bass, a soft arpeggio and a quiet kick.
+   Everything is sine/triangle through a 3.2 kHz low-pass (genVoiceIn) with slow attacks, so nothing is sharp on the ear:
+   an earlier version with square leads, hi-hats and a C5-C6 tune measured a 3 kHz spectral centroid and hurt.
+   The tune plays for two rounds and rests for the third. The boss loop below keeps its darker minor pattern. */
+const EXP_STEP=0.15,EXP_C=220,EXP_VOL=1.5;
+const EXP_CH=[[0,4,7],[-3,0,4],[5,9,12],[7,11,14],[-3,0,4],[5,9,12],[0,4,7],[7,11,14]];
 const EXP_PENTA=[0,2,4,7,9,12,14,16];
 // [step, pentatonic index, length in steps]
 const EXP_TUNE=[
-  [[0,2,2],[2,3,2],[4,4,3],[8,3,2],[10,2,2],[12,1,4]],
-  [[0,4,3],[4,3,1],[6,2,2],[8,1,2],[10,2,2],[12,3,4]],
-  [[0,5,2],[2,4,2],[4,3,2],[6,4,2],[8,5,4],[12,4,2],[14,3,2]],
-  [[0,3,3],[4,2,3],[8,1,2],[10,0,2],[12,2,4]]];
+  [[0,2,3],[4,3,2],[6,4,4],[12,3,4]],
+  [[0,4,4],[6,3,2],[8,2,4],[12,1,4]],
+  [[0,3,2],[2,4,2],[4,5,6],[12,4,2],[14,3,2]],
+  [[0,2,4],[4,1,4],[8,0,2],[10,1,2],[12,2,4]]];
 const EXP_ORDER=[0,1,0,3,2,1,2,3];
 const semi=n=>Math.pow(2,n/12);
+// the explore voice's input: a gentle low-pass in front of its gain
+function genVoiceIn(out){const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=3200;f.Q.value=0.5;f.connect(out);return f}
 function genExplore(v){
   const st=v.step%16,bar=(v.step>>4)%8,round=(v.step>>7)%3,ch=EXP_CH[bar],T=EXP_STEP;
-  // drums
-  if(st===0||st===8||(st===10&&bar%2===1))bkick(v,0.5);
-  if(st===4||st===12)bnoise(v,0.07,0.09,1800);
-  if(st%4===2)bnoise(v,0.03,0.06,6500);
-  // bass: root on a 3+3+2 pattern, the fifth as a pickup into the next bar
-  if(st===0||st===3||st===6||st===8||st===11)btone(v,EXP_C/2*semi(ch[0]%12),T*1.5,'triangle',0.42);
-  if(st===14)btone(v,EXP_C/2*semi((ch[0]+7)%12),T*1.5,'triangle',0.34);
-  // bell arpeggio on the 8th notes; one octave higher while the tune rests
-  if(st%2===0){const i=[0,1,2,1,0,2,1,2][st>>1],f=EXP_C*2*semi(ch[i])*(round===2&&st%4===0?2:1);
-    btone(v,f,T*1.7,'triangle',0.15);btone(v,f*2,T*0.9,'sine',0.05)}
-  // tune
-  if(round<2)for(const [s0,pi,len] of EXP_TUNE[EXP_ORDER[bar]])if(s0===st){const f=EXP_C*2*semi(EXP_PENTA[pi]);
-    btone(v,f,T*len*0.95,'square',0.085);btone(v,f,T*len*0.95,'triangle',0.11)}
+  // a quiet heartbeat: kick on 1 and 3, a brushed noise on 2 and 4
+  if(st===0||st===8)bkick(v,0.3);
+  if(st===4||st===12)bnoise(v,0.09,0.025,700);
+  // bass: root, with the fifth as a pickup into the next bar
+  if(st===0||st===6||st===8)btone(v,EXP_C/2*semi(ch[0]),T*2.6,'sine',0.4,0.03);
+  if(st===14)btone(v,EXP_C/2*semi(ch[0]+7),T*1.8,'sine',0.3,0.03);
+  // arpeggio on the 8th notes
+  if(st%2===0){const i=[0,1,2,1,0,2,1,2][st>>1];btone(v,EXP_C*semi(ch[i]),T*2.4,'triangle',0.15,0.025)}
+  // tune: one octave up, soft
+  if(round<2)for(const [s0,pi,len] of EXP_TUNE[EXP_ORDER[bar]])if(s0===st)btone(v,EXP_C*2*semi(EXP_PENTA[pi]),T*len*1.05,'triangle',0.13,0.04);
 }
 function genSchedule(v,until){
   if(v.next<AC.currentTime)v.next=AC.currentTime+0.05;
@@ -3459,12 +3459,12 @@ function renSfx(c){try{
 const BGM_BOSS={tempo:0.16,root:[0,-2,-4,-5],scale:[0,3,5,7,10,12,15,17]};
 function bgmStart(){if(bgmTimer)return;bgmTimer=setInterval(mixTick,60)}
 // music drums: a pitched-down sine thump and a burst of filtered noise (one shared noise buffer per context)
-function bkick(vx,v){const o=AC.createOscillator(),g=AC.createGain(),t=vx.next;o.type='sine';o.frequency.setValueAtTime(120,t);o.frequency.exponentialRampToValueAtTime(45,t+0.11);
-  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.14);o.connect(g);g.connect(vx.gain);o.start(t);o.stop(t+0.16)}
+function bkick(vx,v){const o=AC.createOscillator(),g=AC.createGain(),t=vx.next;o.type='sine';o.frequency.setValueAtTime(95,t);o.frequency.exponentialRampToValueAtTime(48,t+0.12);
+  g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(v,t+0.008);g.gain.exponentialRampToValueAtTime(0.001,t+0.16);o.connect(g);g.connect(vx.in||vx.gain);o.start(t);o.stop(t+0.18)}
 function bnoise(vx,d,v,hp){const t=vx.next;let b=AC._nz;if(!b){b=AC._nz=AC.createBuffer(1,Math.ceil(AC.sampleRate*0.2),AC.sampleRate);const a=b.getChannelData(0);for(let i=0;i<a.length;i++)a[i]=Math.random()*2-1}
   const n=AC.createBufferSource(),g=AC.createGain(),f=AC.createBiquadFilter();n.buffer=b;f.type='highpass';f.frequency.value=hp;
-  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.001,t+d);n.connect(f);f.connect(g);g.connect(vx.gain);n.start(t);n.stop(t+d+0.02)}
-function btone(vx,f,d,type,v){const o=AC.createOscillator(),g=AC.createGain(),t=vx.next;o.type=type;o.frequency.value=f;g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(v,t+0.02);g.gain.exponentialRampToValueAtTime(0.001,t+d);o.connect(g);g.connect(vx.gain);o.start(t);o.stop(t+d+0.05)}
+  g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(v,t+0.012);g.gain.exponentialRampToValueAtTime(0.001,t+d);n.connect(f);f.connect(g);g.connect(vx.in||vx.gain);n.start(t);n.stop(t+d+0.02)}
+function btone(vx,f,d,type,v,atk){const o=AC.createOscillator(),g=AC.createGain(),t=vx.next;o.type=type;o.frequency.value=f;g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(v,t+(atk||0.02));g.gain.exponentialRampToValueAtTime(0.001,t+d);o.connect(g);g.connect(vx.in||vx.gain);o.start(t);o.stop(t+d+0.05)}
 addEventListener('pointerdown',audioInit,{once:true});addEventListener('pointerdown',()=>{lastIn='ptr';if(typeof gpSetFocus==='function')gpSetFocus(null)});addEventListener('keydown',audioInit,{once:true});
 /* ---------- juice: callouts, particles, shake ---------- */
 const RM=(()=>{try{return matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){return false}})();
