@@ -742,7 +742,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
       <li>守護者・癒し手・鼓手・剣士の4クラス。ラインを消してためるクラススキル（SKILLボタン）があり、遺物もクラスに合ったものが出やすい</li>
       <li>ボスはそれぞれ固有のスキルを持つ。盤面上の紫の線が満ちると発動</li>
       <li>遺物には「刃・盾・癒・富・爆・技」のタグがある。同じタグの遺物を3つ集めると「化身」に変身する</li>
-      <li>持てる遺物は8種類まで（同じ遺物の重ねはLv3まで、枠は使わない）。ボス対策の遺物は別の小物袋に2つ。いっぱいのときは入れ替えるか、行商人に売る</li>
+      <li>持てる遺物は8種類まで（同じ遺物はLv3まで重ねられ、枠は使わない）。ボス対策の遺物は別の小物袋に2つ。いっぱいのときは入れ替えるか、行商人に売る</li>
       <li>ボスのゴミ列は少し遅れてせり上がる。盤面左の赤い線が予告で、その間にラインを消すと相殺できる。ボスはHPが半分を切ると第2形態になる</li>
       <li>マップ「分岐の氷窟」では、階の間でエリート・イベント・休憩所・宝箱・行商人から道を選ぶ</li>
       <li>パーティでは「スタンプ」（1〜4キー）で気持ちを伝えられる。倒れても「応援を送る」で仲間を支えられる</li>
@@ -1115,13 +1115,17 @@ const RELICS={
 /* ---------- 装備枠: a run holds SLOT_MAX different relics (levels of one relic share its slot) plus BAG_MAX boss-counter
    relics in a separate pouch. A full set forces a swap: the dropped relic pays its sell value. Levels cap at 3. ---------- */
 const SLOT_MAX=8,BAG_MAX=2,LV_CAP=3;
-for(const k in RELICS){const r=RELICS[k];if(!r.once&&r.max>LV_CAP)r.max=LV_CAP}
+// A relic is shown as Lv1-3. Relics that used to stack to 4 or 5 keep that full strength: each pick jumps the
+// internal level (S.relics[k], what every effect reads through lv()) along `steps`, so Lv3 is the old maximum.
+for(const k in RELICS){const r=RELICS[k];if(!r.once&&r.max>LV_CAP)r.steps=r.max>=5?[1,3,r.max]:[1,2,r.max]}
+const dispLv=k=>{const r=RELICS[k],L=(S.relics&&S.relics[k])||0;if(!L||!r.steps)return L;const i=r.steps.findIndex(v=>v>=L);return i<0?r.steps.length:i+1};
+const nextLv=k=>{const r=RELICS[k],L=(S.relics&&S.relics[k])||0;return r.steps?(r.steps.find(v=>v>L)||r.max):L+1};
 RELICS.hold.free=1; // basic gear: no slot, can't be sold
 const isBag=k=>!!RELICS[k].anti,isFree=k=>!!RELICS[k].free;
 const slotKeys=()=>Object.keys(S.relics||{}).filter(k=>RELICS[k]&&!isBag(k)&&!isFree(k));
 const bagKeys=()=>Object.keys(S.relics||{}).filter(k=>RELICS[k]&&isBag(k));
 const needsRoom=k=>{const r=RELICS[k];if(r.once||lv(k)>0||isFree(k))return false;return isBag(k)?bagKeys().length>=BAG_MAX:slotKeys().length>=SLOT_MAX};
-const sellPrice=k=>Math.round(RELICS[k].p*0.5*(1+0.5*(lv(k)-1)));
+const sellPrice=k=>Math.round(RELICS[k].p*0.5*(1+0.5*(dispLv(k)-1)));
 // why a relic can't be let go (empty: it can)
 const keepWhy=k=>{const r=RELICS[k];if(isFree(k))return'基本装備';if(r.cursed)return'代償は外せない';
   if(Object.keys(EVOS).some(e=>evo(e)&&(EVOS[e].base===k||EVOS[e].cat===k)))return'進化済み';return''};
@@ -1459,7 +1463,7 @@ const earn=g=>{const v=Math.round(g*goldMult()*(quirk('gold')?1.5:1)*(tf('富')?
 const priceMul=()=>(tf('富')?0.9:1)*(rk(2)?1.2:1);
 // gold economy (2026-10-28): was [0,2,5,9,15] per clear + full REN count; players could buy out every shop
 const GOLD_LINE=[0,0,1,2,4],GOLD_BOSS=[25,6];
-const relicPrice=k=>Math.round((RELICS[k].p+5*S.floor+15*lv(k))*priceMul());
+const relicPrice=k=>Math.round((RELICS[k].p+5*S.floor+15*dispLv(k))*priceMul());
 // boss order is shuffled per run (seeded, so a party or a daily run sees the same order):
 // B1-B3 take 3 of the 4 lighter bosses, B4-B7 the leftover one plus the 3 heavier ones, B8 is always the king
 const BOSS_EARLY=[0,1,2,3,8,9],BOSS_LATE=[4,5,6,10,11];
@@ -2506,7 +2510,7 @@ function pickRelics(n,ok){
 // the pieces of a relic card; the level-up card and the shop arrange them differently
 function relicBits(k){
   const r=RELICS[k];if(!SEEN.r[k]){SEEN.r[k]=1;saveSeen()}
-  const lvTxt=!r.once&&lv(k)?`Lv${lv(k)}→${lv(k)+1}`:'';
+  const lvTxt=!r.once&&lv(k)?`Lv${dispLv(k)}→${dispLv(k)+1}`:'';
   const rare=!r.cursed&&!r.once&&relicTier(k)==='r'?`<span class="rarelb">まれ</span>`:'';
   const ct=rare+(r.cursed?`<span class="ct" style="color:#c58cff">代償つき</span>`:r.duo?`<span class="ct duo">デュオ <b style="color:${CLASSES[r.duo[0]].col}">${CLASSES[r.duo[0]].n}</b>×<b style="color:${CLASSES[r.duo[1]].col}">${CLASSES[r.duo[1]].n}</b></span>`:
     r.c?`<span class="ct" style="color:${CLASSES[r.c].col}">${r.only?CLASSES[r.c].n+'専用':CLASSES[r.c].role+'向け'}</span>`:'');
@@ -2547,7 +2551,7 @@ function withRoom(k,go){
 function swapRow(k,onPick){
   const r=RELICS[k],col=relicCol(r),why=keepWhy(k),b=document.createElement('button');
   b.type='button';b.className='shrow';b.style.setProperty('--sc',col);b.disabled=!!why;
-  b.innerHTML=`<span class="g dia" style="color:${col}"><i>${r.g}</i></span><span class="mid"><span class="nm">${r.n}${lv(k)>1?` Lv${lv(k)}`:''}</span><span class="meta">${r.t?`<span class="tg" style="--tc:${TAGS[r.t].col}">${r.t}</span>`:''}${r.d}</span></span><span class="price">${why||'+'+sellPrice(k)+'G'}</span>`;
+  b.innerHTML=`<span class="g dia" style="color:${col}"><i>${r.g}</i></span><span class="mid"><span class="nm">${r.n}${dispLv(k)>1?` Lv${dispLv(k)}`:''}</span><span class="meta">${r.t?`<span class="tg" style="--tc:${TAGS[r.t].col}">${r.t}</span>`:''}${r.d}</span></span><span class="price">${why||'+'+sellPrice(k)+'G'}</span>`;
   if(!why)b.onclick=()=>onPick(k);
   return b;
 }
@@ -2606,10 +2610,10 @@ function openReward(first){
 function applyRelic(k){
   if(k==='potion')S.hp=S.maxHp;
   else{
-    S.relics[k]=lv(k)+1;
-    if(k==='heart'){S.maxHp+=10;heal(10)}
+    const was=lv(k),d=nextLv(k)-was;S.relics[k]=was+d;
+    if(k==='heart'){S.maxHp+=10*d;heal(10*d)}
     if(k==='c_glass'){S.maxHp=Math.max(10,Math.round(S.maxHp*0.75));S.hp=Math.min(S.hp,S.maxHp)}
-    if(k==='vital'){S.maxHp+=8;heal(8)}
+    if(k==='vital'){S.maxHp+=8*d;heal(8*d)}
   }
   checkTransform();
 }
@@ -3022,7 +3026,7 @@ function showOver(){
   $('goBest').textContent=best.toLocaleString();
   const rk=Object.keys(S.relics);
   $('goRelLbl').textContent=rk.length?`持っていた遺物 · ${rk.length}`:'';
-  $('goRelics').innerHTML=rk.map(k=>{const r=RELICS[k];return`<span class="dia" title="${r.n}" style="color:${relicCol(r)}"><i>${r.g}</i>${S.relics[k]>1?`<sup>${S.relics[k]}</sup>`:''}</span>`}).join('');
+  $('goRelics').innerHTML=rk.map(k=>{const r=RELICS[k];return`<span class="dia" title="${r.n}" style="color:${relicCol(r)}"><i>${r.g}</i>${dispLv(k)>1?`<sup>${dispLv(k)}</sup>`:''}</span>`}).join('');
   $('watchBtn').hidden=!(coopOn()&&!allDead);
   $('againBtn').textContent=coopOn()?(allDead?'この部屋でもう一度':'タイトルに戻る'):'もう一度潜る';
   // a second way out: solo and daily go back to mode select; a wiped party can leave the room
@@ -3053,8 +3057,8 @@ function pause(){
     `<div><b>枠</b><span>装備 ${slotKeys().length}/${SLOT_MAX}・小物袋（ボス対策） ${bagKeys().length}/${BAG_MAX}。いっぱいのときは、入れ替えるか店で売る</span></div>`+
     `<div><b>集</b><span>タグ（同じタグ3つで変身）：${tagLine}</span></div>`+tfs+
     Object.keys(EVOS).filter(k=>evo(k)||lv(EVOS[k].base)||lv(EVOS[k].cat)).map(k=>{const e=EVOS[k],b=RELICS[e.base],c=RELICS[e.cat];
-      return`<div><b style="color:${e.col}">${evo(k)?e.g:'進'}</b><span>${evo(k)?`<b style="color:${e.col}">${e.n}</b>：${e.d}`:`進化まで：${b.n} Lv${lv(e.base)}/${b.max}${lv(e.base)>=b.max?'✓':''}＋${c.n}${lv(e.cat)?'✓':'（未所持）'} → ${e.n}${evoReady().includes(k)?'（次のボスを倒すと進化）':''}`}</span></div>`}).join('')+
-    (keys.length?keys.map(k=>`<div><b style="color:${relicCol(RELICS[k])}">${RELICS[k].g}</b><span>${RELICS[k].n}${S.relics[k]>1?' ×'+S.relics[k]:''}：${RELICS[k].d}</span></div>`).join(''):'<div><b>-</b><span>まだ遺物はない</span></div>');
+      return`<div><b style="color:${e.col}">${evo(k)?e.g:'進'}</b><span>${evo(k)?`<b style="color:${e.col}">${e.n}</b>：${e.d}`:`進化まで：${b.n} Lv${dispLv(e.base)}/${b.steps?3:b.max}${lv(e.base)>=b.max?'✓':''}＋${c.n}${lv(e.cat)?'✓':'（未所持）'} → ${e.n}${evoReady().includes(k)?'（次のボスを倒すと進化）':''}`}</span></div>`}).join('')+
+    (keys.length?keys.map(k=>`<div><b style="color:${relicCol(RELICS[k])}">${RELICS[k].g}</b><span>${RELICS[k].n}${dispLv(k)>1?' Lv'+dispLv(k):''}：${RELICS[k].d}</span></div>`).join(''):'<div><b>-</b><span>まだ遺物はない</span></div>');
   show('ovPause');
 }
 function resume(){hide('ovPause');resumePlay()}
@@ -3522,7 +3526,7 @@ function fillParty(al){
 function renderRelics(){
   const sn=S&&S.relics?slotKeys().length:0;
   $('relics').innerHTML=(sn>=SLOT_MAX-2?`<span class="slotn${sn>=SLOT_MAX?' full':''}" title="装備枠">${sn}/${SLOT_MAX}</span>`:'')+(S&&S.core&&CORES[S.core]?`<span class="dia coreb" title="核：${CORES[S.core].n}（×${coreMul()}）：${CORES[S.core].d}" style="color:${CORES[S.core].col}"><i>${CORES[S.core].g}</i>${S.coreN?`<sup>${S.coreN}</sup>`:''}</span>`:'')+(S&&S.tf?Object.keys(S.tf).map(t=>`<span class="dia tfb" title="${TAGS[t].tf}：${TAGS[t].d}" style="color:${TAGS[t].col}"><i>${t}</i></span>`).join(''):'')+(S&&S.relics?Object.keys(S.relics).map(k=>{const r=RELICS[k],ev=evoOf(k);if(ev){const e=EVOS[ev];return`<span class="dia evob" title="${e.n}（${r.n}の進化）：${e.d}" style="color:${e.col}"><i>${e.g}</i></span>`}
-  return`<span class="dia" title="${r.n}：${r.d}" style="color:${relicCol(r)}"><i>${r.g}</i>${S.relics[k]>1?`<sup>${S.relics[k]}</sup>`:''}</span>`}).join(''):'');
+  return`<span class="dia" title="${r.n}：${r.d}" style="color:${relicCol(r)}"><i>${r.g}</i>${dispLv(k)>1?`<sup>${dispLv(k)}</sup>`:''}</span>`}).join(''):'');
 }
 
 /* ---------- drawing ---------- */
