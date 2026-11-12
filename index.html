@@ -988,7 +988,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='80',UPDATED='2026-11-12 00:54';
+const VERSION='81',UPDATED='2026-11-13 00:16';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -3343,36 +3343,39 @@ function mixTick(){
     }
   }
 }
-/* Generated exploring music: a warm, unhurried loop in A major at 100 BPM (one step = a 16th note).
-   Eight bars of I-vi-IV-V / vi-IV-I-V under a soft pentatonic tune, a gentle bass, a soft arpeggio and a quiet kick.
-   Everything is sine/triangle through a 3.2 kHz low-pass (genVoiceIn) with slow attacks, so nothing is sharp on the ear:
-   an earlier version with square leads, hi-hats and a C5-C6 tune measured a 3 kHz spectral centroid and hurt.
-   The tune plays for two rounds and rests for the third. The boss loop below keeps its darker minor pattern. */
-const EXP_STEP=0.15,EXP_C=220,EXP_VOL=1.5;
-const EXP_CH=[[0,4,7],[-3,0,4],[5,9,12],[7,11,14],[-3,0,4],[5,9,12],[0,4,7],[7,11,14]];
-const EXP_PENTA=[0,2,4,7,9,12,14,16];
-// [step, pentatonic index, length in steps]
+/* Generated exploring music: a driving battle march in F# minor / A major at 112 BPM (one step = a 16th note).
+   Eight bars of vi-IV-I-V / vi-IV-V-V: it starts on the minor chord and ends each half on the dominant, so it pushes
+   forward instead of resting. A galloping bass (long-short-short), a kick on every beat, a soft snare on 2 and 4 and a
+   tom fill into every fourth bar carry the fight; a marching pentatonic tune sits on top.
+   Everything is sine/triangle through a 3.2 kHz low-pass (genVoiceIn) with slowed attacks, so nothing is sharp on the ear:
+   an earlier version with square leads and hi-hats measured 1.1% of its energy at 2-5 kHz and hurt; keep it under ~0.3%.
+   The tune plays for two rounds and rests for the third while the rhythm keeps going. The boss loop keeps its own pattern. */
+const EXP_STEP=0.134,EXP_C=220,EXP_VOL=1.6; // raw render -23.5 LUFS; x1.6 puts it near -19.4, a little under the boss loop (-17.4)
+const EXP_CH=[[-3,0,4],[-7,-3,0],[0,4,7],[-5,-1,2],[-3,0,4],[-7,-3,0],[-5,-1,2],[-5,-1,2]];
+const EXP_SCALE=[-3,0,2,4,7,9,12,14]; // F# A B C# E F# A B
+// [step, scale index, length in steps]
 const EXP_TUNE=[
-  [[0,2,3],[4,3,2],[6,4,4],[12,3,4]],
-  [[0,4,4],[6,3,2],[8,2,4],[12,1,4]],
-  [[0,3,2],[2,4,2],[4,5,6],[12,4,2],[14,3,2]],
-  [[0,2,4],[4,1,4],[8,0,2],[10,1,2],[12,2,4]]];
+  [[0,0,3],[3,1,1],[4,2,4],[8,4,3],[11,3,1],[12,2,4]],
+  [[0,3,3],[3,2,1],[4,1,4],[8,0,6],[14,1,2]],
+  [[0,5,2],[2,4,2],[4,5,3],[7,6,1],[8,5,4],[12,4,2],[14,3,2]],
+  [[0,4,3],[3,3,1],[4,2,2],[6,1,2],[8,2,8]]];
 const EXP_ORDER=[0,1,0,3,2,1,2,3];
 const semi=n=>Math.pow(2,n/12);
 // the explore voice's input: a gentle low-pass in front of its gain
 function genVoiceIn(out){const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=3200;f.Q.value=0.5;f.connect(out);return f}
 function genExplore(v){
-  const st=v.step%16,bar=(v.step>>4)%8,round=(v.step>>7)%3,ch=EXP_CH[bar],T=EXP_STEP;
-  // a quiet heartbeat: kick on 1 and 3, a brushed noise on 2 and 4
-  if(st===0||st===8)bkick(v,0.3);
-  if(st===4||st===12)bnoise(v,0.09,0.025,700);
-  // bass: root, with the fifth as a pickup into the next bar
-  if(st===0||st===6||st===8)btone(v,EXP_C/2*semi(ch[0]),T*2.6,'sine',0.4,0.03);
-  if(st===14)btone(v,EXP_C/2*semi(ch[0]+7),T*1.8,'sine',0.3,0.03);
-  // arpeggio on the 8th notes
-  if(st%2===0){const i=[0,1,2,1,0,2,1,2][st>>1];btone(v,EXP_C*semi(ch[i]),T*2.4,'triangle',0.15,0.025)}
-  // tune: one octave up, soft
-  if(round<2)for(const [s0,pi,len] of EXP_TUNE[EXP_ORDER[bar]])if(s0===st)btone(v,EXP_C*2*semi(EXP_PENTA[pi]),T*len*1.05,'triangle',0.13,0.04);
+  const st=v.step%16,bar=(v.step>>4)%8,round=(v.step>>7)%3,ch=EXP_CH[bar],T=EXP_STEP,fill=bar%4===3&&st>=12;
+  // drums: four on the floor, snare on 2 and 4, toms falling into the next phrase
+  if(st%4===0&&!fill)bkick(v,0.44);
+  if((st===4||st===12)&&!fill){bnoise(v,0.12,0.075,900);btone(v,170,0.09,'sine',0.16,0.006)}
+  if(fill)btone(v,[165,147,123,98][st-12],0.16,'sine',0.36,0.008);
+  // bass: a gallop on the root, one octave up on the last gallop of the bar
+  if(st%4!==1){const up=st>=12&&!fill?2:1;btone(v,EXP_C/4*semi(ch[0]+12)*up,T*(st%4===0?1.7:0.9),'triangle',st%4===0?0.34:0.24,0.012)}
+  // chord pulse on the 8th notes
+  if(st%2===0){const i=[0,1,2,1,0,2,1,2][st>>1];btone(v,EXP_C*semi(ch[i])*(round===2&&st%8===0?2:1),T*2,'triangle',0.1,0.02)}
+  // tune, doubled an octave below for weight
+  if(round<2)for(const [s0,si,len] of EXP_TUNE[EXP_ORDER[bar]])if(s0===st){const f=EXP_C*2*semi(EXP_SCALE[si]);
+    btone(v,f,T*len*1.05,'triangle',0.15,0.03);btone(v,f/2,T*len*1.05,'sine',0.09,0.03)}
 }
 function genSchedule(v,until){
   if(v.next<AC.currentTime)v.next=AC.currentTime+0.05;
