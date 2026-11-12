@@ -988,7 +988,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='81',UPDATED='2026-11-13 00:16';
+const VERSION='82',UPDATED='2026-11-13 00:18';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -3343,15 +3343,15 @@ function mixTick(){
     }
   }
 }
-/* Generated exploring music: a driving battle march in F# minor / A major at 112 BPM (one step = a 16th note).
-   Eight bars of vi-IV-I-V / vi-IV-V-V: it starts on the minor chord and ends each half on the dominant, so it pushes
-   forward instead of resting. A galloping bass (long-short-short), a kick on every beat, a soft snare on 2 and 4 and a
+/* Generated exploring music: a driving march in F# minor at 108 BPM (one step = a 16th note).
+   Eight bars of i-VI-iv-v / i-VI-VII-v, all from the natural minor scale (no major tonic, minor dominant): dark, but
+   it keeps moving because each half ends on the fifth instead of resting. A galloping bass (long-short-short), a kick on every beat, a soft snare on 2 and 4 and a
    tom fill into every fourth bar carry the fight; a marching pentatonic tune sits on top.
-   Everything is sine/triangle through a 3.2 kHz low-pass (genVoiceIn) with slowed attacks, so nothing is sharp on the ear:
+   Everything is sine/triangle through a 2.8 kHz low-pass (genVoiceIn) with slowed attacks, so nothing is sharp on the ear:
    an earlier version with square leads and hi-hats measured 1.1% of its energy at 2-5 kHz and hurt; keep it under ~0.3%.
    The tune plays for two rounds and rests for the third while the rhythm keeps going. The boss loop keeps its own pattern. */
-const EXP_STEP=0.134,EXP_C=220,EXP_VOL=1.6; // raw render -23.5 LUFS; x1.6 puts it near -19.4, a little under the boss loop (-17.4)
-const EXP_CH=[[-3,0,4],[-7,-3,0],[0,4,7],[-5,-1,2],[-3,0,4],[-7,-3,0],[-5,-1,2],[-5,-1,2]];
+const EXP_STEP=0.139,EXP_C=220,EXP_VOL=1.6; // raw render -23.5 LUFS; x1.6 puts it near -19.4, a little under the boss loop (-17.4)
+const EXP_CH=[[-3,0,4],[-7,-3,0],[-10,-7,-3],[-8,-5,-1],[-3,0,4],[-7,-3,0],[-5,-1,2],[-8,-5,-1]];
 const EXP_SCALE=[-3,0,2,4,7,9,12,14]; // F# A B C# E F# A B
 // [step, scale index, length in steps]
 const EXP_TUNE=[
@@ -3362,7 +3362,7 @@ const EXP_TUNE=[
 const EXP_ORDER=[0,1,0,3,2,1,2,3];
 const semi=n=>Math.pow(2,n/12);
 // the explore voice's input: a gentle low-pass in front of its gain
-function genVoiceIn(out){const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=3200;f.Q.value=0.5;f.connect(out);return f}
+function genVoiceIn(out){const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=2800;f.Q.value=0.5;f.connect(out);return f}
 function genExplore(v){
   const st=v.step%16,bar=(v.step>>4)%8,round=(v.step>>7)%3,ch=EXP_CH[bar],T=EXP_STEP,fill=bar%4===3&&st>=12;
   // drums: four on the floor, snare on 2 and 4, toms falling into the next phrase
