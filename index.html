@@ -988,7 +988,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='82',UPDATED='2026-11-13 00:18';
+const VERSION='83',UPDATED='2026-11-13 00:33';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -3796,6 +3796,67 @@ function gridBg(ctx,s,bg){
   ctx.stroke();
 }
 function drawStr(ctx,str,s){if(typeof str!=='string')return;for(let i=0;i<W*H&&i<str.length;i++){const ch=str[i];if(ch!=='.')cell(ctx,i%W,(i/W)|0,s,ch)}}
+/* ---------- enemy figures: 16x16 pixel sprites drawn behind the stack, in the upper part of the board.
+   Each string is 256 cells: '.' empty, 1 outline, 2 body, 3 light, 4 eyes/accent, 5 second colour (palette per sprite).
+   The figure bobs while idle, flashes white and recoils when it takes damage, swells and trembles as its strike
+   gauge fills, and lunges down when the strike lands. ---------- */
+const ESPR={
+  wolf:['..................1.........1....121.......121...1221.....1221...12221111112221..12222222222221..12242222224221..12222222222221...122223322221....122231132221.....1223333221......1231111321.......12333321.........122221...........1111......................',["#0b1320", "#8fa8c2", "#e4eff8", "#ff6f7f", "#5b7391"]],
+  yuki:['......1111..........11333311.......1333333331.....133322223331....133242242331....133222222331....1332244223331..13333222233331..13351222215331..135512222155311.15551222215551...1551222215151....11222222111.....12222222211....1222222222211...111111111111..',["#0b1320", "#e4eff8", "#9fd8ff", "#ff6f7f", "#6f8fd0"]],
+  spider:['................5..............5.5...5....5...5...5...5..5...5..5..5.111111.5..5.5..12222221..5...5122422422155....1222222221....55122244222155.5..1222222221..5..5.12233221.5...5...122221...5.5...5.1111.5...5...5........5.....5..........5..................',["#0b1320", "#6f5aa8", "#b9a3ff", "#ff6f7f", "#9a8ad8"]],
+  giant:['.....111111.........12222221.......1223333221......1242332421......1222222221....11112211221111.12221122221122211222222222222221122122222222122112212223322212211221222332221221.11.12222221.11.....12211221........1221.1221......12221.12221.....11111.11111..',["#0b1320", "#7f9fbe", "#cfe3f2", "#8fe3ff", "#4f6a88"]],
+  witch:['.......11.............1551...........155551.........15555551.......1555445551....11111111111111...122222222221....124222222421....122222222221.....1222332221.....155122221551...15555111155551..15555555555551.15555555555555511555155555515551.111.111111.111.',["#0b1320", "#e4d6f5", "#ff9bd2", "#8fe3ff", "#5a3f8a"]],
+  eagle:['...11......11.....1221....1221...124221..122421..122221..122221...15221..12251.....1221111221...1..1222222221..121.12222222221.1221222233222212.2222222332222222.22212233221222...2.12222221.2......12222221.........122221.........151..151.......1551..1551...',["#0b1320", "#b9c7dd", "#ffffff", "#ff6f7f", "#f2c14e"]],
+  dragon:['..1..........1...151........151..1551.1111.1551...155122221511.....1222222221.....122422224221....122222222221...12222222222221..12223333332221..122231111322211..1223333332211.1..1222222221..121..12222221..12221..122221..122.2211.1221.1122...222.1111.222..',["#0b1320", "#4fa8d8", "#cfefff", "#ffd36b", "#2a6f9a"]],
+  king:['.1...1..1...1....151.151151.151..15515555551551..15555555555551..11111111111111...122222222221....124422224421....122222222221....122233332221....122311113221...11222222222211115512222222215151555112222115551.155551111555511..1555555555511....1111111111...',["#0b1320", "#9fb8d0", "#e4eff8", "#ff3b50", "#f2c14e"]],
+  fairy:['.................33..........33.3553........355335553.1111.355533555312222133553.35531222213553...3512422421533....31222222133....3512233221553..35531222213555335555312213535533555.3122133.553.33...1221...33.......1221...........12..21..........1....1.....',["#0b1320", "#ffe8f6", "#bfe8ff", "#ff6f9f", "#8fd0ff"]],
+  oni:['...1........1.....131......131....1331....1331.....13111111331.....1222222221.....122222222221....124422224421....122222222221....122211112221....122131131221.....1221111221....11122222222111.12221222222122211222.122221.2221.111.12..21.111......11..11.....',["#0b1320", "#d86060", "#fff1c0", "#ffd36b", "#8a2f3a"]],
+  ghost:['.....................111111........1122222211.....122222222221...12222222222221..12241222214221..12244222244221..12222222222221..12222211222221..12222111122221..12222211222221..12222222222221..12222222222221..12212221222121..121.121.121.11..11...1...1.....',["#0b1320", "#b9c9dc", "#ffffff", "#8fe3ff", "#6f8299"]],
+  knight:['......1551...........155551.........11111111.......1222222221......1211111121......1214114121......1211111121......1222112221....11122222222111.133212233221255113321223322125511332122222212551.11.12222221.151....1221.1221.11...12221.12221.....11111.11111..',["#0b1320", "#8aa0b8", "#dfe9f3", "#8fe3ff", "#f2c14e"]],
+  bat:['................................1..............121.....11.....12221...1221...1222221.122221.122222221124242122222222222222222222.22222222222222...2221222212222....21.1221.12......1...11...1...................................................................',["#0b1320", "#7a6fb0", "#c9c0ee", "#ff6f7f", "#4a3f7a"]],
+  snowman:['......1111...........155551.........11555511........12222221.......1224224221......1222442221......1222222221.......12222221......111222222111...12212222221221.1221222422212221.11.22224222.11....1222222221......1222422221.......12222221.........111111.....',["#0b1320", "#e4eff8", "#ffffff", "#ff8a3a", "#3a4f6a"]],
+  slime:['......................................................1111..........11222211.......1223322221.....122332222221....122222222221...12224222242221..12224222242221..12222222222221..12222211222221..12222222222221...122222222221.....1111111111...................',["#0b1320", "#5fc8e8", "#cff4ff", "#0b1320", "#2a8fb0"]],
+  lizard:['..................................11.............1221...........124221111.......122222222111.....11222222222111....122252252221....1222222222221..1221222212221...121.1221.121.1..11...11...1.12............1221.............11.................................',["#0b1320", "#5fd0a8", "#cffff0", "#ff6f7f", "#8fe3ff"]]
+};
+const BOSS_SPR=['wolf','yuki','spider','giant','witch','eagle','dragon','king','fairy','oni','ghost','knight'];
+const MOB_SPR=['oni','wolf','bat','snowman','ghost','slime','fairy','lizard'];
+const ELITE_SPR={'氷の騎士':'knight','凍てる亡霊':'ghost','氷塊ゴーレム':'giant','吹雪の魔術師':'witch','雪原の狩人':'wolf'};
+function sprKey(b){
+  const n=b.name.replace('・改','');
+  if(b.elite)return ELITE_SPR[n.replace('精鋭・','')]||'knight';
+  if(b.mob){const i=MOBS.indexOf(n);return MOB_SPR[i<0?0:i]}
+  const i=BOSSES.indexOf(n);return BOSS_SPR[i<0?0:i];
+}
+const sprCache={};
+// a 16x16 canvas of the sprite; mode 'w' = all white (hit flash), 'r' = red-shifted (second phase / wind-up)
+function sprCanvas(k,mode){
+  const id=k+(mode||'');if(sprCache[id])return sprCache[id];
+  const [px,pal]=ESPR[k],c=document.createElement('canvas');c.width=c.height=16;const x=c.getContext('2d');
+  for(let i=0;i<256;i++){const ch=px.charCodeAt(i)-48;if(ch<1||ch>5)continue;
+    x.fillStyle=mode==='w'?(ch===1?'#9fb4c8':'#ffffff'):mode==='r'&&ch===2?'#c86a78':mode==='r'&&ch===4?'#ff3b50':pal[ch-1];
+    x.fillRect(i%16,i>>4,1,1)}
+  return sprCache[id]=c;
+}
+const EA={id:0,hp:0,hitAt:-1e9,lungeAt:-1e9,lastF:0};
+function drawEnemy(b,s){
+  const t=nowT(),k=sprKey(b);
+  if(EA.id!==b.id){EA.id=b.id;EA.hp=b.hp;EA.hitAt=-1e9;EA.lungeAt=-1e9;EA.lastF=0}
+  if(b.hp<EA.hp)EA.hitAt=t;EA.hp=b.hp;
+  // strike gauge 0..1 (a taunting guardian elsewhere means this board isn't the target: no wind-up)
+  const hi=hitInterval(),f=isFinite(hi)&&hi>0&&!frozen()?Math.min(1,S.hitAcc/hi):0;
+  if(EA.lastF>0.85&&f<0.3)EA.lungeAt=t;EA.lastF=f;
+  const wind=Math.max(0,(f-0.7)/0.3),sinceHit=t-EA.hitAt,sinceLunge=t-EA.lungeAt,calm=!SET.shake;
+  const size=(b.mob?4.6:7)*s*(1+0.12*wind),unit=size/16;
+  let cx=W*s/2,cy=(b.mob?4.6:5.4)*s+(calm?0:Math.sin(t/520)*s*0.14);
+  if(wind>0&&!calm)cx+=Math.sin(t/28)*wind*s*0.07;
+  if(sinceHit<160){cy-=s*0.35*(1-sinceHit/160);if(!calm)cx+=(sinceHit%60<30?1:-1)*s*0.1}
+  if(sinceLunge<260){const u=sinceLunge/260;cy+=s*1.6*Math.sin(u*Math.PI)}
+  const mode=sinceHit<90?'w':(b.p2||wind>0.5)?'r':'';
+  bctx.save();bctx.imageSmoothingEnabled=false;
+  bctx.globalAlpha=frozen()?0.3:sinceHit<160?0.85:0.42+0.3*wind+(b.p2?0.1:0);
+  bctx.drawImage(sprCanvas(k,mode),Math.round(cx-size/2),Math.round(cy-size/2),Math.round(unit*16),Math.round(unit*16));
+  bctx.restore();
+}
 function drawBoard(dt){
   const s=C,b=S.boss&&!S.boss.dead?S.boss:null;
   bctx.setTransform(DPR,0,0,DPR,0,0);
@@ -3809,11 +3870,7 @@ function drawBoard(dt){
     return;
   }
   gridBg(bctx,s,b?(b.p2?'#24141e':'#1a1424'):'#0e1928');
-  if(b){
-    bctx.save();bctx.globalAlpha=.07;bctx.fillStyle='#ff6f7f';
-    bctx.font=`${Math.floor(s*5)}px DotGothic16, monospace`;bctx.textAlign='center';bctx.textBaseline='middle';
-    bctx.fillText(b.name[0],W*s/2,H*s*0.35);bctx.restore();
-  }
+  if(b)drawEnemy(b,s);
   if(S.buffUntil&&buffOn()){bctx.strokeStyle='rgba(242,208,107,.5)';bctx.lineWidth=2;bctx.strokeRect(1,1,W*s-2,H*s-2)}
   for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(S.board[y][x])cell(bctx,x,y,s,S.board[y][x]);
   const p=S.cur;
