@@ -251,7 +251,10 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .shgood{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:#c7d6e3;font-family:var(--body);font-size:11px;cursor:pointer}
 .shgood .rd,.shdet .rd{width:36px;height:36px;flex:none;display:grid;place-items:center;border:1.5px solid currentColor;border-radius:50%}
 .shgood .price{font-size:15px}
-.shdet{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1.5px solid var(--sc);border-radius:14px;background:var(--panel);min-height:150px}
+.shdet{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1.5px solid var(--sc);border-radius:14px;background:var(--panel)}
+.shdet[hidden]{display:none}
+.shdet.under{margin-top:-8px;border-top:none;border-radius:0 0 12px 12px;padding-top:10px}
+.shrow.on:has(+.shdet.under){border-bottom-left-radius:0;border-bottom-right-radius:0}
 .shdet .hd{display:flex;align-items:center;gap:12px}
 .shdet .hd .g{width:48px;height:48px;flex:none;display:grid;place-items:center;font-family:var(--display);font-size:20px}
 .shdet .hd .rd{width:44px;height:44px}
@@ -263,7 +266,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .shdet .d .dk.add{background:#6f9cf5}.shdet .d .dk.mul{background:var(--gold)}
 .shdet .d .dd{font-weight:700}
 .shdet .ev{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:8px;background:#1a0f17;font-size:12px;line-height:1.5}
-.shdet .buy{margin-top:auto;min-height:52px;padding:6px 10px;line-height:1.2;border:none;border-radius:10px;background:var(--gold);color:var(--bg);font-family:var(--display);font-size:19px;letter-spacing:.06em;cursor:pointer}
+.shdet .buy{margin-top:2px;min-height:46px;padding:6px 10px;line-height:1.2;border:none;border-radius:10px;background:var(--gold);color:var(--bg);font-family:var(--display);font-size:19px;letter-spacing:.06em;cursor:pointer}
 .shdet .buy:disabled{background:#2c4560;color:#9fb6c9;cursor:default}
 .shfoot{display:grid;grid-template-columns:.8fr 1fr 1.2fr;gap:8px}
 #ovSwap{background:rgba(6,12,20,.97)}
@@ -988,7 +991,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
 <script>
 (()=>{
 // bump on every release: shown at the bottom-left of the title screen
-const VERSION='83',UPDATED='2026-11-13 00:33';
+const VERSION='84',UPDATED='2026-11-13 09:42';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
 const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
@@ -2884,10 +2887,13 @@ function renderShop(){
   if(!(S.shop.sel>=0&&S.shop.sel<items.length)){const f=items.findIndex(it=>!block(it));S.shop.sel=f<0?0:f}
   const sel=S.shop.sel;
   const priceHtml=it=>{const bl=block(it);return`<span class="price${!bl&&S.gold<it.price?' poor':''}">${bl||it.price+'G'}</span>`};
-  const pick=i=>()=>{S.shop.sel=i;renderShop()};
-  const rel=$('shRel'),gd=$('shGoods');rel.innerHTML='';gd.innerHTML='';
+  // the description opens directly under the chosen item: inside the relic list after its row, or under the row of goods
+  const det=$('shDet');det.remove();
+  const pick=i=>()=>{S.shop.sel=i;renderShop();{const d=$('shDet');if(d&&d.scrollIntoView)try{d.scrollIntoView({block:'nearest'})}catch(e){}}if(lastIn!=='ptr'){const b=document.querySelector('#ovShop .shrow.on,#ovShop .shgood.on');if(b)gpSetFocus(b)}};
+  const rel=$('shRel'),gd=$('shGoods');rel.innerHTML='';gd.innerHTML='';let selBtn=null;
   items.forEach((it,i)=>{
     const b=document.createElement('button');b.type='button';b.onclick=pick(i);b.setAttribute('aria-pressed',i===sel);
+    if(i===sel&&isRel(it))selBtn=b;
     if(isRel(it)){
       const x=relicBits(it.k),col=relicCol(x.r);
       b.className='shrow'+(i===sel?' on':'')+(it.sold?' sold':'');b.style.setProperty('--sc',col);
@@ -2901,13 +2907,15 @@ function renderShop(){
       gd.appendChild(b);
     }
   });
-  const it=items[sel],det=$('shDet');
+  const it=items[sel];
+  if(selBtn)selBtn.after(det);else gd.after(det);
+  det.classList.toggle('under',!!selBtn);det.hidden=!it;
   if(it){
     let hd,body,col;
     if(isRel(it)){
       const x=relicBits(it.k);col=relicCol(x.r);
       const sub=[it.kind==='up'?'研磨（持っている遺物のLvを上げる）':'',x.lvTxt].filter(Boolean).join(' · ');
-      hd=`<span class="g dia" style="color:${col}"><i>${x.r.g}</i></span><span><b>${x.r.n}</b><span class="sub" style="color:${col}">${sub}</span>${x.ct?' '+x.ct:''}</span>`;
+      hd=sub?`<span><span class="sub" style="color:${col}">${sub}</span></span>`:'';
       const hints=[...x.evs,x.trans].filter(Boolean);
       body=`<span class="d">${x.tg}${x.dkc}${x.r.d}${x.dd}</span>${hints.length?`<span class="ev">${hints.join('')}</span>`:''}`;
     }else{
@@ -2917,7 +2925,7 @@ function renderShop(){
     }
     const bl=block(it),poor=!bl&&S.gold<it.price;
     det.style.setProperty('--sc',col);
-    det.innerHTML=`<div class="hd">${hd}</div>${body}<button type="button" class="buy"${bl||poor?' disabled':''}>${bl||(poor?`ゴールドが足りない（${it.price}G）`:`${it.price}G で買う`)}</button>`;
+    det.innerHTML=`${hd?`<div class="hd">${hd}</div>`:''}${body}<button type="button" class="buy"${bl||poor?' disabled':''}>${bl||(poor?`ゴールドが足りない（${it.price}G）`:`${it.price}G で買う`)}</button>`;
     det.querySelector('.buy').onclick=()=>buy(sel);
   }else det.innerHTML='';
   const rc=rerollCost();
