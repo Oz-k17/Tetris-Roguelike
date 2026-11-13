@@ -2888,7 +2888,7 @@ function renderShop(){
   const sel=S.shop.sel;
   const priceHtml=it=>{const bl=block(it);return`<span class="price${!bl&&S.gold<it.price?' poor':''}">${bl||it.price+'G'}</span>`};
   // the description opens directly under the chosen item: inside the relic list after its row, or under the row of goods
-  const det=$('shDet');det.remove();
+  const det=$('shDet');if(det.remove)det.remove();
   const pick=i=>()=>{S.shop.sel=i;renderShop();{const d=$('shDet');if(d&&d.scrollIntoView)try{d.scrollIntoView({block:'nearest'})}catch(e){}}if(lastIn!=='ptr'){const b=document.querySelector('#ovShop .shrow.on,#ovShop .shgood.on');if(b)gpSetFocus(b)}};
   const rel=$('shRel'),gd=$('shGoods');rel.innerHTML='';gd.innerHTML='';let selBtn=null;
   items.forEach((it,i)=>{
@@ -2908,7 +2908,7 @@ function renderShop(){
     }
   });
   const it=items[sel];
-  if(selBtn)selBtn.after(det);else gd.after(det);
+  {const at=selBtn||gd;if(at.after)at.after(det)}
   det.classList.toggle('under',!!selBtn);det.hidden=!it;
   if(it){
     let hd,body,col;
