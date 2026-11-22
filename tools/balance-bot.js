@@ -107,7 +107,7 @@ function runOne(cls,diff,opt){
     if(S.mode==='over'){res.cause=S.cause||'?';res.deathBoss=S.boss&&!S.boss.mob&&!S.boss.dead?S.boss.name:'';res.deathFloor=S.floor;break}
     if(S.mode==='win'){res.win=true;break}
   }
-  res.ddLog=S.ddLog||[];res.zones=S.zones||0;res.zoneBest=S.zoneBest||0;res.downs=S.downs||0;res.weakHits=S.weakHits||0;res.releases=S.releases||0;res.core=S.core;res.coreN=S.coreN;res.floor=S.floor;res.kills=S.bossKills;res.lv=S.level;res.gameT=Math.round((t-t0)/1000);res.hpMax=S.maxHp;res.relics=Object.keys(S.relics).length;
+  res.ddLog=S.ddLog||[];res.zones=S.zones||0;res.zoneBest=S.zoneBest||0;res.downs=S.downs||0;res.weakHits=S.weakHits||0;res.armorBreaks=S.armorBreaks||0;res.coresBroken=S.coresBroken||0;res.interrupts=S.interrupts||0;res.releases=S.releases||0;res.core=S.core;res.coreN=S.coreN;res.floor=S.floor;res.kills=S.bossKills;res.lv=S.level;res.gameT=Math.round((t-t0)/1000);res.hpMax=S.maxHp;res.relics=Object.keys(S.relics).length;
   return res;
 }
 module.exports={runOne,G};

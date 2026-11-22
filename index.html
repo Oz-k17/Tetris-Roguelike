@@ -750,6 +750,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
       <li>守護者・癒し手・鼓手・剣士の4クラス。ラインを消してためるクラススキル（SKILLボタン）があり、遺物もクラスに合ったものが出やすい</li>
       <li>ボスはそれぞれ固有のスキルを持つ。盤面上の紫の線が満ちると発動</li>
       <li>ボス戦では列を消すたびに「溜め」がたまる。4列消し・T-SPIN・全消しで、溜めた分がまとめて追加ダメージになる（強撃を受けると砕ける）</li>
+      <li>ボスにはそれぞれ「課題」がある。装甲（大技でないと割れにくい）、氷の核（核の段を消すと大ダメージ、放置するとゴミ列）、大技の溜め（9秒で削り切れば阻止してダウン）</li>
       <li>列を20本消すと「ゾーン」が使える（D キー／LT／画面のゾーンボタン）。8秒間 時間が止まり、その間に消した列は最後にまとめて大ダメージになる</li>
       <li>盤面の光る段が「弱点」。その段をちょうど消すとダメージ2倍。弱点・大技・解放でボスの下のゲージがたまり、満タンで「ダウン」（5秒間 攻撃が止まりダメージ1.5倍）</li>
       <li>遺物には「刃・盾・癒・富・爆・技」のタグがある。同じタグの遺物を3つ集めると「化身」に変身する</li>
@@ -999,7 +1000,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
 const VERSION='85',UPDATED='2026-11-22 17:25';
 const W=10,H=20,ASIDE=72,STAGE_MS=80000,PS=3,MAXP=4,FINAL=8;
 let matePS=3,nextSlot=46,mateGrid=false;
-const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a'};
+const COL={I:'#5fd4e6',O:'#f2d06b',T:'#b48cf0',S:'#7ee0a1',Z:'#f07c8c',J:'#6f9cf5',L:'#f5a46b',G:'#4c5868',B:'#ff6a3d',D:'#d8c49a',C:'#e8fbff'};
 const SHAPES={
   I:[[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
   O:[[1,1],[1,1]],
@@ -2000,10 +2001,73 @@ function zoneEnd(){
   if(!L||!S.boss||S.boss.dead){if(L)toast(`ゾーン ${L}ライン`);return}
   const base=L*(20+3*L),muls=dmgMuls();if(downed())muls.push(['ダウン',1.5]);
   const d=Math.round(base*muls.reduce((a,x)=>a*x[1],1));
-  S.boss.myDmg+=d;S.zoneBest=Math.max(S.zoneBest||0,L);S.fx.push({k:'hit',t:0},{k:'boom',x:4,y:H-2,t:0});
+  S.boss.myDmg+=armorTake(d,true,'ゾーン');S.zoneBest=Math.max(S.zoneBest||0,L);S.fx.push({k:'hit',t:0},{k:'boom',x:4,y:H-2,t:0});
   dmgNum(d,true,`ゾーン ${L}ライン`);pop([`${L}ライン！`,`ゾーン ${d}`],'#e4f6ff',1.45);sfx('clear4');feel('large');hitStop(160);
   logPush(`ゾーン ${L}ライン`,`${d}ダメージ`,'#e4f6ff');
   if(rhythmOn()){stagger(20+4*L,'ゾーン');if(S.chg&&S.chg.n>=1){const k=Math.min(CHG_MAX,CHG_PER*(S.chg.n+1)),bonus=Math.round(S.chg.sum*k);if(bonus>0){S.boss.myDmg+=bonus;dmgNum(bonus,true,`溜め解放 ${Math.round(k*100)}%`)}}S.chg={n:0,sum:0}}
+}
+/* ---------- ボスの課題: each boss also changes how it is beaten (bosses only; mobs and elites have none).
+   armor  装甲: damage goes into an armor pool first (15% of the boss's HP, shared out per player). Big hits (4 rows,
+          T-SPIN, the weak row, all-clears, the zone, releases) count double against it, small clears half. Breaking it staggers.
+   cores  氷の核: every 18 s two cores replace the top cells of random columns. Clearing a row with a core deals 6% of the
+          boss's HP per core and staggers; cores left for 15 s crack and each becomes a garbage row.
+   charge 大技の溜め: every 28 s the boss winds up for 9 s. Deal 7% of its HP in that window to stop it (a down; slower
+          classes need less: ×38/their target kill time); otherwise it lands as a strike ×(1.3+0.05×floor) plus 1 garbage
+          row (2 from B4). The zone, a down and a freeze pause the window.
+   Shares are divided by the number of players, so in a party each client tracks its own part. ---------- */
+const BOSS_TASK=[['charge'],['cores'],['cores'],['armor'],['charge'],['cores'],['charge'],['armor','charge'],['cores'],['armor'],['charge'],['armor']];
+const TASK_INFO={
+  armor:{n:'装甲',s:'大技で装甲を割る',d:'先に装甲を割る。4列消し・T-SPIN・弱点・ゾーンは装甲に2倍、普通の消しは半分しか効かない'},
+  cores:{n:'氷の核',s:'核の段を消すと大ダメージ',d:'盤面に核が埋まる。核のある段を消すと大ダメージ。15秒放っておくと割れてゴミ列になる'},
+  charge:{n:'大技の溜め',s:'溜め中に削って阻止',d:'ボスが大技を溜める。9秒以内にダメージを与え続ければ阻止してダウン、できないと大きな一撃'}};
+const taskOn=k=>!!(S&&S.task&&S.task.k.includes(k)&&S.boss&&!S.boss.dead&&!S.boss.mob&&!S.boss.elite);
+function taskInit(b){
+  S.task=null;if(b.mob||b.elite||S.practice)return;
+  const i=BOSSES.indexOf(b.name.replace('・改',''));if(i<0)return;
+  const n=1+(S.coop?aliveAllies().length:0),k=BOSS_TASK[i];
+  S.task={k,armor:k.includes('armor')?Math.round(b.max*0.15/n):0,armorMax:Math.round(b.max*0.15/n),coreNext:nowT()+6000,coreBorn:0,
+    chNext:nowT()+14000,ch:null,need:Math.round(b.max*0.07*Math.min(1,38/(DDA_T[S.cls]||38))/n)};
+  setTimeout(()=>{if(S&&S.task&&S.boss===b){const t=k.map(x=>TASK_INFO[x]);toast(`課題「${t.map(x=>x.n).join('・')}」${t[0].s}`);logPush(`課題：${t.map(x=>x.n).join('・')}`,t.map(x=>x.s).join('／'),'#ff9b6f')}},900);
+}
+// damage the player's clears deal goes through the armor first; returns what reaches the boss's HP
+function armorTake(d,big,label){
+  const T=S.task;if(!T||!T.armor||!taskOn('armor'))return d;
+  const f=big?2:0.5,hit=d*f;
+  if(hit<T.armor){T.armor-=hit;dmgNum(Math.round(hit),big,`装甲${big?' ×2':' ×0.5'}`);return 0}
+  const over=(hit-T.armor)/f;T.armor=0;S.armorBreaks=(S.armorBreaks||0)+1;
+  pop(['装甲破壊！'],'#e4eff8',1.3);sfx('boom');feel('large');stagger(60,'装甲破壊');logPush('装甲破壊',label||'','#e4eff8');
+  return Math.round(over);
+}
+function plantCores(n){
+  const cols=shuffleWith([...Array(W).keys()],Math.random);let put=0;
+  for(const x of cols){if(put>=n)break;let y=0;while(y<H&&!S.board[y][x])y++;if(y>=H||y<3||S.board[y][x]==='C'||S.board[y][x]==='B')continue;S.board[y][x]='C';put++}
+  if(put){S.task.coreBorn=nowT();toast(`氷の核が${put}つ埋まった（その段を消すと大ダメージ）`)}
+}
+function taskTick(dt){
+  const T=S.task;if(!T||!S.boss||S.boss.dead)return;const t=nowT();
+  if(zoneOn()||downed()||frozen()){T.coreNext+=dt;if(T.coreBorn)T.coreBorn+=dt;T.chNext+=dt;if(T.ch)T.ch.until+=dt;return}
+  if(taskOn('cores')){
+    const left=S.board.reduce((a,r)=>a+r.filter(v=>v==='C').length,0);
+    if(left&&T.coreBorn&&t-T.coreBorn>15000){for(const r of S.board)for(let x=0;x<W;x++)if(r[x]==='C')r[x]='G';T.coreBorn=0;queueGarbage(left);toast(`核が割れた（ゴミ列+${left}）`);S.fx.push({k:'atk',t:0})}
+    if(!left&&T.coreBorn)T.coreBorn=0;
+    if(t>=T.coreNext){T.coreNext=t+18000;plantCores(2)}
+  }
+  if(taskOn('charge')){
+    if(!T.ch&&t>=T.chNext){T.ch={until:t+9000,start:S.boss.myDmg};pop(['大技の構え',`9秒で${T.need}削れば阻止`],'#ff6f7f',1.15);sfx('warn')}
+    else if(T.ch){
+      const got=S.boss.myDmg-T.ch.start;
+      if(got>=T.need){T.ch=null;T.chNext=t+28000;S.interrupts=(S.interrupts||0)+1;pop(['阻止！'],'#ffd36b',1.25);stagger(60,'大技を阻止')}
+      else if(t>=T.ch.until){T.ch=null;T.chNext=t+28000;if(S.mode==='play'){strikeHit(1.3+0.05*S.floor,`${S.boss.name}の大技`);queueGarbage(S.floor>=4?2:1);feel('large')}}
+    }
+  }
+}
+// cores in the rows about to clear: bonus damage and stagger
+function coreClear(full){
+  if(!taskOn('cores'))return 0;let c=0;for(const y of full)for(const v of S.board[y])if(v==='C')c++;
+  if(!c)return 0;
+  const d=Math.round(S.boss.max*0.06*c/(1+(S.coop?aliveAllies().length:0)));
+  S.coresBroken=(S.coresBroken||0)+c;pop([`核を砕いた${c>1?' ×'+c:''}`],'#8fe3ff',1.15);stagger(30*c,'核');
+  return d;
 }
 function bossDmgDetail(n,ts,b2b,pc){
   // more than 4 rows at once can happen when bombs settle the stack: +30 per extra row
@@ -2126,6 +2190,7 @@ function lockPiece(){
   const n=full.length,n4=Math.min(n,4),xtra=Math.max(0,n-4);
   if(ts&&n>3)ts=null; // a T-spin can't clear 4+; this came from bombs settling the stack
   S.weakHit=rhythmOn()&&S.weakRow>=0&&full.includes(H-1-S.weakRow);
+  const coreD=n&&S.boss&&!S.boss.dead&&!zoneOn()?coreClear(full):0;
   if(ts==='full'&&lv('calmdrum')){calmStart(calmMs());S.calmN=(S.calmN||0)+1;toast(`凪の太鼓 ${calmMs()/1000}秒間ゴミ列-1`)}
   if(ts&&!n){
     S.st.t++;if(core('k_tspin')&&ts==='full')coreStack();
@@ -2196,15 +2261,16 @@ function lockPiece(){
     if(S.zone<ZONE_NEED)S.zoneTold=false;
     if(S.boss&&!S.boss.dead&&!zoneOn()){
       const det=bossDmgDetail(n,ts,b2b,pc),dmg=Math.round(det.d*(dt?1.3:1));S.linkK=0;
-      S.boss.myDmg+=dmg;S.fx.push({k:'hit',t:0});
-      dmgNum(dmg,hardClear||pc,det.f+(dt?' ×1.3':''));
+      const toHp=armorTake(dmg+coreD,hardClear||pc||S.weakHit,clearLabel(n,ts,b2b,pc,dt));
+      S.boss.myDmg+=toHp;S.fx.push({k:'hit',t:0});
+      if(toHp)dmgNum(toHp,hardClear||pc,det.f+(dt?' ×1.3':'')+(coreD?` +核${coreD}`:''));
       if(rhythmOn()){
         if(S.weakHit){S.weakHits=(S.weakHits||0)+1;pop(['弱点！'],'#ff9b6f',1.1);stagger(35,'弱点');weakPick()}
         if(hardClear||pc)stagger(ts==='full'||pc?30:25,n===4?'4列消し':'T-SPIN');
         S.chg.n++;S.chg.sum+=dmg;
         if((hardClear||pc)&&S.chg.n>=2&&!S.boss.dead){
           const k=Math.min(CHG_MAX,CHG_PER*S.chg.n),bonus=Math.round(S.chg.sum*k);
-          S.boss.myDmg+=bonus;S.releases=(S.releases||0)+1;S.relBest=Math.max(S.relBest||0,bonus);
+          S.boss.myDmg+=armorTake(bonus,true,'解放');S.releases=(S.releases||0)+1;S.relBest=Math.max(S.relBest||0,bonus);
           setTimeout(()=>{if(S&&S.boss)dmgNum(bonus,true,`溜め${S.chg?'':''}解放 ${Math.round(k*100)}%`)},140);
           pop(['解放！',`${S.chg.n}回分 +${bonus}`],'#8fe3ff',1.2);sfx('combo');feel('medium');stagger(20,'解放');
           S.chg={n:0,sum:0};
@@ -2585,7 +2651,7 @@ function makeBoss(id,name,max){
   const bi=el?0:bossIdx(id),sk=el?el.sk:BOSS_SK[bi],s2=NONKING_SK[el?id%NONKING_SK.length:(NONKING_SK.indexOf(sk)+1)%NONKING_SK.length];
   const b={id,name,max,hp:max,atk:0,myDmg:0,dead:false,sk,sk2:s2===sk?'bite':s2,skAcc:0,skN:0,warned:false,p2:false,elite:!!el,bornAt:nowT()};S.fightMinHp=S.hp;
   if(S.weaken){b.myDmg=Math.round(max*0.15);S.weaken=false}
-  S.boss=b;S.hitAcc=0;rhythmReset();floorShield();pop(['BOSS',name],'#ff6f7f',1.15);sfx('boss');shake(5,300);hud(true);
+  S.boss=b;S.hitAcc=0;rhythmReset();taskInit(b);floorShield();pop(['BOSS',name],'#ff6f7f',1.15);sfx('boss');shake(5,300);hud(true);
 }
 function spawnBoss(){
   const n=1+aliveAllies().length-(S.mode==='over'?1:0),bx=D().bossX||BX0;
@@ -3864,6 +3930,8 @@ function cell(ctx,x,y,s,t,alpha){
     ctx.fillStyle='rgba(255,255,255,.28)';ctx.fillRect(px+1,py+1,s-2,Math.max(2,s*0.14));ctx.fillRect(px+1,py+1,Math.max(2,s*0.12),s-2);
     ctx.fillStyle='rgba(0,0,0,.22)';ctx.fillRect(px+1,py+s-1-Math.max(2,s*0.12),s-2,Math.max(2,s*0.12));
     if(t==='D'){ctx.fillStyle='rgba(90,70,40,.5)';ctx.fillRect(px+s*.3,py+s*.35,2,2);ctx.fillRect(px+s*.62,py+s*.6,2,2)}
+    if(t==='C'){const g=0.5+0.5*Math.sin(performance.now()/180);ctx.fillStyle=`rgba(143,227,255,${0.5+0.4*g})`;ctx.beginPath();ctx.moveTo(px+s/2,py+s*0.18);ctx.lineTo(px+s*0.82,py+s/2);ctx.lineTo(px+s/2,py+s*0.82);ctx.lineTo(px+s*0.18,py+s/2);ctx.closePath();ctx.fill();
+      ctx.strokeStyle='#0b1320';ctx.lineWidth=1.5;ctx.stroke()}
   }
   ctx.globalAlpha=1;
 }
@@ -3951,6 +4019,20 @@ function drawEnemy(b,s){
     for(let i=0;i<3;i++){const a=t/300+i*2.1;bctx.fillText('✦',cx+Math.cos(a)*size*0.35,cy-size*0.42+Math.sin(a)*s*0.25)}
   }else if(S.stag>0){
     bctx.fillStyle='rgba(255,211,107,.18)';bctx.fillRect(bx,by,bw,3);bctx.fillStyle='rgba(255,211,107,.8)';bctx.fillRect(bx,by,bw*Math.min(1,S.stag/S.stagNeed),3);
+  }
+  const T=S.task;
+  if(T&&taskOn('armor')&&T.armor>0){
+    // armor: a white bar just above the stagger gauge, with plates
+    const ay=by-7;bctx.fillStyle='rgba(228,239,248,.18)';bctx.fillRect(bx,ay,bw,5);bctx.fillStyle='#e4eff8';bctx.fillRect(bx,ay,bw*T.armor/T.armorMax,5);
+    bctx.fillStyle='rgba(11,19,32,.8)';for(let i=1;i<5;i++)bctx.fillRect(bx+bw*i/5,ay,1,5);
+    bctx.font=`${Math.floor(s*0.42)}px DotGothic16, monospace`;bctx.textAlign='right';bctx.textBaseline='middle';bctx.fillStyle='#e4eff8';bctx.fillText('装甲',bx-3,ay+3);
+  }
+  if(T&&T.ch&&taskOn('charge')){
+    const got=Math.max(0,S.boss.myDmg-T.ch.start),f=Math.min(1,got/T.need),r=Math.max(0,(T.ch.until-t)/9000),ty=cy-size/2-s*0.35;
+    bctx.fillStyle='rgba(255,111,127,.25)';bctx.fillRect(bx,ty,bw,6);bctx.fillStyle='#ffd36b';bctx.fillRect(bx,ty,bw*f,6);
+    bctx.fillStyle='rgba(255,111,127,.9)';bctx.fillRect(bx,ty+7,bw*r,2);
+    bctx.font=`${Math.floor(s*0.55)}px DotGothic16, monospace`;bctx.textAlign='center';bctx.textBaseline='bottom';bctx.fillStyle=(t/200|0)%2?'#ff9ba7':'#ff6f7f';
+    bctx.fillText(`大技 阻止まで ${Math.max(0,T.need-got)}`,cx,ty-1);
   }
   bctx.restore();
 }
@@ -5159,6 +5241,7 @@ function frame(now){
       if(!b.mob&&b.skAcc>=curSkMs(b)&&S.mode==='play'){b.skAcc=0;b.warned=false;castBossSkill(b)}
     }
     if(S.coop&&S.aim)aimTick();
+    if(S.task&&S.mode==='play'&&S.boss&&!S.boss.dead)taskTick(dt);
     if(S.goal&&!S.goal.done)goalTick();
     if(S.boss&&!S.boss.mob&&!S.boss.dead&&S.fightMinHp!=null&&S.hp<S.fightMinHp)S.fightMinHp=S.hp;
     if(S.mode==='play')ddaPressTick(dt);
