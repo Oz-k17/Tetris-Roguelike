@@ -747,6 +747,8 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
     <ol class="rules">
       <li>守護者・癒し手・鼓手・剣士の4クラス。ラインを消してためるクラススキル（SKILLボタン）があり、遺物もクラスに合ったものが出やすい</li>
       <li>ボスはそれぞれ固有のスキルを持つ。盤面上の紫の線が満ちると発動</li>
+      <li>ボス戦では列を消すたびに「溜め」がたまる。4列消し・T-SPIN・全消しで、溜めた分がまとめて追加ダメージになる（強撃を受けると砕ける）</li>
+      <li>盤面の光る段が「弱点」。その段をちょうど消すとダメージ2倍。弱点・大技・解放でボスの下のゲージがたまり、満タンで「ダウン」（5秒間 攻撃が止まりダメージ1.5倍）</li>
       <li>遺物には「刃・盾・癒・富・爆・技」のタグがある。同じタグの遺物を3つ集めると「化身」に変身する</li>
       <li>持てる遺物は8種類まで（同じ遺物はLv3まで重ねられ、枠は使わない）。ボス対策の遺物は別の小物袋に2つ。いっぱいのときは入れ替えるか、行商人に売る</li>
       <li>地下3階と6階のボスを倒すと「王の遺物」を選べる。強いが代償があり、売れない。精鋭を倒すと良い遺物が出やすい</li>
@@ -1954,6 +1956,26 @@ function dmgMuls(){
   if(S.cls==='tank'&&su(2)==='B'&&immune())m.push(['加護',1.3]);
   return m;
 }
+/* ---------- boss-fight rhythm, borrowed from versus puzzles and action games ----------
+   溜め (charge): every clear in a boss fight also banks its damage. A big clear (4 rows, a T-SPIN or an all-clear)
+     releases the bank as bonus damage: +12% of the banked total per banked clear, at most +150%. A boss strike that
+     lands shatters the bank. Base damage is never lost, so steady play keeps today's pace; building and firing pays more.
+   弱点の段 (weak row): one row of the board, counted from the bottom, glows. Clearing that exact row is a weak hit: ×2.
+     It moves every WEAK_MOVE ms and after each hit.
+   ダウン (stagger): weak hits, big clears and releases fill a gauge under the enemy. Full: the boss is down for DOWN_MS:
+     its strike and skill timers stop and damage is ×1.5. Each down raises the next threshold. Bosses and elites only. */
+const WEAK_MOVE=15000,DOWN_MS=5000,CHG_PER=0.12,CHG_MAX=1.5;
+const rhythmOn=()=>!!(S&&S.boss&&!S.boss.dead&&!S.boss.mob&&!S.practice);
+const downed=()=>!!(S&&S.downUntil&&nowT()<S.downUntil&&S.boss&&!S.boss.dead);
+function rhythmReset(){S.chg={n:0,sum:0};S.weakRow=-1;S.weakAt=0;S.stag=0;S.stagNeed=100;S.downUntil=0}
+function weakPick(){const prev=S.weakRow;let r;do r=Math.floor(Math.random()*6);while(r===prev);S.weakRow=r;S.weakAt=nowT()}
+function stagger(v,why){
+  if(!rhythmOn()||downed())return;
+  S.stag=(S.stag||0)+v;
+  if(S.stag>=S.stagNeed){S.stag=0;S.stagNeed=Math.round(S.stagNeed*1.25);S.downUntil=nowT()+DOWN_MS;S.downs=(S.downs||0)+1;
+    pop(['ダウン！','攻撃停止・ダメージ×1.5'],'#ffd36b',1.3);sfx('boss');feel('large');hitStop(120);logPush('ダウン',why||'','#ffd36b')}
+}
+function chgShatter(){if(S.chg&&S.chg.n>=2){toast(`強撃で溜めが砕けた（${S.chg.n}回分）`);S.fx.push({k:'atk',t:0})}S.chg={n:0,sum:0}}
 function bossDmgDetail(n,ts,b2b,pc){
   // more than 4 rows at once can happen when bombs settle the stack: +30 per extra row
   const n4=Math.min(n,4),base=ts&&n<=3?(ts==='full'?[0,30,60,90]:[0,15,30,30])[n]:[0,10,30,50,80][n4]+30*Math.max(0,n-4);
@@ -1972,6 +1994,8 @@ function bossDmgDetail(n,ts,b2b,pc){
   if(shrouded())muls.push(['霧の盾',0.4]);
   if(ts&&lv('tspinx'))muls.push(['極印',1.5]);
   if(lv('c_fury'))muls.push(['王の怒り',n===4||ts?2:0.5]);
+  if(S.weakHit)muls.push(['弱点',2]);
+  if(downed())muls.push(['ダウン',1.5]);
   if(S.linkK)muls.push(['連携',Math.round((1+linkPer()*S.linkK)*100)/100]);
   if(core('k_tspin'))muls.unshift(ts?['極意',3]:['極意',0.8]);
   if(quirk('rapid'))muls.push(['急流',1.25]);
@@ -2072,6 +2096,7 @@ function lockPiece(){
   S.digRows=full.filter(y=>S.board[y].includes('G')).length;
   const n=full.length,n4=Math.min(n,4),xtra=Math.max(0,n-4);
   if(ts&&n>3)ts=null; // a T-spin can't clear 4+; this came from bombs settling the stack
+  S.weakHit=rhythmOn()&&S.weakRow>=0&&full.includes(H-1-S.weakRow);
   if(ts==='full'&&lv('calmdrum')){calmStart(calmMs());S.calmN=(S.calmN||0)+1;toast(`凪の太鼓 ${calmMs()/1000}秒間ゴミ列-1`)}
   if(ts&&!n){
     S.st.t++;if(core('k_tspin')&&ts==='full')coreStack();
@@ -2141,6 +2166,19 @@ function lockPiece(){
       const det=bossDmgDetail(n,ts,b2b,pc),dmg=Math.round(det.d*(dt?1.3:1));S.linkK=0;
       S.boss.myDmg+=dmg;S.fx.push({k:'hit',t:0});
       dmgNum(dmg,hardClear||pc,det.f+(dt?' ×1.3':''));
+      if(rhythmOn()){
+        if(S.weakHit){S.weakHits=(S.weakHits||0)+1;pop(['弱点！'],'#ff9b6f',1.1);stagger(35,'弱点');weakPick()}
+        if(hardClear||pc)stagger(ts==='full'||pc?30:25,n===4?'4列消し':'T-SPIN');
+        S.chg.n++;S.chg.sum+=dmg;
+        if((hardClear||pc)&&S.chg.n>=2&&!S.boss.dead){
+          const k=Math.min(CHG_MAX,CHG_PER*S.chg.n),bonus=Math.round(S.chg.sum*k);
+          S.boss.myDmg+=bonus;S.releases=(S.releases||0)+1;S.relBest=Math.max(S.relBest||0,bonus);
+          setTimeout(()=>{if(S&&S.boss)dmgNum(bonus,true,`溜め${S.chg?'':''}解放 ${Math.round(k*100)}%`)},140);
+          pop(['解放！',`${S.chg.n}回分 +${bonus}`],'#8fe3ff',1.2);sfx('combo');feel('medium');stagger(20,'解放');
+          S.chg={n:0,sum:0};
+        }
+      }
+      S.weakHit=false;
       // the math panel shows while a REN is going, or for a hit worth 10%+ of the boss's HP
       const big=S.combo>0||dmg>=S.boss.max*0.1;
       if(WIDE)deskCalc(det,dt,dmg,clearLabel(n,ts,b2b,pc,dt),big);else if(big)calcFx(det,dt,dmg);
@@ -2287,7 +2325,7 @@ function hpTick(dt){
   const b=S.boss&&!S.boss.dead?S.boss:null;
   if(b){
     if(taunted()){S.hitAcc=0;return}
-    if(frozen())return;
+    if(frozen()||downed())return;
     S.hitAcc+=dt;
     if(S.hitAcc>=strikeMs()){S.hitAcc=0;strikeHit(1,`${b.name}の強撃`)}
   }else if(!S.boss&&S.phase==='play'&&isFinite(coldMs())){
@@ -2297,6 +2335,7 @@ function hpTick(dt){
 }
 const coverN=()=>S.coop&&S.cls==='tank'?Math.min(MAXP-1,aliveAllies().length):0;
 function strikeHit(mul,why){
+  if(rhythmOn())chgShatter();
   const cv=coverN();if(cv){mul*=Math.max(0.4,0.7-0.1*cv);addShield(3*cv)}
   if(evo('e_thorns')&&S.boss&&!S.boss.dead){S.boss.myDmg+=60;S.fx.push({k:'hit',t:0});dmgNum(60,false,'氷茨')}
   if(R()<blockChance()){
@@ -2514,7 +2553,7 @@ function makeBoss(id,name,max){
   const bi=el?0:bossIdx(id),sk=el?el.sk:BOSS_SK[bi],s2=NONKING_SK[el?id%NONKING_SK.length:(NONKING_SK.indexOf(sk)+1)%NONKING_SK.length];
   const b={id,name,max,hp:max,atk:0,myDmg:0,dead:false,sk,sk2:s2===sk?'bite':s2,skAcc:0,skN:0,warned:false,p2:false,elite:!!el,bornAt:nowT()};S.fightMinHp=S.hp;
   if(S.weaken){b.myDmg=Math.round(max*0.15);S.weaken=false}
-  S.boss=b;S.hitAcc=0;floorShield();pop(['BOSS',name],'#ff6f7f',1.15);sfx('boss');shake(5,300);hud(true);
+  S.boss=b;S.hitAcc=0;rhythmReset();floorShield();pop(['BOSS',name],'#ff6f7f',1.15);sfx('boss');shake(5,300);hud(true);
 }
 function spawnBoss(){
   const n=1+aliveAllies().length-(S.mode==='over'?1:0),bx=D().bossX||BX0;
@@ -3859,11 +3898,47 @@ function drawEnemy(b,s){
   if(wind>0&&!calm)cx+=Math.sin(t/28)*wind*s*0.07;
   if(sinceHit<160){cy-=s*0.35*(1-sinceHit/160);if(!calm)cx+=(sinceHit%60<30?1:-1)*s*0.1}
   if(sinceLunge<260){const u=sinceLunge/260;cy+=s*1.6*Math.sin(u*Math.PI)}
-  const mode=sinceHit<90?'w':(b.p2||wind>0.5)?'r':'';
+  const mode=sinceHit<90?'w':(b.p2||wind>0.5)&&!downed()?'r':'';
+  const dn=downed();
+  if(dn)cy+=s*0.9;
   bctx.save();bctx.imageSmoothingEnabled=false;
-  bctx.globalAlpha=frozen()?0.3:sinceHit<160?0.85:0.42+0.3*wind+(b.p2?0.1:0);
+  bctx.globalAlpha=frozen()?0.3:sinceHit<160?0.85:dn?0.55:0.42+0.3*wind+(b.p2?0.1:0);
+  if(dn){bctx.translate(cx,cy);bctx.rotate(calm?0.12:0.12+Math.sin(t/180)*0.05);bctx.translate(-cx,-cy)}
   bctx.drawImage(sprCanvas(k,mode),Math.round(cx-size/2),Math.round(cy-size/2),Math.round(unit*16),Math.round(unit*16));
   bctx.restore();
+  if(b.mob)return;
+  // stagger gauge under the figure; while down: stars and the time left
+  const bw=size*0.8,bx=cx-bw/2,by=cy+size/2+s*0.15;
+  bctx.save();
+  if(dn){
+    const r=Math.max(0,(S.downUntil-t)/DOWN_MS);
+    bctx.fillStyle='rgba(255,211,107,.25)';bctx.fillRect(bx,by,bw,4);bctx.fillStyle='#ffd36b';bctx.fillRect(bx,by,bw*r,4);
+    bctx.fillStyle='#ffd36b';bctx.font=`${Math.floor(s*0.8)}px DotGothic16, monospace`;bctx.textAlign='center';bctx.textBaseline='bottom';
+    bctx.globalAlpha=.9;bctx.fillText('ダウン',cx,cy-size/2);
+    for(let i=0;i<3;i++){const a=t/300+i*2.1;bctx.fillText('✦',cx+Math.cos(a)*size*0.35,cy-size*0.42+Math.sin(a)*s*0.25)}
+  }else if(S.stag>0){
+    bctx.fillStyle='rgba(255,211,107,.18)';bctx.fillRect(bx,by,bw,3);bctx.fillStyle='rgba(255,211,107,.8)';bctx.fillRect(bx,by,bw*Math.min(1,S.stag/S.stagNeed),3);
+  }
+  bctx.restore();
+}
+// weak row (behind the stack) and the charge readout
+function drawRhythmBack(s){
+  if(!rhythmOn()||S.weakRow<0)return;
+  const y=(H-1-S.weakRow)*s,pulse=0.5+0.5*Math.sin(nowT()/220);
+  bctx.fillStyle=`rgba(255,155,111,${0.07+0.06*pulse})`;bctx.fillRect(0,y,W*s,s);
+}
+function drawRhythmFront(s){
+  if(!rhythmOn())return;
+  if(S.weakRow>=0){const y=(H-1-S.weakRow)*s,a=0.55+0.35*Math.sin(nowT()/220);
+    // a pulsing frame around the whole row, readable over filled cells too
+    bctx.strokeStyle=`rgba(255,155,111,${a})`;bctx.lineWidth=2;bctx.setLineDash([s*0.35,s*0.2]);bctx.strokeRect(1,y+1,W*s-2,s-2);bctx.setLineDash([]);
+    bctx.fillStyle=`rgba(255,155,111,${a})`;bctx.fillRect(0,y,4,s);bctx.fillRect(W*s-4,y,4,s);
+    const lw=s*1.5;bctx.fillStyle='rgba(40,14,10,.8)';bctx.fillRect(W*s-lw-4,y+s*0.15,lw,s*0.7);
+    bctx.fillStyle='#ffb48f';bctx.font=`${Math.floor(s*0.5)}px DotGothic16, monospace`;bctx.textAlign='center';bctx.textBaseline='middle';bctx.fillText('弱点',W*s-lw/2-4,y+s/2+1)}
+  const c=S.chg;if(c&&c.n>=2){const k=Math.min(CHG_MAX,CHG_PER*c.n);
+    bctx.font=`${Math.floor(s*0.55)}px DotGothic16, monospace`;bctx.textAlign='left';bctx.textBaseline='top';
+    bctx.fillStyle='rgba(11,19,32,.6)';bctx.fillRect(3,11,s*4.6,s*0.75);
+    bctx.fillStyle=k>=CHG_MAX?'#ffd36b':'#8fe3ff';bctx.fillText(`溜め${c.n} +${Math.round(k*100)}%`,6,13)}
 }
 function drawBoard(dt){
   const s=C,b=S.boss&&!S.boss.dead?S.boss:null;
@@ -3879,6 +3954,7 @@ function drawBoard(dt){
   }
   gridBg(bctx,s,b?(b.p2?'#24141e':'#1a1424'):'#0e1928');
   if(b)drawEnemy(b,s);
+  drawRhythmBack(s);
   if(S.buffUntil&&buffOn()){bctx.strokeStyle='rgba(242,208,107,.5)';bctx.lineWidth=2;bctx.strokeRect(1,1,W*s-2,H*s-2)}
   for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(S.board[y][x])cell(bctx,x,y,s,S.board[y][x]);
   const p=S.cur;
@@ -3893,6 +3969,7 @@ function drawBoard(dt){
     for(let r=0;r<p.m.length;r++)for(let c=0;c<p.m[r].length;c++)
       if(p.m[r][c]&&p.y+r>=0)cell(bctx,p.x+c,p.y+r,s,p.t);
   }
+  drawRhythmFront(s);
   if(b){
     const f=b.atk/bossAtkMs();
     bctx.fillStyle=f>.8?'rgba(255,111,127,.95)':'rgba(255,111,127,.55)';
@@ -5017,14 +5094,15 @@ function frame(now){
     }
     if(S.mode==='play'&&S.boss&&!S.boss.dead&&!frozen()){
       const b=S.boss;
-      b.atk+=dt;
+      if(!downed())b.atk+=dt;
       if(b.atk>=bossAtkMs()){
         b.atk=0;
         const rows=bossRows();
         if(lv('thorns')){b.myDmg+=20*lv('thorns')*rows*(evo('e_thorns')?2:1);S.fx.push({k:'hit',t:0})}
         queueGarbage(rows);
       }
-      if(!b.mob)b.skAcc+=dt;
+      if(!b.mob&&!downed())b.skAcc+=dt;
+      if(!b.mob&&!b.dead){if(S.weakRow<0||nowT()-S.weakAt>WEAK_MOVE)weakPick();if(!downed()&&S.stag>0)S.stag=Math.max(0,S.stag-dt*0.003)}
       if(!b.mob&&!b.warned&&b.skAcc>=curSkMs(b)-3000){b.warned=true;toast(`${b.name}が「${BSK[nextBossSk(b)].n}」の構え`)}
       if(!b.mob&&b.skAcc>=curSkMs(b)&&S.mode==='play'){b.skAcc=0;b.warned=false;castBossSkill(b)}
     }
