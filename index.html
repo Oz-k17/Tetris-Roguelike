@@ -750,6 +750,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
       <li>守護者・癒し手・鼓手・剣士の4クラス。ラインを消してためるクラススキル（SKILLボタン）があり、遺物もクラスに合ったものが出やすい</li>
       <li>ボスはそれぞれ固有のスキルを持つ。盤面上の紫の線が満ちると発動</li>
       <li>ボス戦では列を消すたびに「溜め」がたまる。4列消し・T-SPIN・全消しで、溜めた分がまとめて追加ダメージになる（強撃を受けると砕ける）</li>
+      <li>ボス戦ではときどき「事件」が起きる。雪崩警報（みんなで決まった数の列を消さないとゴミ列）、早い者勝ちの宝（最初に大技を決めた人がゴールド）。パーティではボスごとに一番削った人がMVP</li>
       <li>ボスにはそれぞれ「課題」がある。装甲（大技でないと割れにくい）、氷の核（核の段を消すと大ダメージ、放置するとゴミ列）、大技の溜め（9秒で削り切れば阻止してダウン）</li>
       <li>列を20本消すと「ゾーン」が使える（D キー／LT／画面のゾーンボタン）。8秒間 時間が止まり、その間に消した列は最後にまとめて大ダメージになる</li>
       <li>盤面の光る段が「弱点」。その段をちょうど消すとダメージ2倍。弱点・大技・解放でボスの下のゲージがたまり、満タンで「ダウン」（5秒間 攻撃が止まりダメージ1.5倍）</li>
@@ -1982,8 +1983,8 @@ function stagger(v,why){
 function chgShatter(){if(S.chg&&S.chg.n>=2){toast(`強撃で溜めが砕けた（${S.chg.n}回分）`);S.fx.push({k:'atk',t:0})}S.chg={n:0,sum:0}}
 /* ---------- ゾーン (after Tetris Effect): clearing ZONE_NEED rows fills the gauge. Entering the zone stops time for
    ZONE_MS: no gravity, and the enemy's strikes, skills, garbage and the floor clock all wait. Rows cleared inside the
-   zone deal no damage at once; when it ends they land together as one hit worth L×(20+3L) before multipliers
-   (8 rows: 352, 12 rows: 672; two plain 4-row clears give 160), which also releases the charge and staggers. ---------- */
+   zone deal no damage at once; when it ends they land together as one hit worth L×(16+2L) before multipliers
+   (8 rows: 256, 12 rows: 480; two plain 4-row clears give 160), which also releases the charge and staggers. ---------- */
 const ZONE_NEED=20,ZONE_MS=8000;
 const keyHint=a=>{if(typeof TOUCH!=='undefined'&&TOUCH)return'';const c=((SET.keys||{})[a]||[])[0];return c?`[${keyName(c)}]`:''};
 const zoneOn=()=>!!(S&&S.zoneUntil&&nowT()<S.zoneUntil);
@@ -1999,7 +2000,7 @@ function zoneStart(){
 function zoneEnd(){
   S.zoneUntil=0;const L=S.zoneLines||0;S.zoneLines=0;hud(true);
   if(!L||!S.boss||S.boss.dead){if(L)toast(`ゾーン ${L}ライン`);return}
-  const base=L*(20+3*L),muls=dmgMuls();if(downed())muls.push(['ダウン',1.5]);
+  const base=L*(16+2*L),muls=dmgMuls();if(downed())muls.push(['ダウン',1.5]);
   const d=Math.round(base*muls.reduce((a,x)=>a*x[1],1));
   S.boss.myDmg+=armorTake(d,true,'ゾーン');S.zoneBest=Math.max(S.zoneBest||0,L);S.fx.push({k:'hit',t:0},{k:'boom',x:4,y:H-2,t:0});
   dmgNum(d,true,`ゾーン ${L}ライン`);pop([`${L}ライン！`,`ゾーン ${d}`],'#e4f6ff',1.45);sfx('clear4');feel('large');hitStop(160);
@@ -2009,7 +2010,7 @@ function zoneEnd(){
 /* ---------- ボスの課題: each boss also changes how it is beaten (bosses only; mobs and elites have none).
    armor  装甲: damage goes into an armor pool first (15% of the boss's HP, shared out per player). Big hits (4 rows,
           T-SPIN, the weak row, all-clears, the zone, releases) count double against it, small clears half. Breaking it staggers.
-   cores  氷の核: every 18 s two cores replace the top cells of random columns. Clearing a row with a core deals 6% of the
+   cores  氷の核: every 18 s two cores replace the top cells of random columns. Clearing a row with a core deals 5% of the
           boss's HP per core and staggers; cores left for 15 s crack and each becomes a garbage row.
    charge 大技の溜め: every 28 s the boss winds up for 9 s. Deal 7% of its HP in that window to stop it (a down; slower
           classes need less: ×38/their target kill time); otherwise it lands as a strike ×(1.3+0.05×floor) plus 1 garbage
@@ -2025,8 +2026,9 @@ function taskInit(b){
   S.task=null;if(b.mob||b.elite||S.practice)return;
   const i=BOSSES.indexOf(b.name.replace('・改',''));if(i<0)return;
   const n=1+(S.coop?aliveAllies().length:0),k=BOSS_TASK[i];
-  S.task={k,armor:k.includes('armor')?Math.round(b.max*0.15/n):0,armorMax:Math.round(b.max*0.15/n),coreNext:nowT()+6000,coreBorn:0,
-    chNext:nowT()+14000,ch:null,need:Math.round(b.max*0.07*Math.min(1,38/(DDA_T[S.cls]||38))/n)};
+  const cm=Math.min(1,38/(DDA_T[S.cls]||38)); // slower classes face less armor and a smaller interrupt bar
+  S.task={k,armor:k.includes('armor')?Math.round(b.max*0.15*cm/n):0,armorMax:Math.round(b.max*0.15*cm/n),coreNext:nowT()+6000,coreBorn:0,
+    chNext:nowT()+14000,ch:null,need:Math.round(b.max*0.07*cm/n)};
   setTimeout(()=>{if(S&&S.task&&S.boss===b){const t=k.map(x=>TASK_INFO[x]);toast(`課題「${t.map(x=>x.n).join('・')}」${t[0].s}`);logPush(`課題：${t.map(x=>x.n).join('・')}`,t.map(x=>x.s).join('／'),'#ff9b6f')}},900);
 }
 // damage the player's clears deal goes through the armor first; returns what reaches the boss's HP
@@ -2065,7 +2067,7 @@ function taskTick(dt){
 function coreClear(full){
   if(!taskOn('cores'))return 0;let c=0;for(const y of full)for(const v of S.board[y])if(v==='C')c++;
   if(!c)return 0;
-  const d=Math.round(S.boss.max*0.06*c/(1+(S.coop?aliveAllies().length:0)));
+  const d=Math.round(S.boss.max*0.05*c/(1+(S.coop?aliveAllies().length:0)));
   S.coresBroken=(S.coresBroken||0)+c;pop([`核を砕いた${c>1?' ×'+c:''}`],'#8fe3ff',1.15);stagger(30*c,'核');
   return d;
 }
@@ -2264,6 +2266,7 @@ function lockPiece(){
       const toHp=armorTake(dmg+coreD,hardClear||pc||S.weakHit,clearLabel(n,ts,b2b,pc,dt));
       S.boss.myDmg+=toHp;S.fx.push({k:'hit',t:0});
       if(toHp)dmgNum(toHp,hardClear||pc,det.f+(dt?' ×1.3':'')+(coreD?` +核${coreD}`:''));
+      if(hardClear||pc||S.weakHit)evClaim();
       if(rhythmOn()){
         if(S.weakHit){S.weakHits=(S.weakHits||0)+1;pop(['弱点！'],'#ff9b6f',1.1);stagger(35,'弱点');weakPick()}
         if(hardClear||pc)stagger(ts==='full'||pc?30:25,n===4?'4列消し':'T-SPIN');
@@ -2536,6 +2539,57 @@ function aimHost(now){
   const tp=cand[Math.floor(Math.random()*cand.length)];
   S.mkN=(S.mkN||0)+1;S.mkTp=tp;S.aimSeen=S.mkN;aimStart(tp);
 }
+/* ---------- 事件 (party-game events) during boss fights, every EV_GAP ms (first after EV_FIRST):
+   alarm 雪崩警報: the party clears EV_ALARM_PER×players rows within 15 s, or everyone takes 2 garbage rows; success pays 10G each.
+   gold  早い者勝ちの宝: 12 s; the first player to land a 4-row clear, a T-SPIN or a weak-row hit gets 40G (solo: 25G).
+   Solo runs schedule events locally; in a party the host deals them (g.ev) and decides who was first to the treasure. ---------- */
+const EV_FIRST=22000,EV_GAP=42000,EV_ALARM_PER=6;
+const partyN=()=>1+(S.coop?aliveAllies().length:0);
+function evStart(k,n){
+  if(S.mode!=='play'&&S.mode!=='over')return;
+  const ms=k==='alarm'?15000:12000;
+  S.ev={k,n,until:nowT()+ms,ms,need:EV_ALARM_PER*partyN(),base:S.totalLines,done:false,claimed:false};
+  if(NET)NET.eb={};
+  if(S.mode!=='play')return;
+  if(k==='alarm'){pop(['雪崩警報',`みんなで${S.ev.need}列消せ`],'#ff9b6f',1.2);sfx('warn')}
+  else{pop([partyN()>1?'早い者勝ちの宝':'宝の氷塊',partyN()>1?'最初に大技を決めた人が40G':'12秒以内に大技で25G'],'#f2c14e',1.2);sfx('buy')}
+}
+function evProg(){
+  const e=S.ev;if(!e)return 0;let v=Math.max(0,S.totalLines-e.base);
+  if(S.coop&&NET){NET.eb=NET.eb||{};for(const p of allies()){const key=pkey(p),cur=+(p.presence.st&&p.presence.st.l)||0;if(NET.eb[key]==null)NET.eb[key]=cur;v+=Math.max(0,cur-NET.eb[key])}}
+  return v;
+}
+function evEnd(ok,msg){const e=S.ev;e.done=true;S.ev=null;if(msg)toast(msg);
+  if(e.k==='alarm'){if(ok){S.evWins=(S.evWins||0)+1;if(S.mode==='play'){earn(10);pop(['雪崩を防いだ','+10G'],'#7fe0b0',1.1)}}else if(S.mode==='play'){queueGarbage(2);pop(['雪崩'],'#ff6f7f',1.1)}}}
+function evTick(){
+  const e=S.ev;if(!e)return;
+  if(e.k==='alarm'){if(evProg()>=e.need)evEnd(true);else if(nowT()>=e.until)evEnd(false)}
+  else if(e.k==='gold'){
+    if(!S.coop&&e.claimed){S.evWins=(S.evWins||0)+1;earn(25);pop(['宝を取った','+25G'],'#f2c14e',1.15);evEnd(true)}
+    else if(nowT()>=e.until)evEnd(false,S.coop?'誰も宝を取れなかった':'宝は溶けて消えた');
+  }
+}
+// a big move during the treasure event claims it (party: the host decides who was first)
+function evClaim(){const e=S.ev;if(!e||e.k!=='gold'||e.claimed||e.done||S.mode!=='play')return;e.claimed=true;S.evTw=e.n}
+function evSchedule(now){
+  const b=S.boss;
+  if(!b||b.dead||b.mob||b.elite||S.phase!=='play'||S.practice){S.evNext=0;return}
+  if(S.evBoss!==b.id){S.evBoss=b.id;S.evNext=now+EV_FIRST;return}
+  if(S.ev||now<S.evNext)return;
+  S.evNext=now+EV_GAP;
+  const k=Math.random()<0.5?'alarm':'gold';
+  S.evN=(S.evN||0)+1;S.evK=k;S.evWin='';S.evSeen=S.evN;evStart(k,S.evN);
+}
+// host: the first claim it sees (its own or an ally's presence) wins the treasure
+function evHostGold(){
+  const e=S.ev;if(!e||e.k!=='gold'||S.evWin)return;
+  if(e.claimed)S.evWin=myPeer();
+  else{const p=aliveAllies().find(p=>+p.presence.tw===e.n);if(p)S.evWin=p.peer}
+  if(S.evWin)evGoldWon(S.evWin);
+}
+function evGoldWon(w){const e=S.ev;if(!e||e.k!=='gold'||e.done)return;
+  if(w===myPeer()){S.evWins=(S.evWins||0)+1;earn(40);pop(['宝を取った','+40G'],'#f2c14e',1.2);evEnd(true)}
+  else evEnd(true,`${aimPeerName(w)}が宝を取った`)}
 /* ---------- 連携: line clears from 2+ players within LINK_MS of each other ---------- */
 const LINK_MS=3000,LINK_PER=0.3,LINK_CD=8000;
 const linkPer=()=>LINK_PER+(pr('p_flag')?0.2:0);
@@ -2710,6 +2764,11 @@ function bossDefeated(){
   if(lv('bet')&&S.boss.bornAt&&nowT()-S.boss.bornAt<=60000)g+=earn(40+5*S.floor);
   if(lv('rings'))S.ringN=(S.ringN||0)+1;
   questTick('boss',1);
+  if(S.coop&&NET&&NET.dmg){
+    // MVP of this boss: the most damage dealt to it; the winner gets 15G, everyone sees who it was
+    const rows=[[myPeer(),S.boss.myDmg]];for(const p of allies()){const d=NET.dmg[pkey(p)];if(d&&d.i===S.boss.id)rows.push([p.peer,d.v])}
+    if(rows.length>1){rows.sort((a,b)=>b[1]-a[1]);S.lastMvp=aimPeerName(rows[0][0]);if(rows[0][0]===myPeer()){g+=earn(15);S.mvps=(S.mvps||0)+1;setTimeout(()=>pop(['MVP','+15G'],'#ffd36b',1.2),700)}}
+  }
   if(pr('p_purse'))g+=earn(15);
   if(pr('p_feast')){S.maxHp+=3;heal(3)}
   if(lv('harvest')){S.maxHp+=4;heal(4)}
@@ -3009,7 +3068,7 @@ function shopItems(){
 function openShop(){
   S.mode='shop';S.shop={items:shopItems(),rerolls:0};
   {const nq=S.map!=='branch'?quirkFor(S.floor+1):'',nb=S.floor+1<=FINAL?bossName(S.floor+1):'';
-   $('shSub').innerHTML=`${esc(S.lastBoss)}を倒した · 地下${S.floor+1}階の前`+(nb||nq?`<br><span class="qline">次の階：${nb?`ボス「${nb}」`:''}${nq?' '+quirkTag(nq)+QUIRKS[nq].d:''}</span>`:'')}
+   $('shSub').innerHTML=`${esc(S.lastBoss)}を倒した · 地下${S.floor+1}階の前`+(S.coop&&S.lastMvp?` · MVP ${esc(S.lastMvp)}`:'')+(nb||nq?`<br><span class="qline">次の階：${nb?`ボス「${nb}」`:''}${nq?' '+quirkTag(nq)+QUIRKS[nq].d:''}</span>`:'')}
   renderShop();show('ovShop');
 }
 const rerollCost=()=>lv('coupon')?(S.shop.rerolls?8+6*(S.shop.rerolls-1):0):8+6*S.shop.rerolls;
@@ -4058,7 +4117,17 @@ function drawZone(s){
   if(!ready||$('zoneBtn').hidden)bctx.fillText(ready?`ゾーン OK ${keyHint('zone')}`:`ゾーン ${z}/${ZONE_NEED}`,x,y);
   bctx.fillStyle='rgba(228,246,255,.2)';bctx.fillRect(x,y+2,bw,4);bctx.fillStyle=ready&&(nowT()/300|0)%2?'#ffffff':'#bfe8ff';bctx.fillRect(x,y+2,bw*Math.min(1,z/ZONE_NEED),4);
 }
+function drawEvent(s){
+  const e=S.ev;if(!e||e.done)return;
+  const r=Math.max(0,(e.until-nowT())/e.ms),y=s*1.15;
+  const txt=e.k==='alarm'?`雪崩警報 ${Math.min(e.need,evProg())}/${e.need}列 あと${Math.ceil((e.until-nowT())/1000)}秒`:e.claimed?'宝：判定中…':`${S.coop?'早い者勝ちの宝':'宝の氷塊'} あと${Math.ceil((e.until-nowT())/1000)}秒`;
+  bctx.font=`${Math.floor(s*0.5)}px DotGothic16, monospace`;const tw=bctx.measureText(txt).width+12;
+  bctx.fillStyle='rgba(11,19,32,.78)';bctx.fillRect((W*s-tw)/2,y,tw,s*0.75);
+  bctx.fillStyle=e.k==='alarm'?'#ff9b6f':'#f2c14e';bctx.fillRect((W*s-tw)/2,y+s*0.75-2,tw*r,2);
+  bctx.textAlign='center';bctx.textBaseline='middle';bctx.fillText(txt,W*s/2,y+s*0.38);
+}
 function drawRhythmFront(s){
+  drawEvent(s);
   drawZone(s);
   if(!rhythmOn())return;
   if(S.weakRow>=0){const y=(H-1-S.weakRow)*s,a=0.55+0.35*Math.sin(nowT()/220);
@@ -4801,6 +4870,8 @@ function netTick(now){
         if(!$('ovRoute').hidden&&S.mode==='wait')renderVotes();
         if(Array.isArray(g.pr))for(const k of g.pr.slice(0,6))if(typeof k==='string'&&PARTY[k]&&!pr(k))partyGain(k);
         if(g.dd&&typeof g.dd==='object'){const c=(v,a,z)=>Math.max(a,Math.min(z,+v||1));S.dd={h:c(g.dd.h,0.7,1.25),s:c(g.dd.s,1,1.25),d:c(g.dd.d,0.85,1)}}else if(g.dd===null)S.dd=null;
+        if(g.ev&&+g.ev.n){const n=+g.ev.n;if(n!==S.evSeen&&(g.ev.k==='alarm'||g.ev.k==='gold')){S.evSeen=n;evStart(g.ev.k,n)}
+          if(g.ev.w&&typeof g.ev.w==='string'&&S.ev&&S.ev.n===n&&S.ev.k==='gold'&&!S.ev.done)evGoldWon(g.ev.w.slice(0,64))}
         if(g.mk&&+g.mk.n&&+g.mk.n!==S.aimSeen){S.aimSeen=+g.mk.n;if(typeof g.mk.tp==='string')aimStart(g.mk.tp.slice(0,64))}
         if(typeof g.q==='string'&&(g.q===''||QUIRKS[g.q])&&g.q!==S.quirk){S.qPick[S.floor]=g.q||'none';enterQuirk()}
         if(['play','shop','route','node'].includes(g.ph))S.phase=(S.boss&&S.boss.dead)?(S.boss.elite?'node':'shop'):g.ph;
@@ -4814,7 +4885,7 @@ function netTick(now){
         if(g.boss&&(!S.boss||S.boss.id!==g.boss.id)&&+g.boss.id!==S.deadMob)makeBoss(+g.boss.id,String(g.boss.n).slice(0,24),Math.max(1,+g.boss.m|0));
       }
     }
-    if(L==='me'){aimHost(now);routeHost(now);partyHost(now)}
+    if(L==='me'){aimHost(now);routeHost(now);partyHost(now);evSchedule(now);evHostGold()}
     if(L==='me'&&S.phase==='shop'){
       const t=waitTarget(),kick=kickPassed(t);
       // the leader itself can be the one left behind (idle in the shop while the others vote)
@@ -4851,10 +4922,10 @@ function netTick(now){
   let pres;
   if(coopOn()){
     pres={r:NET.isHost?'host':'guest',e:S.epoch,cls:S.cls,a:S.mode!=='over'?1:0,hp:S.hp,mh:S.maxHp,lv:S.level,
-      b:boardStr(),d:S.boss?{i:S.boss.id,v:S.boss.myDmg}:(S.deadMobD||null),rd:S.readyFloor,lc:S.lcN,pv:S.pv&&S.pv.f===S.floor?S.pv:null,rv:S.rv&&S.rv.f===S.floor?S.rv:null,gh:S.ghN||0,
+      b:boardStr(),d:S.boss?{i:S.boss.id,v:S.boss.myDmg}:(S.deadMobD||null),rd:S.readyFloor,lc:S.lcN,tw:S.evTw||0,pv:S.pv&&S.pv.f===S.floor?S.pv:null,rv:S.rv&&S.rv.f===S.floor?S.rv:null,gh:S.ghN||0,
       hc:S.healCount,hr:S.reviveCount,rn:S.readyNode,sk:S.skUses,su:(su(0)||'-')+(su(1)||'-')+(su(2)||'-'),skv:{ws:wallSh(),hh:mirHeal(),hs:mirSh(),fm:songMs(),fx:songMul()},im:immune()?1:0,cl:lv('purify'),ha:healAmt(),bm:evo('e_drum')?1.8:1.5,hs:6*lv('aegis'),sh:S.shield,bc:S.buffCount,bd:buffDur(),cn:S.calmN||0,cm:calmMs(),ll:lv('lullaby'),kv:S.kickVote||'',hb:Math.floor(now/3000),st:{...S.st,l:S.totalLines,k:S.hitsTaken||0,b:S.blocked||0,lv:S.level},l:null};
     pres.g=NET.isHost?{ph:S.phase,f:S.floor,t:Math.round(S.timeLeft/100)*100,
-      boss:S.boss?{id:S.boss.id,n:S.boss.name,m:S.boss.max}:null,node:S.nodePicked?{f:S.floor,k:S.nodeKind,q:S.qPick[S.floor+1]||''}:null,q:S.quirk||'',pr:S.party||[],dd:S.dd&&ddaOn()?S.dd:null,mk:S.mkN?{n:S.mkN,tp:S.mkTp}:null,rt:S.rt&&!S.nodePicked?{f:S.rt.f,n:S.rt.n,q:S.rt.q}:null}:null;
+      boss:S.boss?{id:S.boss.id,n:S.boss.name,m:S.boss.max}:null,node:S.nodePicked?{f:S.floor,k:S.nodeKind,q:S.qPick[S.floor+1]||''}:null,q:S.quirk||'',pr:S.party||[],dd:S.dd&&ddaOn()?S.dd:null,mk:S.mkN?{n:S.mkN,tp:S.mkTp}:null,ev:S.evN?{n:S.evN,k:S.evK,w:S.evWin||''}:null,rt:S.rt&&!S.nodePicked?{f:S.rt.f,n:S.rt.n,q:S.rt.q}:null}:null;
   }else pres={r:NET.isHost?'host':'guest',l:1,cls:myCls,e:null,g:null};
   pres.nm=myNick;pres.uid=MYUID;pres.ui=MYID||'';if(S&&S.coop)pres.sc=S.score;
   if(coopOn()){pres.ch=S.cheers||0;pres.em={n:S.emN||0,i:S.emI||0}}
@@ -5242,6 +5313,8 @@ function frame(now){
     }
     if(S.coop&&S.aim)aimTick();
     if(S.task&&S.mode==='play'&&S.boss&&!S.boss.dead)taskTick(dt);
+    if(!S.coop)evSchedule(nowT());
+    if(S.ev)evTick();
     if(S.goal&&!S.goal.done)goalTick();
     if(S.boss&&!S.boss.mob&&!S.boss.dead&&S.fightMinHp!=null&&S.hp<S.fightMinHp)S.fightMinHp=S.hp;
     if(S.mode==='play')ddaPressTick(dt);
