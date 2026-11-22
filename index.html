@@ -348,6 +348,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ice);outline-of
 .card.node .g{font-family:var(--display);font-size:24px;border-color:currentColor}
 .fbtn{position:absolute;z-index:4;border:1px solid var(--line);background:rgba(19,32,47,.92);color:var(--fg);font-family:var(--body);font-size:12px;font-weight:700;border-radius:14px;height:28px;padding:0 10px;cursor:pointer}
 .fbtn.emo{top:12px;right:6px}
+.fbtn.zonebtn{right:6px;bottom:34px;height:34px;padding:0 14px;font-size:14px;border-color:#e4f6ff;color:#0b1320;background:#e4f6ff;box-shadow:0 0 14px rgba(228,246,255,.6)}
 .fbtn.cheer{left:50%;bottom:16px;transform:translateX(-50%);height:40px;padding:0 18px;font-size:14px;border-color:var(--gold);color:var(--gold)}
 .fbtn.cheer:disabled{opacity:.45}
 .emotebar{position:absolute;z-index:4;top:44px;right:6px;display:flex;flex-direction:column;gap:4px}
@@ -652,6 +653,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
       <div class="toast" id="toast"></div>
       <div class="aimban" id="aimBan" hidden></div>
       <button class="fbtn emo" id="emoteBtn" type="button" hidden>スタンプ</button>
+      <button class="fbtn zonebtn" id="zoneBtn" type="button" hidden>ゾーン</button>
       <div class="emotebar" id="emoteBar" hidden></div>
       <div class="mybub" id="myBub" hidden></div>
       <button class="fbtn cheer" id="cheerBtn" type="button" hidden>応援を送る</button>
@@ -748,6 +750,7 @@ body.wide .app>header,body.wide .app>main,body.wide .app>.pad{display:none}
       <li>守護者・癒し手・鼓手・剣士の4クラス。ラインを消してためるクラススキル（SKILLボタン）があり、遺物もクラスに合ったものが出やすい</li>
       <li>ボスはそれぞれ固有のスキルを持つ。盤面上の紫の線が満ちると発動</li>
       <li>ボス戦では列を消すたびに「溜め」がたまる。4列消し・T-SPIN・全消しで、溜めた分がまとめて追加ダメージになる（強撃を受けると砕ける）</li>
+      <li>列を20本消すと「ゾーン」が使える（D キー／LT／画面のゾーンボタン）。8秒間 時間が止まり、その間に消した列は最後にまとめて大ダメージになる</li>
       <li>盤面の光る段が「弱点」。その段をちょうど消すとダメージ2倍。弱点・大技・解放でボスの下のゲージがたまり、満タンで「ダウン」（5秒間 攻撃が止まりダメージ1.5倍）</li>
       <li>遺物には「刃・盾・癒・富・爆・技」のタグがある。同じタグの遺物を3つ集めると「化身」に変身する</li>
       <li>持てる遺物は8種類まで（同じ遺物はLv3まで重ねられ、枠は使わない）。ボス対策の遺物は別の小物袋に2つ。いっぱいのときは入れ替えるか、行商人に売る</li>
@@ -1335,9 +1338,9 @@ let S=null;
 /* ---------- settings: sound, controls, motion ---------- */
 /* Bindings are stored per action, two slots each. Keyboard uses KeyboardEvent.code (layout-independent);
    gamepad uses "b<index>" for standard-mapping buttons and "sl/sr/su/sd" for left-stick directions. */
-const ACTS=[['left','左に移動'],['right','右に移動'],['soft','ソフトドロップ'],['hard','ハードドロップ'],['cw','右回転'],['ccw','左回転'],['r180','180度回転'],['hold','ホールド'],['skill','クラススキル'],['pause','一時停止']];
-const KEY_DEF={left:['ArrowLeft',''],right:['ArrowRight',''],soft:['ArrowDown',''],hard:['Space',''],cw:['ArrowUp','KeyX'],ccw:['KeyZ',''],r180:['KeyS',''],hold:['KeyC','ShiftLeft'],skill:['KeyA','KeyV'],pause:['KeyP','Escape']};
-const PAD_DEF={left:['b14','sl'],right:['b15','sr'],soft:['b13','sd'],hard:['b12',''],cw:['b1','b3'],ccw:['b0',''],r180:['',''],hold:['b4','b5'],skill:['b2','b7'],pause:['b9','']};
+const ACTS=[['left','左に移動'],['right','右に移動'],['soft','ソフトドロップ'],['hard','ハードドロップ'],['cw','右回転'],['ccw','左回転'],['r180','180度回転'],['hold','ホールド'],['skill','クラススキル'],['zone','ゾーン'],['pause','一時停止']];
+const KEY_DEF={left:['ArrowLeft',''],right:['ArrowRight',''],soft:['ArrowDown',''],hard:['Space',''],cw:['ArrowUp','KeyX'],ccw:['KeyZ',''],r180:['KeyS',''],hold:['KeyC','ShiftLeft'],skill:['KeyA','KeyV'],zone:['KeyD','KeyE'],pause:['KeyP','Escape']};
+const PAD_DEF={left:['b14','sl'],right:['b15','sr'],soft:['b13','sd'],hard:['b12',''],cw:['b1','b3'],ccw:['b0',''],r180:['',''],hold:['b4','b5'],skill:['b2','b7'],zone:['b6','b10'],pause:['b9','']};
 /* Music: every scene picks one entry from MUSIC. 'auto' is the generated loop (exploring or boss flavour).
    Add a recorded track by dropping an mp3 into bgm/ and listing it here. */
 const MUSIC={
@@ -1913,7 +1916,7 @@ function act(a){
   if(a==='skill'&&ghostOn()){ghostAct();return}
   if((a==='left'||a==='right')&&mirrored())a=a==='left'?'right':'left';
   if(!S||S.mode!=='play')return;
-  ({left:()=>move(-1),right:()=>move(1),cw:()=>rotate(1),ccw:()=>rotate(-1),r180:rotate180,soft,hard,hold,skill:useSkill})[a]();
+  ({left:()=>move(-1),right:()=>move(1),cw:()=>rotate(1),ccw:()=>rotate(-1),r180:rotate180,soft,hard,hold,skill:useSkill,zone:zoneStart})[a]();
 }
 
 /* ---------- rules ---------- */
@@ -1976,6 +1979,32 @@ function stagger(v,why){
     pop(['ダウン！','攻撃停止・ダメージ×1.5'],'#ffd36b',1.3);sfx('boss');feel('large');hitStop(120);logPush('ダウン',why||'','#ffd36b')}
 }
 function chgShatter(){if(S.chg&&S.chg.n>=2){toast(`強撃で溜めが砕けた（${S.chg.n}回分）`);S.fx.push({k:'atk',t:0})}S.chg={n:0,sum:0}}
+/* ---------- ゾーン (after Tetris Effect): clearing ZONE_NEED rows fills the gauge. Entering the zone stops time for
+   ZONE_MS: no gravity, and the enemy's strikes, skills, garbage and the floor clock all wait. Rows cleared inside the
+   zone deal no damage at once; when it ends they land together as one hit worth L×(20+3L) before multipliers
+   (8 rows: 352, 12 rows: 672; two plain 4-row clears give 160), which also releases the charge and staggers. ---------- */
+const ZONE_NEED=20,ZONE_MS=8000;
+const keyHint=a=>{if(typeof TOUCH!=='undefined'&&TOUCH)return'';const c=((SET.keys||{})[a]||[])[0];return c?`[${keyName(c)}]`:''};
+const zoneOn=()=>!!(S&&S.zoneUntil&&nowT()<S.zoneUntil);
+const zoneReady=()=>!!(S&&(S.zone||0)>=ZONE_NEED&&!zoneOn());
+function zoneStart(){
+  if(!S||S.mode!=='play')return;
+  if(zoneOn())return;
+  if((S.zone||0)<ZONE_NEED){if(!S.zMsg||nowT()-S.zMsg>900){S.zMsg=nowT();toast(`ゾーン：あと${ZONE_NEED-(S.zone||0)}列`)}return}
+  if(!S.boss||S.boss.dead){toast('ゾーンは敵がいるときに使える');return}
+  S.zone=0;S.zoneUntil=nowT()+ZONE_MS;S.zoneLines=0;S.zones=(S.zones||0)+1;
+  pop(['ゾーン','時間が止まる'],'#e4f6ff',1.3);sfx('skill');feel('medium');hud(true);
+}
+function zoneEnd(){
+  S.zoneUntil=0;const L=S.zoneLines||0;S.zoneLines=0;hud(true);
+  if(!L||!S.boss||S.boss.dead){if(L)toast(`ゾーン ${L}ライン`);return}
+  const base=L*(20+3*L),muls=dmgMuls();if(downed())muls.push(['ダウン',1.5]);
+  const d=Math.round(base*muls.reduce((a,x)=>a*x[1],1));
+  S.boss.myDmg+=d;S.zoneBest=Math.max(S.zoneBest||0,L);S.fx.push({k:'hit',t:0},{k:'boom',x:4,y:H-2,t:0});
+  dmgNum(d,true,`ゾーン ${L}ライン`);pop([`${L}ライン！`,`ゾーン ${d}`],'#e4f6ff',1.45);sfx('clear4');feel('large');hitStop(160);
+  logPush(`ゾーン ${L}ライン`,`${d}ダメージ`,'#e4f6ff');
+  if(rhythmOn()){stagger(20+4*L,'ゾーン');if(S.chg&&S.chg.n>=1){const k=Math.min(CHG_MAX,CHG_PER*(S.chg.n+1)),bonus=Math.round(S.chg.sum*k);if(bonus>0){S.boss.myDmg+=bonus;dmgNum(bonus,true,`溜め解放 ${Math.round(k*100)}%`)}}S.chg={n:0,sum:0}}
+}
 function bossDmgDetail(n,ts,b2b,pc){
   // more than 4 rows at once can happen when bombs settle the stack: +30 per extra row
   const n4=Math.min(n,4),base=ts&&n<=3?(ts==='full'?[0,30,60,90]:[0,15,30,30])[n]:[0,10,30,50,80][n4]+30*Math.max(0,n-4);
@@ -2162,7 +2191,10 @@ function lockPiece(){
     if(big2){S.lcN++;S.lastClrAt=nowT();S.linkSeen=false}
     if(mates.length)S.linkCdUntil=nowT()+LINK_CD;
     if(mates.length&&S.boss&&!S.boss.dead){S.linkK=mates.length;S.st.c+=mates.length;linkFx(mates,true)}
-    if(S.boss&&!S.boss.dead){
+    if(zoneOn()){S.zoneLines=(S.zoneLines||0)+n;S.weakHit=false;S.linkK=0}
+    else{S.zone=Math.min(ZONE_NEED,(S.zone||0)+n);if(S.zone>=ZONE_NEED&&!S.zoneTold){S.zoneTold=true;toast(`ゾーンが使える（${keyHint('zone')}）`)}}
+    if(S.zone<ZONE_NEED)S.zoneTold=false;
+    if(S.boss&&!S.boss.dead&&!zoneOn()){
       const det=bossDmgDetail(n,ts,b2b,pc),dmg=Math.round(det.d*(dt?1.3:1));S.linkK=0;
       S.boss.myDmg+=dmg;S.fx.push({k:'hit',t:0});
       dmgNum(dmg,hardClear||pc,det.f+(dt?' ×1.3':''));
@@ -2325,7 +2357,7 @@ function hpTick(dt){
   const b=S.boss&&!S.boss.dead?S.boss:null;
   if(b){
     if(taunted()){S.hitAcc=0;return}
-    if(frozen()||downed())return;
+    if(frozen()||downed()||zoneOn())return;
     S.hitAcc+=dt;
     if(S.hitAcc>=strikeMs()){S.hitAcc=0;strikeHit(1,`${b.name}の強撃`)}
   }else if(!S.boss&&S.phase==='play'&&isFinite(coldMs())){
@@ -3773,6 +3805,7 @@ function hud(force){
   $('holdBtn').disabled=!lv('hold');
   $('holdBtn').style.opacity=lv('hold')?1:.35;
   if(S.coop)renderParty();
+  {const zb=$('zoneBtn'),zr=zoneReady()&&S.mode==='play'&&!!S.boss&&!S.boss.dead;if(zb.hidden===zr){zb.hidden=!zr;zb.textContent='ゾーン '+keyHint('zone')}}
   {const co=coopOn();$('emoteBtn').hidden=!co||S.mode==='over';if(!co)$('emoteBar').hidden=true;
    const canCheer=co&&S.mode==='over'&&anyAllyAlive();$('cheerBtn').hidden=!(canCheer&&S.watching);$('cheerBtn2').hidden=!canCheer;
    const cd=S.cheerAt&&nowT()-S.cheerAt<6000;$('cheerBtn').disabled=$('cheerBtn2').disabled=!!cd;
@@ -3927,7 +3960,24 @@ function drawRhythmBack(s){
   const y=(H-1-S.weakRow)*s,pulse=0.5+0.5*Math.sin(nowT()/220);
   bctx.fillStyle=`rgba(255,155,111,${0.07+0.06*pulse})`;bctx.fillRect(0,y,W*s,s);
 }
+function drawZone(s){
+  if(zoneOn()){
+    const r=Math.max(0,(S.zoneUntil-nowT())/ZONE_MS);
+    bctx.fillStyle='rgba(228,246,255,.07)';bctx.fillRect(0,0,W*s,H*s);
+    bctx.fillStyle='rgba(228,246,255,.85)';bctx.fillRect(0,0,W*s*r,3);
+    bctx.save();bctx.globalAlpha=.55;bctx.fillStyle='#e4f6ff';bctx.font=`${Math.floor(s*2.4)}px DotGothic16, monospace`;bctx.textAlign='center';bctx.textBaseline='middle';
+    bctx.fillText(String(S.zoneLines||0),W*s/2,H*s*0.62);bctx.font=`${Math.floor(s*0.6)}px DotGothic16, monospace`;bctx.fillText('ゾーン ライン',W*s/2,H*s*0.62+s*1.5);bctx.restore();
+    return;
+  }
+  const z=S.zone||0;if(!z||S.mode==='over')return;
+  const ready=z>=ZONE_NEED,bw=s*3.2,x=W*s-bw-4,y=H*s-s*0.55-8;
+  bctx.fillStyle='rgba(11,19,32,.6)';bctx.fillRect(x-2,y-s*0.6,bw+4,s*0.6+8);
+  bctx.fillStyle='rgba(228,246,255,.7)';bctx.font=`${Math.floor(s*0.45)}px DotGothic16, monospace`;bctx.textAlign='left';bctx.textBaseline='bottom';
+  if(!ready||$('zoneBtn').hidden)bctx.fillText(ready?`ゾーン OK ${keyHint('zone')}`:`ゾーン ${z}/${ZONE_NEED}`,x,y);
+  bctx.fillStyle='rgba(228,246,255,.2)';bctx.fillRect(x,y+2,bw,4);bctx.fillStyle=ready&&(nowT()/300|0)%2?'#ffffff':'#bfe8ff';bctx.fillRect(x,y+2,bw*Math.min(1,z/ZONE_NEED),4);
+}
 function drawRhythmFront(s){
+  drawZone(s);
   if(!rhythmOn())return;
   if(S.weakRow>=0){const y=(H-1-S.weakRow)*s,a=0.55+0.35*Math.sin(nowT()/220);
     // a pulsing frame around the whole row, readable over filled cells too
@@ -4175,7 +4225,7 @@ function layoutWide(){
 }
 function renderKeys(){
   const k=a=>(SET.keys[a]||[]).filter(Boolean).map(keyName).join('/')||'-';
-  $('dkKeys').innerHTML=[[k('left')+' '+k('right'),'移動'],[k('ccw')+' '+k('cw'),'回転'],[k('hard'),'ハード'],[k('hold'),'ホールド'],[k('skill'),'スキル'],[k('pause'),'一時停止']].map(([a,b])=>`<span><b>${esc(a)}</b> ${b}</span>`).join('');
+  $('dkKeys').innerHTML=[[k('left')+' '+k('right'),'移動'],[k('ccw')+' '+k('cw'),'回転'],[k('hard'),'ハード'],[k('hold'),'ホールド'],[k('skill'),'スキル'],[k('zone'),'ゾーン'],[k('pause'),'一時停止']].map(([a,b])=>`<span><b>${esc(a)}</b> ${b}</span>`).join('');
 }
 // log: what just happened, newest first (toasts, big hits, kills)
 const DKLOG=[];
@@ -4957,6 +5007,7 @@ $('codexBtn').onclick=openCodex;
 $('emoteBar').innerHTML=EMOTES.map((t,i)=>`<button type="button" data-i="${i}">${t}</button>`).join('');
 function sendEmote(i){if(!coopOn())return;S.emN=(S.emN||0)+1;S.emI=i;$('myBub').textContent=EMOTES[i];S.myBubUntil=nowT()+2500;$('emoteBar').hidden=true}
 $('emoteBtn').onclick=()=>{$('emoteBar').hidden=!$('emoteBar').hidden};
+$('zoneBtn').onclick=()=>zoneStart();
 $('emoteBar').onclick=e=>{const b=e.target.closest('button');if(b)sendEmote(+b.dataset.i)};
 function sendCheer(){if(!coopOn()||S.mode!=='over'||(S.cheerAt&&nowT()-S.cheerAt<6000))return;S.cheers=(S.cheers||0)+1;S.cheerAt=nowT();toast('応援を送った');sfx('buy')}
 $('cheerBtn').onclick=sendCheer;$('cheerBtn2').onclick=sendCheer;
@@ -5079,20 +5130,21 @@ function frame(now){
   const rdt=Math.min(50,now-last);last=now;
   const dt=now<stopUntil?0:rdt; // game time; frozen during a hit-stop
   dbgVisible();
-  if(S&&S.mode==='play'&&S.cur){
+  if(S&&S.zoneUntil){if(S.mode!=='play'&&S.mode!=='over')S.zoneUntil+=rdt;else if(S.mode==='play'){for(const g of S.incoming)g.at+=rdt;if(nowT()>=S.zoneUntil)zoneEnd()}else S.zoneUntil=0}
+  if(S&&S.mode==='play'&&S.cur&&!zoneOn()){
     S.dropAcc+=dt;const g=gravityMs();
     while(S.dropAcc>=g){S.dropAcc-=g;if(!grounded()){S.cur.y++;S.lastRot=false}else{S.dropAcc=0;break}}
     if(grounded()){S.lockAcc+=dt;if(S.lockAcc>=(rushing()?150:500))lockPiece()}else S.lockAcc=0;
-  }
+  }else if(S&&S.mode==='play'&&S.cur)S.lockAcc=0; // in the zone a piece only locks when dropped
   if(S&&S.mode!=='title'){
     // solo: the clock stops behind menus. party: the leader's clock keeps running for everyone.
     const timerRuns=!S.practice&&S.phase==='play'&&isAuthority()&&(S.coop?(S.mode!=='over'||anyAllyAlive()):S.mode==='play');
-    if(timerRuns&&(!S.boss||S.boss.mob)){
+    if(timerRuns&&(!S.boss||S.boss.mob)&&!zoneOn()){
       S.timeLeft-=dt;
       if(S.timeLeft<=0){S.timeLeft=0;spawnBoss()}
       else if(!S.boss){S.mobWait=(S.mobWait==null?MOB_FIRST:S.mobWait)-dt;if(S.mobWait<=0&&S.timeLeft>MOB_MIN){S.mobWait=MOB_GAP;spawnMob()}}
     }
-    if(S.mode==='play'&&S.boss&&!S.boss.dead&&!frozen()){
+    if(S.mode==='play'&&S.boss&&!S.boss.dead&&!frozen()&&!zoneOn()){
       const b=S.boss;
       if(!downed())b.atk+=dt;
       if(b.atk>=bossAtkMs()){
